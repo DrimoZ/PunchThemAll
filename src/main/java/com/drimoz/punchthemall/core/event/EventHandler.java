@@ -1,0 +1,70 @@
+package com.drimoz.punchthemall.core.event;
+
+import com.drimoz.punchthemall.core.model.EInteractionType;
+import com.drimoz.punchthemall.core.model.Interaction;
+import com.drimoz.punchthemall.core.registry.InteractionRegistry;
+import com.drimoz.punchthemall.core.util.PTALoggers;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+
+import java.util.List;
+
+public class EventHandler {
+
+    @SubscribeEvent
+    public static void onPlayerLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        handlePlayerInteractEvent(event, EInteractionType.LEFT_CLICK);
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        handlePlayerInteractEvent(event, EInteractionType.RIGHT_CLICK);
+    }
+
+    private static void handlePlayerInteractEvent(PlayerInteractEvent event, EInteractionType type) {
+        Player player = event.getEntity();
+        Level level = event.getLevel();
+        BlockPos pos = event.getPos();
+        Block block = level.getBlockState(pos).getBlock();
+        Direction face = event.getFace();
+
+        if (InteractionRegistry.getInstance().getBlockList().contains(block)) {
+            List<Interaction> interactions = InteractionRegistry.getInstance().getInteractionsByInteractedBlockAndType(block, type);
+
+            for (Interaction interaction : interactions) {
+                ItemStack handItem = player.getItemInHand(InteractionHand.MAIN_HAND);
+
+                if (interaction.getHandItem() == null) {
+                    dropItem(level, pos, face, interaction.getRandomItem());
+                }
+
+                else if (handItem.is(interaction.getHandItem().getItem())) {
+                    dropItem(level, pos, face, interaction.getRandomItem());
+
+                    if (handItem.isDamageableItem()) {
+                        handItem.setDamageValue(handItem.getDamageValue() + 1);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void dropItem(Level level, BlockPos pos, Direction face, ItemStack itemStack) {
+        double x = pos.getX() + 0.5 + face.getStepX() * 0.75;
+        double y = pos.getY() + 0.5 + face.getStepY() * 0.75;
+        double z = pos.getZ() + 0.5 + face.getStepZ() * 0.75;
+
+
+        ItemEntity itemEntity = new ItemEntity(level, x, y, z, itemStack.copy());
+        itemEntity.setDeltaMovement(face.getStepX() * 0.1, face.getStepY() * 0.1, face.getStepZ() * 0.1);
+        level.addFreshEntity(itemEntity);
+    }
+}
