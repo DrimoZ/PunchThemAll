@@ -29,25 +29,17 @@ public class PunchThemAll
         modEventBus.addListener(this::onCommonSetup);
         modEventBus.addListener(this::onClientSetup);
 
-        MinecraftForge.EVENT_BUS.register(EventHandler.class);
-
         PTALoggers.infoModCompleted();
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
         InteractionLoader.initInteractions();
 
-        for(Interaction a : InteractionRegistry.getInstance().getInteractions().values()) {
-            LOGGER.info("INTERACTION : " + a.toString());
-            LOGGER.info("INTERACTION : " + a.getInteractedBlock());
-            a.getDropPool().forEach((key, value) -> LOGGER.info("POOL DROP : " + key + " - " + value));
-        }
-
         PTALoggers.infoRegisteredModule("Common Setup");
     }
 
     private void onClientSetup(final FMLClientSetupEvent event) {
-
+        MinecraftForge.EVENT_BUS.register(EventHandler.class);
 
         PTALoggers.infoRegisteredModule("Client Setup");
     }
