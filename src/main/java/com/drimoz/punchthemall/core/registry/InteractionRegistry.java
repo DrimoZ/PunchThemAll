@@ -35,17 +35,17 @@ public class InteractionRegistry {
     public void addInteraction(Interaction interaction) {
         interactions.put(interaction.getId(), interaction);
 
-        if (!blockList.contains(interaction.getInteractedBlock())) blockList.add(interaction.getInteractedBlock());
+        if (!blockList.contains(interaction.getInteractedBlock().getBlockAsBlock())) blockList.add(interaction.getInteractedBlock().getBlockAsBlock());
     }
 
     public Interaction getInteractionById(ResourceLocation id) {
         return interactions.get(id);
     }
 
-    public List<Interaction> getInteractionsByInteractedBlockAndType(Block block, EInteractionType type) {
+    public List<Interaction> getInteractionsByInteractedBlockAndType(Block block, EInteractionType type, boolean isShiftKeyDown) {
         List<Interaction> result = new ArrayList<>();
         for (Interaction interaction : interactions.values()) {
-            if (interaction.getInteractedBlock().equals(block) && interaction.getType() == type) {
+            if (interaction.getInteractedBlock().getBlockAsBlock().equals(block) && interaction.getType() == EInteractionType.getTypeFromEvent(type, isShiftKeyDown)) {
                 result.add(interaction);
             }
         }

@@ -14,4 +14,14 @@ public enum EInteractionType {
         }
         throw new IllegalArgumentException("Unknown interaction type: " + type);
     }
+
+    public static EInteractionType getTypeFromEvent(EInteractionType typeFromEvent, boolean isShiftKeyDown) {
+        if (typeFromEvent == EInteractionType.RIGHT_CLICK) {
+            return isShiftKeyDown ? EInteractionType.SHIFT_RIGHT_CLICK : EInteractionType.RIGHT_CLICK;
+        } else if (typeFromEvent == EInteractionType.LEFT_CLICK) {
+            return isShiftKeyDown ? EInteractionType.SHIFT_LEFT_CLICK : EInteractionType.LEFT_CLICK;
+        } else {
+            throw new IllegalArgumentException("Unexpected value: " + typeFromEvent);
+        }
+    }
 }

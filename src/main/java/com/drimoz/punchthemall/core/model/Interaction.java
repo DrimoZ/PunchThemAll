@@ -1,14 +1,11 @@
 package com.drimoz.punchthemall.core.model;
 
 import com.drimoz.punchthemall.PunchThemAll;
-import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 
 import java.util.*;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class Interaction {
@@ -17,44 +14,66 @@ public class Interaction {
 
     private final ResourceLocation id;
     private final EInteractionType type;
-    private Block interactedBlock;
-    private ItemStack handItem;
-    private Map<ItemStack, Integer> dropPool;
+
+    private InteractionHand interactionHand;
+    private InteractedBlock interactedBlock;
+
+    private List<DropEntry> dropPool;
 
     private Random random;
 
     // Life Cycle
 
-    public Interaction(String id, EInteractionType type) {
-        this(new ResourceLocation(PunchThemAll.MOD_ID, id), type);
-    }
-
     public Interaction(ResourceLocation id, EInteractionType type) {
-        this(id, type, null, null, null);
-    }
-
-    public Interaction(
-            String id, EInteractionType type,
-            Block interactedBlock, ItemStack handItem,
-            Map<ItemStack, Integer> dropPool
-    ) {
-        this(new ResourceLocation(PunchThemAll.MOD_ID, id), type, interactedBlock, handItem, dropPool);
+        this(id, type, null, null, new ArrayList<>());
     }
 
     public Interaction(
             ResourceLocation id, EInteractionType type,
-            Block interactedBlock, ItemStack handItem,
-            Map<ItemStack, Integer> dropPool
+            EInteractionHand hand_type,
+            EInteractionBlock block_type, Object block,
+            List<DropEntry> dropPool
     ) {
+        this(id, type, new InteractionHand(hand_type), new InteractedBlock(block_type, block), dropPool);
+    }
+
+    public Interaction(
+            ResourceLocation id, EInteractionType type,
+            EInteractionHand hand_type, ItemStack hand_item, boolean damageable,
+            EInteractionBlock block_type, Object block,
+            List<DropEntry> dropPool
+    ) {
+        this(id, type, new InteractionHand(hand_type, hand_item, damageable), new InteractedBlock(block_type, block), dropPool);
+    }
+
+    public Interaction(
+            ResourceLocation id, EInteractionType type,
+            EInteractionHand hand_type,
+            EInteractionBlock block_type, Object block, Double decay_chance, EInteractionBlock decay_type, Object decay_block,
+            List<DropEntry> dropPool
+    ) {
+        this(id, type, new InteractionHand(hand_type), new InteractedBlock(block_type, block, decay_chance, decay_type, decay_block), dropPool);
+    }
+
+    public Interaction(
+            ResourceLocation id, EInteractionType type,
+            EInteractionHand hand_type, ItemStack hand_item, boolean damageable,
+            EInteractionBlock block_type, Object block, Double decay_chance, EInteractionBlock decay_type, Object decay_block,
+            List<DropEntry> dropPool
+    ) {
+        this(id, type, new InteractionHand(hand_type, hand_item, damageable), new InteractedBlock(block_type, block, decay_chance, decay_type, decay_block), dropPool);
+    }
+
+
+    public Interaction(ResourceLocation id, EInteractionType type, InteractionHand interactionHand, InteractedBlock interactedBlock, List<DropEntry> dropPool) {
         this.id = id;
         this.type = type;
-        setInteractedBlock(interactedBlock);
-        setHandItem(handItem);
-        setDropPool(dropPool);
+        this.interactionHand = interactionHand;
+        this.interactedBlock = interactedBlock;
+        this.dropPool = dropPool;
     }
 
     // Interface
-
 
     public ResourceLocation getId() {
         return id;
@@ -64,80 +83,76 @@ public class Interaction {
         return type;
     }
 
-    public Block getInteractedBlock() {
+    public InteractedBlock getInteractedBlock() {
         return interactedBlock;
     }
 
-    public void setInteractedBlock(Block block) {
-        this.interactedBlock = block;
+    public void setInteractedBlock(InteractedBlock interactedBlock) {
+        this.interactedBlock = interactedBlock;
     }
 
-    public ItemStack getHandItem() {
-        return handItem;
+    public InteractionHand getHandItem() {
+        return interactionHand;
     }
 
-    public void setHandItem(ItemStack item) {
-        this.handItem = item;
+    public void setHandItem(InteractionHand interactionHand) {
+        this.interactionHand = interactionHand;
     }
 
-    public Map<ItemStack, Integer> getDropPool() {
+    public List<DropEntry> getDropPool() {
         return dropPool;
     }
 
-    public void setDropPool(Map<ItemStack, Integer> pool) {
+    public void setDropPool(List<DropEntry> pool) {
         if (pool == null) {
-            this.dropPool = new HashMap<>();
+            this.dropPool = new ArrayList<>();
         }
         else {
-            this.dropPool = pool.entrySet().stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> entry.getValue() < 0 ? 0 : entry.getValue()
-                    ));
+            this.dropPool = pool.stream()
+                    .map(entry -> new DropEntry(entry.getItemStack(), entry.getChance()))
+                    .collect(Collectors.toList());
         }
     }
 
-    public void addToPool(ItemStack item, int chance) {
-        if (chance < 0 ) chance = 0;
-        this.dropPool.put(item, chance);
+    public void addToPool(DropEntry entry) {
+        this.dropPool.add(entry);
     }
 
-    public int getTotalChance () {
-        return this.dropPool.values().stream().mapToInt(Integer::intValue).sum();
+    public int getTotalChance() {
+        return this.dropPool.stream().mapToInt(DropEntry::getChance).sum();
     }
 
     public ItemStack getItemForChance(int chance) {
         int cumulativeChance = 0;
 
-        List<Map.Entry<ItemStack, Integer>> randomisedPool = new ArrayList<>(dropPool.entrySet());
+        List<DropEntry> randomisedPool = new ArrayList<>(dropPool);
         Collections.shuffle(randomisedPool);
 
-        for (Map.Entry<ItemStack, Integer> entry : randomisedPool) {
-            cumulativeChance += entry.getValue();
+        for (DropEntry entry : randomisedPool) {
+            cumulativeChance += entry.getChance();
 
             if (chance <= cumulativeChance) {
-                return entry.getKey();
+                return entry.getItemStack();
             }
         }
 
-        return null;
+        return ItemStack.EMPTY;
     }
 
     public ItemStack getRandomItem() {
         random = new Random();
-
         return getItemForChance(random.nextInt(getTotalChance()) + 1);
     }
 
     @Override
     public String toString() {
         return "Interaction{" +
-                "id=" + id +
-                ", type=" + type +
-                ", interactedBlock=" + interactedBlock +
-                ", handItem=" + handItem +
-                ", dropPool=" + dropPool +
-                ", random=" + random +
-                '}';
+                "\nid=" + id +
+                "\ntype=" + type +
+                "\ninteractionHand=" + interactionHand +
+                "\ninteractedBlock=" + interactedBlock +
+                "\ndropPool=" + dropPool +
+                "\nrandom=" + random +
+                "\n}";
     }
 }
