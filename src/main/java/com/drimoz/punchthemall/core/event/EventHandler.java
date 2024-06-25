@@ -12,37 +12,46 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class EventHandler {
+    private static final Map<UUID, Long> playerCooldown = new HashMap<>();
+    private static final Long cooldownInterval = 1L;
 
     @SubscribeEvent
     public static void onPlayerLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-        PTALoggers.error("onPlayerLeftClickBlock ClientSide : " + event.getLevel().isClientSide());
+        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
+        if (event.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
         handlePlayerInteractEvent(event, EInteractionType.LEFT_CLICK);
     }
 
     @SubscribeEvent
     public static void onPlayerRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        PTALoggers.error("onPlayerRightClickBlock ClientSide : " + event.getLevel().isClientSide());
+        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEvent(event, EInteractionType.RIGHT_CLICK);
+
     }
 
     @SubscribeEvent
     public static void onPlayerLeftClickItem(PlayerInteractEvent.LeftClickEmpty event) {
-        PTALoggers.error("onPlayerLeftClickItem ClientSide : " + event.getLevel().isClientSide());
+        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEventWithAir(event, EInteractionType.LEFT_CLICK);
     }
 
     @SubscribeEvent
     public static void onPlayerRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        PTALoggers.error("onPlayerRightClickItem ClientSide : " + event.getLevel().isClientSide());
+        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEventWithAir(event, EInteractionType.RIGHT_CLICK);
     }
@@ -68,7 +77,10 @@ public class EventHandler {
             }
         }
 
-        if (interactionProcessed) event.setCanceled(true);
+        if (interactionProcessed) {
+            event.setCanceled(true);
+            setPlayerOnCooldown(player.getUUID(), player.tickCount);
+        }
     }
 
     private static void handlePlayerInteractEventWithAir(PlayerInteractEvent event, EInteractionType type) {
@@ -84,7 +96,10 @@ public class EventHandler {
             }
         }
 
-        if (interactionProcessed) event.setCanceled(true);
+        if (interactionProcessed) {
+            event.setCanceled(true);
+            setPlayerOnCooldown(player.getUUID(), player.tickCount);
+        }
     }
 
     private static boolean processInteraction(Player player, Level level, BlockPos pos, Direction face, Interaction interaction) {
@@ -136,91 +151,6 @@ public class EventHandler {
         return false;
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    private static void handlePlayerInteractEvent2(PlayerInteractEvent event, EInteractionType type) {
-        Player player = event.getEntity();
-        Level level = event.getLevel();
-        BlockPos pos = event.getPos();
-        Block block = level.getBlockState(pos).getBlock();
-        Direction face = event.getFace();
-        assert face != null;
-
-        if (InteractionRegistry.getInstance().getBlockList().contains(block)) {
-            List<Interaction> interactions = InteractionRegistry.getInstance().getInteractionsByInteractedBlockAndType(block, type, player.isShiftKeyDown());
-
-            for (Interaction interaction : interactions) {
-                InteractionHand interactionHand = interaction.getHandItem();
-                ItemStack playerMainHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
-                ItemStack playerOffHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.OFF_HAND);
-
-                if (interactionHand == null || interactionHand.getItem().isEmpty()) {
-                    if (playerMainHandItem.isEmpty()) dropItem(level, pos, face, interaction.getRandomItem());
-                }
-                else {
-                    switch (interactionHand.getHand_type()) {
-                        case ANY_HAND -> {
-
-
-                            if (playerMainHandItem.is(interactionHand.getItem().getItem())) {
-                                dropItem(level, pos, face, interaction.getRandomItem());
-
-                                if (interactionHand.isDamageable() && playerMainHandItem.isDamageableItem()) {
-                                    useItemDurability(playerMainHandItem, player);
-                                }
-                            }
-                            else if (playerOffHandItem.is(interactionHand.getItem().getItem())) {
-                                dropItem(level, pos, face, interaction.getRandomItem());
-
-                                if (interactionHand.isDamageable() && playerOffHandItem.isDamageableItem()) {
-                                    useItemDurability(playerOffHandItem, player);
-                                }
-                            }
-                        }
-                        case MAIN_HAND -> {
-                            if (playerMainHandItem.is(interactionHand.getItem().getItem())) {
-                                dropItem(level, pos, face, interaction.getRandomItem());
-
-                                if (interactionHand.isDamageable() && playerMainHandItem.isDamageableItem()) {
-                                    useItemDurability(playerMainHandItem, player);
-                                }
-                            }
-                        }
-                        case OFF_HAND -> {
-                            if (playerOffHandItem.is(interactionHand.getItem().getItem())) {
-                                dropItem(level, pos, face, interaction.getRandomItem());
-
-                                if (interactionHand.isDamageable() && playerOffHandItem.isDamageableItem()) {
-                                    useItemDurability(playerOffHandItem, player);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private static void useItemDurability(ItemStack itemStack, Player player) {
         if (itemStack.hurt(1, player.getRandom(), null)) {
             itemStack.shrink(1);
@@ -237,5 +167,13 @@ public class EventHandler {
         ItemEntity itemEntity = new ItemEntity(level, x, y, z, itemStack.copy());
         itemEntity.setDeltaMovement(face.getStepX() * 0.1, face.getStepY() * 0.1, face.getStepZ() * 0.1);
         level.addFreshEntity(itemEntity);
+    }
+
+    private static boolean isPlayerOnCooldown(UUID UUID, long currentTick) {
+        return playerCooldown.getOrDefault(UUID, 0L) < currentTick - cooldownInterval;
+    }
+
+    private static void setPlayerOnCooldown(UUID UUID, long currentTick) {
+        playerCooldown.put(UUID, currentTick);
     }
 }
