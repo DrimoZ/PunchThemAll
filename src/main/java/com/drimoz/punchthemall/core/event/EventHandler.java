@@ -1,10 +1,7 @@
 package com.drimoz.punchthemall.core.event;
 
-import com.drimoz.punchthemall.core.model.EInteractionType;
-import com.drimoz.punchthemall.core.model.Interaction;
-import com.drimoz.punchthemall.core.model.InteractionHand;
+import com.drimoz.punchthemall.core.model.*;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
-import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -12,8 +9,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
@@ -21,9 +19,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class EventHandler {
-    private static final Map<UUID, Long> playerCooldown = new HashMap<>();
+    private static final Map<UUID, Long> playerCooldowns = new HashMap<>();
     private static final Long cooldownInterval = 1L;
 
     @SubscribeEvent
@@ -39,7 +38,6 @@ public class EventHandler {
         if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEvent(event, EInteractionType.RIGHT_CLICK);
-
     }
 
     @SubscribeEvent
@@ -61,19 +59,27 @@ public class EventHandler {
         Player player = event.getEntity();
         Level level = event.getLevel();
         BlockPos pos = event.getPos();
-        Block block = level.getBlockState(pos).getBlock();
+        BlockState blockState = level.getBlockState(pos);
+        FluidState fluidState = level.getFluidState(pos);
         Direction face = event.getFace();
 
-        if (face == null || !InteractionRegistry.getInstance().getBlockList().contains(block)) {
+        if (face == null) {
             return;
         }
 
         boolean interactionProcessed = false;
-        List<Interaction> interactions = InteractionRegistry.getInstance().getInteractionsByInteractedBlockAndType(block, type, player.isShiftKeyDown());
+        boolean blockTransformed = false;
+        List<Interaction> interactions = InteractionRegistry.getInstance().getInteractionsByInteractedBlockAndType((blockState != null ? blockState : fluidState), type, player.isShiftKeyDown());
 
         for (Interaction interaction : interactions) {
-            if (processInteraction(player, level, pos, face, interaction)) {
+            if (interaction.getInteractedBlock().getBlockType() == EInteractionBlock.AIR) continue;
+
+            if (!blockTransformed && processInteraction(player, level, pos, face, interaction)) {
                 interactionProcessed = true;
+                if (shouldBlockTransform(interaction.getInteractedBlock())) {
+                    transformBlock(level, pos, interaction.getInteractedBlock().getState());
+                    blockTransformed = true;
+                }
             }
         }
 
@@ -163,17 +169,35 @@ public class EventHandler {
         double y = pos.getY() + 0.5 + face.getStepY() * 0.75;
         double z = pos.getZ() + 0.5 + face.getStepZ() * 0.75;
 
-        PTALoggers.error("Drop Item : " + itemStack);
         ItemEntity itemEntity = new ItemEntity(level, x, y, z, itemStack.copy());
         itemEntity.setDeltaMovement(face.getStepX() * 0.1, face.getStepY() * 0.1, face.getStepZ() * 0.1);
         level.addFreshEntity(itemEntity);
     }
 
+    private static boolean shouldBlockTransform(InteractedBlock interactedBlock) {
+        if (interactedBlock.getTransformationChance() != null) {
+            double randomValue = ThreadLocalRandom.current().nextDouble();
+            return randomValue <= interactedBlock.getTransformationChance();
+        }
+        return false;
+    }
+
+    private static void transformBlock(Level level, BlockPos pos, Object state) {
+        if (state instanceof BlockState)
+            level.setBlockAndUpdate(pos, (BlockState) state);
+        else if (state instanceof FluidState)
+            level.setBlockAndUpdate(pos, ((FluidState) state).createLegacyBlock());
+    }
+
+
+
+    // Inner work ( Player Cooldown )
+
     private static boolean isPlayerOnCooldown(UUID UUID, long currentTick) {
-        return playerCooldown.getOrDefault(UUID, 0L) < currentTick - cooldownInterval;
+        return playerCooldowns.getOrDefault(UUID, 0L) >= currentTick - cooldownInterval;
     }
 
     private static void setPlayerOnCooldown(UUID UUID, long currentTick) {
-        playerCooldown.put(UUID, currentTick);
+        playerCooldowns.put(UUID, currentTick);
     }
 }

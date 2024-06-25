@@ -145,7 +145,7 @@ public class Interaction {
     }
 
     public boolean isAir() {
-        return this.getInteractedBlock().getBlockAsBlock() == null;
+        return this.getInteractedBlock().getBlockAsBlockState() == null && this.getInteractedBlock().getBlockAsFluidState() == null;
     }
 
     @Override
