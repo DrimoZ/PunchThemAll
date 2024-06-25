@@ -1,0 +1,20 @@
+{
+  "input_type": "right_click",
+
+  "interacted_block": {
+    "block_type": "block",
+    "block_base": {
+      "block":  "minecraft:chest"
+    }
+  },
+
+  "drop_pool": [
+    {
+      "item":  "minecraft:dirt",
+      "count": 1,
+      "chance": 10
+    }
+  ]
+}
+
+
