@@ -21,28 +21,28 @@ public class EventHandler {
 
     @SubscribeEvent
     public static void onPlayerLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-        PTALoggers.error("ClientSide : " + event.getLevel().isClientSide());
+        PTALoggers.error("onPlayerLeftClickBlock ClientSide : " + event.getLevel().isClientSide());
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEvent(event, EInteractionType.LEFT_CLICK);
     }
 
     @SubscribeEvent
     public static void onPlayerRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        PTALoggers.error("ClientSide : " + event.getLevel().isClientSide());
+        PTALoggers.error("onPlayerRightClickBlock ClientSide : " + event.getLevel().isClientSide());
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEvent(event, EInteractionType.RIGHT_CLICK);
     }
 
     @SubscribeEvent
     public static void onPlayerLeftClickItem(PlayerInteractEvent.LeftClickEmpty event) {
-        PTALoggers.error("ClientSide : " + event.getLevel().isClientSide());
+        PTALoggers.error("onPlayerLeftClickItem ClientSide : " + event.getLevel().isClientSide());
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEventWithAir(event, EInteractionType.LEFT_CLICK);
     }
 
     @SubscribeEvent
     public static void onPlayerRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        PTALoggers.error("ClientSide : " + event.getLevel().isClientSide());
+        PTALoggers.error("onPlayerRightClickItem ClientSide : " + event.getLevel().isClientSide());
         if (event.getLevel().isClientSide()) return;
         handlePlayerInteractEventWithAir(event, EInteractionType.RIGHT_CLICK);
     }
