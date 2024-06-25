@@ -144,6 +144,10 @@ public class Interaction {
         return getItemForChance(random.nextInt(getTotalChance()) + 1);
     }
 
+    public boolean isAir() {
+        return this.getInteractedBlock().getBlockAsBlock() == null;
+    }
+
     @Override
     public String toString() {
         return "Interaction{" +

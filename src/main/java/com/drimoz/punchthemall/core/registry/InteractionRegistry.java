@@ -43,9 +43,15 @@ public class InteractionRegistry {
     }
 
     public List<Interaction> getInteractionsByInteractedBlockAndType(Block block, EInteractionType type, boolean isShiftKeyDown) {
+        EInteractionType eventType = EInteractionType.getTypeFromEvent(type, isShiftKeyDown);
         List<Interaction> result = new ArrayList<>();
+
         for (Interaction interaction : interactions.values()) {
-            if (interaction.getInteractedBlock().getBlockAsBlock().equals(block) && interaction.getType() == EInteractionType.getTypeFromEvent(type, isShiftKeyDown)) {
+            Block interactionBlock = interaction.getInteractedBlock().getBlockAsBlock();
+            boolean blockMatches = (block == null && interaction.isAir()) ||
+                    (block != null && block.equals(interactionBlock));
+
+            if (blockMatches && interaction.getType() == eventType) {
                 result.add(interaction);
             }
         }

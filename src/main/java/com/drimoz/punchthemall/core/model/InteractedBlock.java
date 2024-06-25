@@ -20,7 +20,7 @@ public class InteractedBlock {
 
     // Constructor
     public InteractedBlock(EInteractionBlock blockType, Object block, Double decayChance, EInteractionBlock decayType, Object decayBlock) {
-        if (!(block instanceof Block) && !(block instanceof Fluid)) {
+        if (block != null && !(block instanceof Block) && !(block instanceof Fluid)) {
             throw new IllegalArgumentException("block must be either a Block or Fluid.");
         }
         if (decayBlock != null && !(decayBlock instanceof Block) && !(decayBlock instanceof Fluid)) {
