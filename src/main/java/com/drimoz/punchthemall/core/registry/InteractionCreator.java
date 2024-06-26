@@ -104,6 +104,8 @@ public class InteractionCreator {
             }
 
             if (handItem != ItemStack.EMPTY && itemJson.has("nbt")) {
+                PTALoggers.error("With GsonHelper : " + GsonHelper.getAsJsonObject(itemJson, "nbt"));
+                PTALoggers.error("Without GsonHelper : " + itemJson.get("nbt"));
                 CompoundTag nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(itemJson, "nbt"));
                 handItem.setTag(nbt);
             }
@@ -186,7 +188,7 @@ public class InteractionCreator {
             CompoundTag nbt = new CompoundTag();
 
             if (interactionBlockObject.has("state")) {
-                for (var stateItem : interactionBlockObject.getAsJsonArray("state")) {
+                for (var stateItem : GsonHelper.getAsJsonArray(interactionBlockObject, "state")) {
                     JsonObject stateObject = stateItem.getAsJsonObject();
 
                     String key = stateObject.keySet().iterator().next();
@@ -276,6 +278,12 @@ public class InteractionCreator {
             }
 
             ItemStack poolItem = new ItemStack(item, count);
+
+            if (dropObject.has("nbt")) {
+                CompoundTag nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(dropObject, "nbt"));
+                poolItem.setTag(nbt);
+            }
+
             dropEntries.add(new DropEntry(poolItem, chance));
         }
     }

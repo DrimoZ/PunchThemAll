@@ -1,6 +1,7 @@
 package com.drimoz.punchthemall.core.registry;
 
 import com.drimoz.punchthemall.core.model.*;
+import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -100,14 +101,16 @@ public class InteractionRegistry {
 
             // Filter : NBT
             BlockEntity worldBlockEntity = level.getBlockEntity(pos);
+
             if (worldBlockEntity != null && !interaction.getInteractedBlock().getBlockBase().getNbt().isEmpty()) {
-                CompoundTag worldBlockEntityTag = worldBlockEntity.saveWithFullMetadata();
+                CompoundTag worldBlockEntityTag = worldBlockEntity.serializeNBT();
 
                 for (String key : interaction.getInteractedBlock().getBlockBase().getNbt().getAllKeys()) {
                     if (!worldBlockEntityTag.contains(key)) matchBlock = false;
-                    else if (Objects.equals(interaction.getInteractedBlock().getBlockBase().getNbt().get(key), worldBlockEntityTag.get(key))) matchBlock = false;
+                    else if (!Objects.equals(interaction.getInteractedBlock().getBlockBase().getNbt().get(key), worldBlockEntityTag.get(key))) matchBlock = false;
                 }
             }
+
             if (!matchBlock) continue;
 
             // Filter : Hand
@@ -140,8 +143,8 @@ public class InteractionRegistry {
                                 if (!matchHand) continue;
 
                                 for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
-                                    if (playerMainHandItem.getTag().get(key) == null) matchHand = false;
-                                    else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key))) matchHand = false;
+                                    if (!playerMainHandItem.getTag().contains(key)) matchHand = false;
+                                    else if (!Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key))) matchHand = false;
                                 }
                             }
                         }
@@ -151,15 +154,14 @@ public class InteractionRegistry {
                                 if (!matchHand) continue;
 
                                 for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
-                                    if (playerOffHandItem.getTag().get(key) == null) matchHand = false;
-                                    else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerOffHandItem.getTag().get(key))) matchHand = false;
+                                    if (!playerOffHandItem.getTag().contains(key)) matchHand = false;
+                                    else if (!Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerOffHandItem.getTag().get(key))) matchHand = false;
                                 }
                             }
                         }
                         else {
                             matchHand = false;
                         }
-
                     }
                     case MAIN_HAND -> {
                         if (!playerMainHandItem.is(interaction.getInteractionHand().getItemStack().getItem())) matchHand = false;
@@ -170,9 +172,18 @@ public class InteractionRegistry {
                             if (!matchHand) continue;
 
                             for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
-                                if (playerMainHandItem.getTag().get(key) == null) matchHand = false;
-                                else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key))) matchHand = false;
+                                PTALoggers.error("Key : " + key);
+                                PTALoggers.error("Value : " + interaction.getInteractionHand().getItemStack().getTag().get(key));
+                                PTALoggers.error("Has Value : " + playerMainHandItem.getTag().contains(key));
+                                PTALoggers.error("Value : " + playerMainHandItem.getTag().get(key));
+                                PTALoggers.error("Equals : " + Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key)));
+
+
+                                if (!playerMainHandItem.getTag().contains(key)) matchHand = false;
+                                else if (!Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key))) matchHand = false;
                             }
+                            PTALoggers.error("Match Hand : " + matchHand);
+
                         }
                     }
                     case OFF_HAND -> {
@@ -184,13 +195,18 @@ public class InteractionRegistry {
                             if (!matchHand) continue;
 
                             for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
-                                if (playerOffHandItem.getTag().get(key) == null) matchHand = false;
-                                else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerOffHandItem.getTag().get(key))) matchHand = false;
+                                if (!playerOffHandItem.getTag().contains(key)) matchHand = false;
+                                else if (!Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerOffHandItem.getTag().get(key))) matchHand = false;
                             }
                         }
+                        break;
                     }
                 }
             }
+
+            PTALoggers.error("Match Block : " + matchBlock);
+            PTALoggers.error("Match Hand : " + matchHand);
+
             if (!matchHand) continue;
 
 

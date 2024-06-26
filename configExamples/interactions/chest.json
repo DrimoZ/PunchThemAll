@@ -10,7 +10,21 @@
 
   "drop_pool": [
     {
-      "item":  "minecraft:dirt",
+      "item":  "minecraft:chest",
+      "nbt": {
+        "BlockEntityTag": {
+          "ForgeCaps": {},
+          "Items": [
+            {"Slot": 0, "id": "ae2:controller", "Count": 1},
+            {"Slot": 1, "id": "minecraft:iron_ingot", "Count": 64},
+            {"Slot": 2, "id": "minecraft:diamond", "Count": 2}
+          ],
+          "id": "minecraft:chest"
+        },
+        "display": {
+          "Lore": ['\"(+NBT)\"']
+        }
+      },
       "count": 1,
       "chance": 10
     }
