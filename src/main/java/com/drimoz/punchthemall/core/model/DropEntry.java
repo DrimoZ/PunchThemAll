@@ -20,4 +20,12 @@ public class DropEntry {
     public int getChance() {
         return chance;
     }
+
+    @Override
+    public String toString() {
+        return "DropEntry{" +
+                "\n\titemStack=" + itemStack +
+                ", \n\tchance=" + chance +
+                '}';
+    }
 }

@@ -1,57 +1,88 @@
 package com.drimoz.punchthemall.core.model;
 
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.FluidState;
-
 public class InteractedBlock {
+
+    // Private properties
+
     private final EInteractionBlock blockType;
-    private final Object state; // Can be BlockState or FluidState
-    private final Double transformationChance;
+    private final InteractionBlock blockBase;
+
+    private final double transformationChance;
+
     private final EInteractionBlock transformedType;
-    private final Object transformedState; // Can be BlockState or FluidState
+    private final InteractionBlock transformedBase;
+
+    // Life cycle
 
     public InteractedBlock(EInteractionBlock blockType) {
-        this(blockType, null, 0., null, null);
+        this(blockType, null, 0, null, null);
     }
 
-    public InteractedBlock(EInteractionBlock blockType, Object state) {
-        this(blockType, state, 0., null, null);
+    public InteractedBlock(EInteractionBlock blockType, InteractionBlock blockBase) {
+        this(blockType, blockBase, 0, null, null);
     }
 
-    // Constructor
     public InteractedBlock(
-            EInteractionBlock blockType, Object state,
-            Double transformationChance, EInteractionBlock transformedType, Object transformedState
+            EInteractionBlock blockType, InteractionBlock blockBase,
+            double transformationChance, EInteractionBlock transformedType
     ) {
-        if (state != null && !(state instanceof BlockState) && !(state instanceof FluidState)) {
-            throw new IllegalArgumentException("block must be either a Block or Fluid.");
-        }
-        if (transformedState != null && !(transformedState instanceof BlockState) && !(transformedState instanceof FluidState)) {
-            throw new IllegalArgumentException("transformedBlock must be either a Block or Fluid.");
-        }
-        this.blockType = blockType;
-        this.state = state;
-
-        if (transformationChance == null || transformationChance < 0) transformationChance = 0.;
-        if (transformationChance > 1) transformationChance = 1.;
-
-        this.transformationChance = transformationChance;
-        this.transformedType = transformedType;
-        this.transformedState = transformedState;
+        this(blockType, blockBase, transformationChance, transformedType, null);
     }
 
-    // Getters
+    public InteractedBlock(
+            EInteractionBlock blockType, InteractionBlock blockBase,
+            double transformationChance,
+            EInteractionBlock transformedType, InteractionBlock transformedBase
+    ) {
+        this.blockType = blockType;
+
+        if (blockType.equals(EInteractionBlock.AIR)) {
+            this.blockBase = null;
+            this.transformationChance = 0;
+            this.transformedType = null;
+            this.transformedBase = null;
+        }
+        else {
+            if (blockBase == null) throw new IllegalArgumentException("Missing block_base for given Interaction Type");
+            if (blockType.equals(EInteractionBlock.BLOCK) && !blockBase.isBlock()) throw new IllegalArgumentException("Wrong block_base for given Interaction Type");
+            if (blockType.equals(EInteractionBlock.FLUID) && blockBase.isBlock()) throw new IllegalArgumentException("Wrong block_base for given Interaction Type");
+            this.blockBase = blockBase;
+
+            if (transformationChance < 0) transformationChance = 0.;
+            else if (transformationChance > 1) transformationChance = 1.;
+            this.transformationChance = transformationChance;
+
+            if (transformationChance == 0) {
+                this.transformedType = null;
+                this.transformedBase = null;
+            }
+            else {
+                this.transformedType = transformedType;
+
+                if (transformedType.equals(EInteractionBlock.AIR)) {
+                    this.transformedBase = null;
+                }
+                else {
+                    if (transformedBase == null) throw new IllegalArgumentException("Missing transformed_base for given Interaction Type");
+                    if (transformedType.equals(EInteractionBlock.BLOCK) && !blockBase.isBlock()) throw new IllegalArgumentException("Wrong transformed_base for given Interaction Type");
+                    if (transformedType.equals(EInteractionBlock.FLUID) && blockBase.isBlock()) throw new IllegalArgumentException("Wrong transformed_base for given Interaction Type");
+                    this.transformedBase = transformedBase;
+                }
+            }
+        }
+    }
+
+    // Interface ( Getters )
+
     public EInteractionBlock getBlockType() {
         return blockType;
     }
 
-    public Object getState() {
-        return state;
+    public InteractionBlock getBlockBase() {
+        return blockBase;
     }
 
-    public Double getTransformationChance() {
+    public double getTransformationChance() {
         return transformationChance;
     }
 
@@ -59,52 +90,47 @@ public class InteractedBlock {
         return transformedType;
     }
 
-    public Object getTransformedState() {
-        return transformedState;
+    public InteractionBlock getTransformedBase() {
+        return transformedBase;
     }
 
-    // Utility Methods to get Block or Fluid
-    public Block getBlockAsBlock() {
-        return state instanceof BlockState ? ((BlockState)state).getBlock() : null;
+    // Interface ( Others )
+
+    public boolean isAir() {
+        return this.blockType.equals(EInteractionBlock.AIR);
     }
 
-    public BlockState getBlockAsBlockState() {
-        return state instanceof BlockState ? ((BlockState)state) : null;
-    }
-
-    public Fluid getBlockAsFluid() {
-        return state instanceof FluidState ? ((FluidState)state).getType() : null;
-    }
-
-    public FluidState getBlockAsFluidState() {
-        return state instanceof FluidState ? ((FluidState)state) : null;
-    }
-
-    public Block getTransformedBlockAsBlock() {
-        return transformedState instanceof BlockState ? ((BlockState)transformedState).getBlock() : null;
-    }
-
-    public BlockState getTransformedBlockAsBlockState() {
-        return transformedState instanceof BlockState ? ((BlockState)transformedState) : null;
-    }
-
-    public Fluid getTransformedBlockAsFluid() {
-        return transformedState instanceof FluidState ? ((FluidState)transformedState).getType() : null;
-    }
-
-    public FluidState getTransformedBlockAsFluidState() {
-        return transformedState instanceof FluidState ? ((FluidState)transformedState) : null;
+    public boolean isTransformedAir() {
+        return this.transformedType.equals(EInteractionBlock.AIR);
     }
 
     @Override
     public String toString() {
         return "InteractedBlock{" +
-                "blockType=" + blockType +
-                ", state=" + state +
-                ", transformationChance=" + transformationChance +
-                ", transformationType=" + transformedType +
-                ", transformedState=" + transformedState +
+                "\nblockType=" + blockType +
+                ", \nblockBase=" + blockBase +
+                ", \ntransformationChance=" + transformationChance +
+                ", \ntransformedType=" + transformedType +
+                ", \ntransformedBase=" + transformedBase +
                 '}';
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

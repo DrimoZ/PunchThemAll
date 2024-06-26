@@ -1,118 +1,62 @@
 package com.drimoz.punchthemall.core.model;
 
-import com.drimoz.punchthemall.PunchThemAll;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.Block;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class Interaction {
 
     // Private Properties
 
     private final ResourceLocation id;
-    private final EInteractionType type;
+    private final EInteractionType interactionType;
 
-    private InteractionHand interactionHand;
-    private InteractedBlock interactedBlock;
+    private final InteractionHand interactionHand;
+    private final InteractedBlock interactedBlock;
 
-    private List<DropEntry> dropPool;
+    private final List<DropEntry> dropPool;
 
     private Random random;
 
     // Life Cycle
 
-    public Interaction(ResourceLocation id, EInteractionType type) {
-        this(id, type, null, null, new ArrayList<>());
-    }
+    public Interaction(ResourceLocation id, EInteractionType interactionType, InteractionHand interactionHand, InteractedBlock interactedBlock, List<DropEntry> dropPool) {
+        if (id == null) throw new IllegalArgumentException("Missing id for Interaction");
+        if (interactionType == null) throw new IllegalArgumentException("Missing type for Interaction");
+        if (dropPool == null || dropPool.isEmpty()) throw new IllegalArgumentException("Missing drop_pool for Interaction");
 
-    public Interaction(
-            ResourceLocation id, EInteractionType type,
-            EInteractionHand hand_type,
-            EInteractionBlock block_type, Object block,
-            List<DropEntry> dropPool
-    ) {
-        this(id, type, new InteractionHand(hand_type), new InteractedBlock(block_type, block), dropPool);
-    }
-
-    public Interaction(
-            ResourceLocation id, EInteractionType type,
-            EInteractionHand hand_type, ItemStack hand_item, boolean damageable,
-            EInteractionBlock block_type, Object block,
-            List<DropEntry> dropPool
-    ) {
-        this(id, type, new InteractionHand(hand_type, hand_item, damageable), new InteractedBlock(block_type, block), dropPool);
-    }
-
-    public Interaction(
-            ResourceLocation id, EInteractionType type,
-            EInteractionHand hand_type,
-            EInteractionBlock block_type, Object block, Double decay_chance, EInteractionBlock decay_type, Object decay_block,
-            List<DropEntry> dropPool
-    ) {
-        this(id, type, new InteractionHand(hand_type), new InteractedBlock(block_type, block, decay_chance, decay_type, decay_block), dropPool);
-    }
-
-    public Interaction(
-            ResourceLocation id, EInteractionType type,
-            EInteractionHand hand_type, ItemStack hand_item, boolean damageable,
-            EInteractionBlock block_type, Object block, Double decay_chance, EInteractionBlock decay_type, Object decay_block,
-            List<DropEntry> dropPool
-    ) {
-        this(id, type, new InteractionHand(hand_type, hand_item, damageable), new InteractedBlock(block_type, block, decay_chance, decay_type, decay_block), dropPool);
-    }
-
-
-    public Interaction(ResourceLocation id, EInteractionType type, InteractionHand interactionHand, InteractedBlock interactedBlock, List<DropEntry> dropPool) {
         this.id = id;
-        this.type = type;
+        this.interactionType = interactionType;
         this.interactionHand = interactionHand;
         this.interactedBlock = interactedBlock;
         this.dropPool = dropPool;
     }
 
-    // Interface
+    // Interface ( Getters )
 
     public ResourceLocation getId() {
         return id;
     }
 
-    public EInteractionType getType() {
-        return type;
+    public EInteractionType getInteractionType() {
+        return interactionType;
     }
 
     public InteractedBlock getInteractedBlock() {
         return interactedBlock;
     }
 
-    public void setInteractedBlock(InteractedBlock interactedBlock) {
-        this.interactedBlock = interactedBlock;
-    }
-
-    public InteractionHand getHandItem() {
+    public InteractionHand getInteractionHand() {
         return interactionHand;
     }
 
-    public void setHandItem(InteractionHand interactionHand) {
-        this.interactionHand = interactionHand;
-    }
 
     public List<DropEntry> getDropPool() {
         return dropPool;
     }
 
-    public void setDropPool(List<DropEntry> pool) {
-        if (pool == null) {
-            this.dropPool = new ArrayList<>();
-        }
-        else {
-            this.dropPool = pool.stream()
-                    .map(entry -> new DropEntry(entry.getItemStack(), entry.getChance()))
-                    .collect(Collectors.toList());
-        }
-    }
+    // Interface ( Drop Pool )
 
     public void addToPool(DropEntry entry) {
         this.dropPool.add(entry);
@@ -144,19 +88,25 @@ public class Interaction {
         return getItemForChance(random.nextInt(getTotalChance()) + 1);
     }
 
+    // Interface ( Others )
+
     public boolean isAir() {
-        return this.getInteractedBlock().getBlockAsBlockState() == null && this.getInteractedBlock().getBlockAsFluidState() == null;
+        return this.getInteractedBlock().isAir();
+    }
+
+    public boolean isTransformedAir() {
+        return this.getInteractedBlock().isTransformedAir();
     }
 
     @Override
     public String toString() {
         return "Interaction{" +
-                "\nid=" + id +
-                "\ntype=" + type +
-                "\ninteractionHand=" + interactionHand +
-                "\ninteractedBlock=" + interactedBlock +
-                "\ndropPool=" + dropPool +
-                "\nrandom=" + random +
-                "\n}";
+                "\n\tid=" + id +
+                ", \n\ttype=" + interactionType +
+                ", \n\tinteractionHand=" + interactionHand +
+                ", \n\tinteractedBlock=" + interactedBlock +
+                ", \n\tdropPool=" + dropPool +
+                ", \n\trandom=" + random +
+                '}';
     }
 }

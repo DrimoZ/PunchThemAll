@@ -5,8 +5,12 @@ import com.drimoz.punchthemall.core.checker.FluidChecker;
 import com.drimoz.punchthemall.core.checker.ItemChecker;
 import com.drimoz.punchthemall.core.model.*;
 import com.drimoz.punchthemall.core.util.PTALoggers;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
@@ -38,147 +42,270 @@ public class InteractionCreator {
             return null;
         }
 
-        EInteractionType type = EInteractionType.fromString(GsonHelper.getAsString(json, "input_type"));
-
+        EInteractionType interactionType = EInteractionType.fromString(GsonHelper.getAsString(json, "input_type"));
         InteractionHand interactionHand = null;
+        InteractedBlock interactedBlock;
+        List<DropEntry> dropPool = new ArrayList<>();
+
+        // Interaction Hand
         if (json.has("interaction_hand")) {
-            JsonObject interactionHandJson = GsonHelper.getAsJsonObject(json, "interaction_hand");
-            EInteractionHand handType = EInteractionHand.fromValueOrName(GsonHelper.getAsString(interactionHandJson, "hand"));
-            ItemStack handItem = ItemStack.EMPTY;
-            boolean damageable = false;
-
-            if (interactionHandJson.has("item")) {
-                JsonObject itemJson = GsonHelper.getAsJsonObject(interactionHandJson, "item");
-                handItem = new ItemStack(ItemChecker.getExistingItem(GsonHelper.getAsString(itemJson, "item")));
+            interactionHand = getInteractionHand(id, GsonHelper.getAsJsonObject(json, "interaction_hand"));
+            if (interactionHand == null) {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error creating interaction_hand");
+                return null;
             }
-
-            if (interactionHandJson.has("damage") && !handItem.is(ItemStack.EMPTY.getItem())) {
-                damageable = GsonHelper.getAsBoolean(interactionHandJson, "damage");
-            }
-
-            interactionHand = new InteractionHand(handType, handItem, damageable);
         }
 
-        JsonObject interactedBlockJson = GsonHelper.getAsJsonObject(json, "interacted_block");
+        // Interacted Block
+        interactedBlock = getInteractedBlock(id, GsonHelper.getAsJsonObject(json, "interacted_block"));
+        if (interactedBlock == null) {
+            PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error creating interacted_block");
+            return null;
+        }
 
-        if (!interactedBlockJson.has("block_type")) {
+        // Drop Pool
+        getDropPool(id, GsonHelper.getAsJsonArray(json, "drop_pool"), dropPool);
+        if (dropPool.isEmpty()) {
+            PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing Items in drop_pool");
+            return null;
+        }
+
+        return new Interaction(id, interactionType, interactionHand, interactedBlock, dropPool);
+    }
+
+    private static InteractionHand getInteractionHand(ResourceLocation id, JsonObject handObject) {
+        if (!handObject.has("hand")) {
+            PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interaction_hand.hand");
+            return null;
+        }
+
+        EInteractionHand handType = EInteractionHand.fromValueOrName(GsonHelper.getAsString(handObject, "hand"));
+        ItemStack handItem = ItemStack.EMPTY;
+        boolean damageable = false;
+
+
+        if (!handType.equals(EInteractionHand.ANY_HAND) && !handObject.has("item")) {
+            PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interaction_hand.item");
+            return null;
+        }
+
+        if (handObject.has("item")) {
+            JsonObject itemJson = GsonHelper.getAsJsonObject(handObject, "item");
+
+            if (itemJson.has("item")) {
+                handItem = new ItemStack(ItemChecker.getExistingItem(GsonHelper.getAsString(itemJson, "item")));
+            } else if (itemJson.has("tag")) {
+                Item itemFromTag = ItemChecker.getFirstItemFromTag(GsonHelper.getAsString(itemJson, "tag"));
+                if (itemFromTag != null) handItem = new ItemStack(itemFromTag);
+            }
+            else {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interaction_hand.item.item or interaction_hand.item.tag");
+                return null;
+            }
+
+            if (handItem != ItemStack.EMPTY && itemJson.has("nbt")) {
+                CompoundTag nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(itemJson, "nbt"));
+                handItem.setTag(nbt);
+            }
+        }
+
+        if (handObject.has("damage") && !handItem.is(ItemStack.EMPTY.getItem())) {
+            damageable = GsonHelper.getAsBoolean(handObject, "damage");
+        }
+
+        return new InteractionHand(handType, handItem, damageable);
+    }
+
+    private static InteractedBlock getInteractedBlock(ResourceLocation id, JsonObject interactedBlockObject) {
+        if (!interactedBlockObject.has("block_type")) {
             PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interacted_block.block_type");
             return null;
         }
 
-        EInteractionBlock blockType = EInteractionBlock.fromString(GsonHelper.getAsString(interactedBlockJson, "block_type"));
-        Object state = null, transformedState = null; // BlockState or FluidState
-        Double transformationChance = null;
-        EInteractionBlock transformationType = null;
+        EInteractionBlock transformationType = null, blockType = EInteractionBlock.fromString(GsonHelper.getAsString(interactedBlockObject, "block_type"));
+        InteractionBlock blockBase = null, transformedBase = null;
+        double transformationChance = 0;
 
         if (!blockType.equals(EInteractionBlock.AIR)) {
-            if (!interactedBlockJson.has("block_base")) {
+            if (!interactedBlockObject.has("block_base")) {
                 PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interacted_block.block_base");
                 return null;
             }
 
-            state = getState(interactedBlockJson.getAsJsonObject("block_base"));
 
-            if (interactedBlockJson.has("block_transformation")) {
-                JsonObject blockTransformationJson = GsonHelper.getAsJsonObject(interactedBlockJson, "block_transformation");
+            blockBase = getInteractionBlock(id, GsonHelper.getAsJsonObject(interactedBlockObject, "block_base"));
+            if (blockBase == null) {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error creating interacted_block.block_base");
+                return null;
+            }
 
-                if (!blockTransformationJson.has("transformation_chance")) {
+            if (interactedBlockObject.has("block_transformation")) {
+                JsonObject blockTransformationObject = GsonHelper.getAsJsonObject(interactedBlockObject, "block_transformation");
+
+                if (!blockTransformationObject.has("transformation_chance")) {
                     PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interacted_block.block_transformation.transformation_chance");
                     return null;
                 }
 
-                if (!blockTransformationJson.has("transformation_type")) {
+                if (!blockTransformationObject.has("transformation_type")) {
                     PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interacted_block.block_transformation.transformation_type");
                     return null;
                 }
 
-                transformationChance = Double.parseDouble(GsonHelper.getAsString(blockTransformationJson, "transformation_chance", "0.0"));
-                transformationType = EInteractionBlock.fromString(GsonHelper.getAsString(blockTransformationJson, "transformation_type"));
+                transformationChance = Double.parseDouble(GsonHelper.getAsString(blockTransformationObject, "transformation_chance", "0.0"));
+                transformationType = EInteractionBlock.fromString(GsonHelper.getAsString(blockTransformationObject, "transformation_type"));
 
                 if (!transformationType.equals(EInteractionBlock.AIR)) {
-                    if (!blockTransformationJson.has("transformed_base")) {
+                    if (!blockTransformationObject.has("transformed_base")) {
                         PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interacted_block.block_transformation.transformed_base");
                         return null;
                     }
 
-                    transformedState = getState(blockTransformationJson.getAsJsonObject("transformed_base"));
+                    transformedBase = getInteractionBlock(id, GsonHelper.getAsJsonObject(blockTransformationObject, "transformed_base"));
+                    if (transformedBase == null) {
+                        PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error creating interacted_block.block_transformation.transformed_base");
+                        return null;
+                    }
                 }
             }
         }
 
-        InteractedBlock interactedBlock = new InteractedBlock(blockType, state, transformationChance, transformationType, transformedState);
+        return new InteractedBlock(blockType, blockBase, transformationChance, transformationType, transformedBase);
+    }
 
-        List<DropEntry> dropPool = new ArrayList<>();
-        for (var drop : GsonHelper.getAsJsonArray(json, "drop_pool")) {
+    private static InteractionBlock getInteractionBlock(ResourceLocation id, JsonObject interactionBlockObject) {
+        if (interactionBlockObject.has("block")) {
+            Block block = BlockChecker.getExistingBlock(GsonHelper.getAsString(interactionBlockObject, "block"));
+
+            if (block == null) {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error creating interacted_block.block_base.block");
+                return null;
+            }
+
+            List<StateEntry<?>> stateEntries = new ArrayList<>();
+            CompoundTag nbt = new CompoundTag();
+
+            if (interactionBlockObject.has("state")) {
+                for (var stateItem : interactionBlockObject.getAsJsonArray("state")) {
+                    JsonObject stateObject = stateItem.getAsJsonObject();
+
+                    String key = stateObject.keySet().iterator().next();
+                    String value = GsonHelper.getAsString(stateObject, key);
+
+                    Property<?> p = getPropertyByName(block.defaultBlockState(), key);
+                    if (p != null) {
+                        addStateEntry(stateEntries, p, value);
+                    }
+                }
+            }
+
+            if (interactionBlockObject.has("nbt")) {
+                nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(interactionBlockObject, "nbt"));
+            }
+
+            return new InteractionBlock(block, stateEntries, nbt);
+
+        } else if (interactionBlockObject.has("fluid")) {
+            Fluid fluid = FluidChecker.getExistingFluid(GsonHelper.getAsString(interactionBlockObject, "fluid"));
+
+            if (fluid == null) {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error creating interacted_block.block_base.fluid");
+                return null;
+            }
+
+            List<StateEntry<?>> stateEntries = new ArrayList<>();
+            CompoundTag nbt = new CompoundTag();
+
+            if (interactionBlockObject.has("state")) {
+                for (var stateItem : interactionBlockObject.getAsJsonArray("state")) {
+                    JsonObject stateObject = stateItem.getAsJsonObject();
+
+                    String key = stateObject.keySet().iterator().next();
+                    String value = GsonHelper.getAsString(stateObject, key);
+
+                    Property<?> p = getPropertyByName(fluid.defaultFluidState(), key);
+                    if (p != null) {
+                        addStateEntry(stateEntries, p, value);
+                    }
+                }
+            }
+
+            if (interactionBlockObject.has("nbt")) {
+                nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(interactionBlockObject, "nbt"));
+            }
+
+            return new InteractionBlock(fluid, stateEntries, nbt);
+        } else {
+            PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing interacted_block.block_base.block or interacted_block.block_base.fluid");
+            return null;
+        }
+    }
+
+    private static void getDropPool(ResourceLocation id, JsonArray poolArray, List<DropEntry> dropEntries) {
+        for (var drop : poolArray) {
             JsonObject dropObject = drop.getAsJsonObject();
+            String itemName;
 
             int count = 1, chance = 0;
             Item item = null;
 
             if (dropObject.has("item")) {
-                item = ItemChecker.getExistingItem(GsonHelper.getAsString(dropObject, "item"));
+                itemName = GsonHelper.getAsString(dropObject, "item");
+                item = ItemChecker.getExistingItem(itemName);
             }
             else if (dropObject.has("tag")) {
-                item = ItemChecker.getFirstItemFromTag(GsonHelper.getAsString(dropObject, "tag"));
+                itemName = GsonHelper.getAsString(dropObject, "tag");
+                item = ItemChecker.getFirstItemFromTag(itemName);
+            }
+            else {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error during creating pool item : " + dropObject);
+                return;
             }
 
-            if (item != null) {
-                if (dropObject.has("count")) {
-                    count = GsonHelper.getAsInt(dropObject, "count", 1);
-                }
-
-                if (dropObject.has("chance")) {
-                    chance = GsonHelper.getAsInt(dropObject, "chance", 0);
-                }
-
-                ItemStack poolItem = new ItemStack(item, count);
-                dropPool.add(new DropEntry(poolItem, chance));
+            if (item == null) {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error could not find item or tag named " + itemName + " in drop_pool");
+                return;
             }
+
+            if (dropObject.has("count")) {
+                count = GsonHelper.getAsInt(dropObject, "count", 1);
+            }
+
+            if (dropObject.has("chance")) {
+                chance = GsonHelper.getAsInt(dropObject, "chance", 0);
+            }
+
+            ItemStack poolItem = new ItemStack(item, count);
+            dropEntries.add(new DropEntry(poolItem, chance));
         }
-
-        return new Interaction(id, type, interactionHand, interactedBlock, dropPool);
     }
 
-    private static Object getState(JsonObject jsonObject) {
-        Object state = null;
 
-        if (jsonObject.has("block")) {
-            state = BlockChecker.getExistingBlock(GsonHelper.getAsString(jsonObject, "block")).defaultBlockState();
-        } else if (jsonObject.has("fluid")) {
-            state = FluidChecker.getExistingFluid(GsonHelper.getAsString(jsonObject, "fluid")).defaultFluidState();
+    private static <T extends Comparable<T>> void addStateEntry(List<StateEntry<?>> stateEntries, Property<T> property, String value) {
+        T parsedValue = parsePropertyValue(property, value);
+        if (parsedValue != null) {
+            stateEntries.add(new StateEntry<>(property, parsedValue));
         } else {
-            throw new JsonSyntaxException("Neither block nor fluid specified in block_base or transformed_base");
+            PTALoggers.error("Failed to parse value " + value + " for property " + property.getName());
         }
+    }
 
-        if (jsonObject.has("state")) {
-            for (var stateItem : jsonObject.getAsJsonArray("state")) {
-                JsonObject stateObject = stateItem.getAsJsonObject();
-
-
-                String key = stateObject.keySet().iterator().next();
-                String value = GsonHelper.getAsString(stateObject, key);
-
-                if (state instanceof BlockState) {
-                    Property<?> p = getPropertyByName((BlockState) state, key);
-                    if (p != null) {
-                        state = setPropertyValue((BlockState) state, p, value);
-                    }
-                }
-
-                else if (state instanceof FluidState) {
-                    Property<?> p = getPropertyByName((FluidState) state, key);
-                    if (p != null) {
-                        state = setPropertyValue((FluidState) state, p, value);
-                    }
-                }
+    private static <T extends Comparable<T>> T parsePropertyValue(Property<T> property, String value) {
+        for (T possibleValue : property.getPossibleValues()) {
+            if (possibleValue.toString().equalsIgnoreCase(value)) {
+                return possibleValue;
             }
         }
+        return null;
+    }
 
-        if (jsonObject.has("nbt")) {
-            // Build NBTs
+    private static CompoundTag getNbtFromString(ResourceLocation id, JsonObject nbtObject) {
+        try {
+            return TagParser.parseTag(nbtObject.toString());
+        } catch (CommandSyntaxException e) {
+            PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error during parsing NBTs" + e);
+            return null;
         }
-
-        return state;
     }
 
     private static Property<?> getPropertyByName(BlockState state, String name) {
@@ -197,13 +324,5 @@ public class InteractionCreator {
             }
         }
         return null;
-    }
-
-    private static <T extends Comparable<T>> BlockState setPropertyValue(BlockState state, Property<T> property, String value) {
-        return property.getValue(value).map(valueAsComparable -> state.setValue(property, valueAsComparable)).orElse(state);
-    }
-
-    private static <T extends Comparable<T>> FluidState setPropertyValue(FluidState state, Property<T> property, String value) {
-        return property.getValue(value).map(valueAsComparable -> state.setValue(property, valueAsComparable)).orElse(state);
     }
 }

@@ -1,20 +1,20 @@
 package com.drimoz.punchthemall.core.registry;
 
-import com.drimoz.punchthemall.core.model.EInteractionType;
-import com.drimoz.punchthemall.core.model.InteractedBlock;
-import com.drimoz.punchthemall.core.model.Interaction;
-import com.drimoz.punchthemall.core.util.PTALoggers;
+import com.drimoz.punchthemall.core.model.*;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class InteractionRegistry {
 
@@ -45,10 +45,168 @@ public class InteractionRegistry {
         return interactions.get(id);
     }
 
+    public List<Interaction> getCorrectInteractions(
+            EInteractionType interactionType, boolean clickOnBlock,
+            Player player, BlockPos pos, Level level
+    ) {
+        List<Interaction> result = new ArrayList<>();
+        EInteractionType eventType = EInteractionType.getTypeFromEvent(interactionType, player.isShiftKeyDown());
+
+        for (Interaction interaction : interactions.values()) {
+            // Filter : InteractionType
+            if (!interaction.getInteractionType().equals(eventType)) continue;
+
+            // Filter : Biome
+            // Filter : Dimension
+            // TODO : Biome and Dimension conditions
+
+            // Filter : OnAir or OnBlock
+            if (clickOnBlock && interaction.isAir()) continue;
+            if (!clickOnBlock && !interaction.isAir()) continue;
+
+            // Filter : Corresponding Block / BlockState
+            boolean matchBlock = true;
+            if (clickOnBlock) {
+                // Block
+                if (interaction.getInteractedBlock().getBlockBase().isBlock()) {
+                    BlockState worldBlockState = level.getBlockState(pos);
+                    Block worldBlock = worldBlockState.getBlock();
+
+                    // Block
+                    if (!worldBlock.equals(interaction.getInteractedBlock().getBlockBase().getBlock())) continue;
+
+                    // BlockState
+                    for(var entry : interaction.getInteractedBlock().getBlockBase().getStateEntries()) {
+                        if (!worldBlockState.getValues().containsKey(entry.getProperty())) matchBlock = false;
+                        if (!worldBlockState.getValue(entry.getProperty()).equals(entry.getValue())) matchBlock = false;
+                    }
+                }
+                // Fluid
+                else {
+                    FluidState worldFluidState = level.getFluidState(pos);
+                    Fluid worldFluid = worldFluidState.getType();
+
+                    // Fluid
+                    if (!worldFluid.equals(interaction.getInteractedBlock().getBlockBase().getFluid())) continue;
+
+                    // FluidState
+                    for(var entry : interaction.getInteractedBlock().getBlockBase().getStateEntries()) {
+                        if (!worldFluidState.getValues().containsKey(entry.getProperty())) matchBlock = false;
+                        if (!worldFluidState.getValue(entry.getProperty()).equals(entry.getValue())) matchBlock = false;
+                    }
+                }
+            }
+            if (!matchBlock) continue;
+
+            // Filter : NBT
+            BlockEntity worldBlockEntity = level.getBlockEntity(pos);
+            if (worldBlockEntity != null && !interaction.getInteractedBlock().getBlockBase().getNbt().isEmpty()) {
+                CompoundTag worldBlockEntityTag = worldBlockEntity.saveWithFullMetadata();
+
+                for (String key : interaction.getInteractedBlock().getBlockBase().getNbt().getAllKeys()) {
+                    if (!worldBlockEntityTag.contains(key)) matchBlock = false;
+                    else if (Objects.equals(interaction.getInteractedBlock().getBlockBase().getNbt().get(key), worldBlockEntityTag.get(key))) matchBlock = false;
+                }
+            }
+            if (!matchBlock) continue;
+
+            // Filter : Hand
+            ItemStack playerMainHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
+            ItemStack playerOffHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.OFF_HAND);
+            boolean matchHand = true;
+
+            if (interaction.getInteractionHand() == null) {
+                if (!playerMainHandItem.isEmpty() || !playerOffHandItem.isEmpty()) matchHand = false;
+            }
+            else if (interaction.getInteractionHand().getItemStack().isEmpty()) {
+                switch (interaction.getInteractionHand().getInteractionHandType()) {
+                    case ANY_HAND -> {
+                        if (!playerMainHandItem.isEmpty() || !playerOffHandItem.isEmpty()) matchHand = false;
+                    }
+                    case MAIN_HAND -> {
+                        if (!playerMainHandItem.isEmpty()) matchHand = false;
+                    }
+                    case OFF_HAND -> {
+                        if (!playerOffHandItem.isEmpty()) matchHand = false;
+                    }
+                }
+            }
+            else {
+                switch (interaction.getInteractionHand().getInteractionHandType()) {
+                    case ANY_HAND -> {
+                        if (playerMainHandItem.is(interaction.getInteractionHand().getItemStack().getItem())) {
+                            if (interaction.getInteractionHand().getItemStack().hasTag() && !interaction.getInteractionHand().getItemStack().getTag().isEmpty()) {
+                                if (!playerMainHandItem.hasTag() || playerMainHandItem.getTag().isEmpty()) matchHand = false;
+                                if (!matchHand) continue;
+
+                                for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
+                                    if (playerMainHandItem.getTag().get(key) == null) matchHand = false;
+                                    else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key))) matchHand = false;
+                                }
+                            }
+                        }
+                        else if (playerOffHandItem.is(interaction.getInteractionHand().getItemStack().getItem())) {
+                            if (interaction.getInteractionHand().getItemStack().hasTag() && !interaction.getInteractionHand().getItemStack().getTag().isEmpty()) {
+                                if (!playerOffHandItem.hasTag() || playerOffHandItem.getTag().isEmpty()) matchHand = false;
+                                if (!matchHand) continue;
+
+                                for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
+                                    if (playerOffHandItem.getTag().get(key) == null) matchHand = false;
+                                    else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerOffHandItem.getTag().get(key))) matchHand = false;
+                                }
+                            }
+                        }
+                        else {
+                            matchHand = false;
+                        }
+
+                    }
+                    case MAIN_HAND -> {
+                        if (!playerMainHandItem.is(interaction.getInteractionHand().getItemStack().getItem())) matchHand = false;
+                        if (!matchHand) continue;
+
+                        if (interaction.getInteractionHand().getItemStack().hasTag() && !interaction.getInteractionHand().getItemStack().getTag().isEmpty()) {
+                            if (!playerMainHandItem.hasTag() || playerMainHandItem.getTag().isEmpty()) matchHand = false;
+                            if (!matchHand) continue;
+
+                            for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
+                                if (playerMainHandItem.getTag().get(key) == null) matchHand = false;
+                                else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key))) matchHand = false;
+                            }
+                        }
+                    }
+                    case OFF_HAND -> {
+                        if (!playerOffHandItem.is(interaction.getInteractionHand().getItemStack().getItem())) matchHand = false;
+                        if (!matchHand) continue;
+
+                        if (interaction.getInteractionHand().getItemStack().hasTag() && !interaction.getInteractionHand().getItemStack().getTag().isEmpty()) {
+                            if (!playerOffHandItem.hasTag() || playerOffHandItem.getTag().isEmpty()) matchHand = false;
+                            if (!matchHand) continue;
+
+                            for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
+                                if (playerOffHandItem.getTag().get(key) == null) matchHand = false;
+                                else if (Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerOffHandItem.getTag().get(key))) matchHand = false;
+                            }
+                        }
+                    }
+                }
+            }
+            if (!matchHand) continue;
+
+
+            result.add(interaction);
+        }
+
+
+        return result;
+    }
+
+
+
     public List<Interaction> getInteractionsByInteractedBlockAndType(@Nullable Object state, EInteractionType type, boolean isShiftKeyDown) {
         EInteractionType eventType = EInteractionType.getTypeFromEvent(type, isShiftKeyDown);
         List<Interaction> result = new ArrayList<>();
-
+    /*
         for (Interaction interaction : interactions.values()) {
             InteractedBlock interactedBlock = interaction.getInteractedBlock();
 
@@ -92,9 +250,7 @@ public class InteractionRegistry {
             else if (state == null && interaction.isAir() && interaction.getType() == eventType) {
                 result.add(interaction);
             }
-        }
+        }*/
         return result;
     }
-
-    // Inner work
 }
