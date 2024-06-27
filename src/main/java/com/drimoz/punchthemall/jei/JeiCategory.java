@@ -130,19 +130,17 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         }
 
         // Set up drop slots
-        for (int i = 0; i < interaction.getDropPool().size(); i++) {
-            DropEntry result = interaction.getDropPool().get(i);
-
-            if (interaction.getId().getPath().equals("gold_block")) {
-                PTALoggers.error("Category Pool : " + result.getItemStack());
-            }
-            if (!result.getItemStack().isEmpty() && !result.getItemStack().is(Items.AIR) && !result.getItemStack().getItem().equals(Items.AIR)) {
-                var slot = builder.addSlot(RecipeIngredientRole.OUTPUT, 1 + (i % 9) * 18, 1 + HEIGHT_START + 18 * (i / 9))
+        int slotNumber = 0;
+        for (DropEntry result : interaction.getDropPool()) {
+            if (!result.getItemStack().is(Items.AIR)) {
+                var slot = builder.addSlot(RecipeIngredientRole.OUTPUT, 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9))
                         .addItemStack(result.getItemStack());
 
                 int totalWeight = interaction.getDropPool().stream().mapToInt(DropEntry::getChance).sum();
                 addTooltips(slot, "§o§8" + TranslationKeys.INTERACTION_OUTPUT_CHANCE + " : §l§5" +
                         getTruncatedChance(result.getChance(), 0, totalWeight) + "%");
+
+                slotNumber++;
             }
         }
     }
