@@ -190,7 +190,6 @@ public class InteractionRegistry {
                                 else if (!Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerOffHandItem.getTag().get(key))) matchHand = false;
                             }
                         }
-                        break;
                     }
                 }
             }
@@ -200,6 +199,17 @@ public class InteractionRegistry {
         }
 
         return result;
+    }
+
+    public int getJEIRowCount() {
+        int maxPool = 0;
+
+        for (Interaction interaction : interactions.values()) {
+            if (maxPool < interaction.getDropPool().size())
+                maxPool = interaction.getDropPool().size();
+        }
+
+        return (int) Math.ceil(maxPool / 9.0);
     }
 
     public List<Interaction> getInteractionsByInteractedBlockAndType(@Nullable Object state, EInteractionType type, boolean isShiftKeyDown) {

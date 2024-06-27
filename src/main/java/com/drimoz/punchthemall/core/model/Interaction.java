@@ -98,6 +98,10 @@ public class Interaction {
         return this.getInteractedBlock().isTransformedAir();
     }
 
+    public int getJeiRowCount() {
+        return (int) Math.ceil(dropPool.size() / 9.0);
+    }
+
     @Override
     public String toString() {
         return "Interaction{" +

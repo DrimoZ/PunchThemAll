@@ -1,0 +1,15 @@
+{
+  "gui.pta.category.interaction": "Interaction",
+  "gui.pta.category.output.chance": "Chance",
+  "gui.pta.category.click.right": "Right Click",
+  "gui.pta.category.click.left": "Left Click",
+  "gui.pta.category.position.sneak": "Sneak Click",
+  "gui.pta.category.position.up": "Regular Click",
+  "gui.pta.category.hand.no_item": "Empty Hand",
+  "gui.pta.category.hand.any": "Any Hand",
+  "gui.pta.category.hand.main": "Main Hand",
+  "gui.pta.category.hand.off": "Off Hand",
+  "gui.pta.category.block.with_air": "In Air",
+  "gui.pta.category.transformation.chance": "Transformation Chance",
+  "gui.pta.category.transformation.break": "Broken Block"
+}

@@ -163,14 +163,15 @@ dependencies {
     compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
-    implementation fg.deobf("com.simibubi.create:create-${create_minecraft_version}:${create_version}:slim") { transitive = false }
-    implementation fg.deobf("com.jozufozu.flywheel:flywheel-forge-${flywheel_minecraft_version}:${flywheel_version}")
-    implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
+    //implementation fg.deobf("com.simibubi.create:create-${create_minecraft_version}:${create_version}:slim") { transitive = false }
+    //implementation fg.deobf("com.jozufozu.flywheel:flywheel-forge-${flywheel_minecraft_version}:${flywheel_version}")
+    //implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
 
     //implementation fg.deobf("curse.maven:the-one-probe-245211:5159287")
 
     implementation fg.deobf("curse.maven:applied-energistics-2-223794:5447039")
     runtimeOnly fg.deobf("curse.maven:jade-324717:5339264")
+    //implementation fg.deobf("curse.maven:ex-deorum-901420:5421677")
 
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
