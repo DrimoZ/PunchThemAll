@@ -6,6 +6,7 @@ import com.drimoz.punchthemall.core.checker.ItemChecker;
 import com.drimoz.punchthemall.core.model.*;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -22,6 +23,7 @@ import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -46,6 +48,8 @@ public class InteractionCreator {
         InteractionHand interactionHand = null;
         InteractedBlock interactedBlock;
         List<DropEntry> dropPool = new ArrayList<>();
+        HashSet<String> biomeList = new HashSet<>();
+        boolean biomeWhitelist = false;
 
         // Interaction Hand
         if (json.has("interaction_hand")) {
@@ -70,7 +74,29 @@ public class InteractionCreator {
             return null;
         }
 
-        return new Interaction(id, interactionType, interactionHand, interactedBlock, dropPool);
+        // Biomes
+        if (json.has("biomes")) {
+            JsonObject biomeObject = GsonHelper.getAsJsonObject(json, "biomes");
+
+            if (!biomeObject.has("whitelist")) {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing biomes.whitelist.");
+                return null;
+            }
+
+            if (!biomeObject.has("list")) {
+                PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Missing biomes.list.");
+                return null;
+            }
+
+            for (JsonElement biomeString : GsonHelper.getAsJsonArray(biomeObject, "list")) {
+                biomeList.add(biomeString.getAsString());
+            }
+
+            biomeWhitelist = GsonHelper.getAsBoolean(biomeObject, "whitelist");
+        }
+
+
+        return new Interaction(id, interactionType, interactionHand, interactedBlock, dropPool, biomeList, biomeWhitelist);
     }
 
     private static InteractionHand getInteractionHand(ResourceLocation id, JsonObject handObject) {
@@ -285,7 +311,6 @@ public class InteractionCreator {
             dropEntries.add(new DropEntry(poolItem, chance));
         }
     }
-
 
     private static <T extends Comparable<T>> void addStateEntry(List<StateEntry<?>> stateEntries, Property<T> property, String value) {
         T parsedValue = parsePropertyValue(property, value);

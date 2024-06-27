@@ -1,7 +1,6 @@
 package com.drimoz.punchthemall.core.registry;
 
 import com.drimoz.punchthemall.core.model.*;
-import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -13,6 +12,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -57,9 +57,13 @@ public class InteractionRegistry {
             // Filter : InteractionType
             if (!interaction.getInteractionType().equals(eventType)) continue;
 
-            // Filter : Biome
-            // Filter : Dimension
-            // TODO : Biome and Dimension conditions
+            // Filter : Biome & Dimension
+            String playerDimensionId = level.dimension().location().toString();
+            String playerBiomeId = level.getBiome(pos).unwrapKey().get().location().toString();
+
+            if (interaction.isBiomeWhitelist() && !interaction.getBiomes().contains(playerBiomeId) && !interaction.getBiomes().contains(playerDimensionId)) continue;
+            if (!interaction.isBiomeWhitelist() && (interaction.getBiomes().contains(playerBiomeId) || interaction.getBiomes().contains(playerDimensionId))) continue;
+
 
             // Filter : OnAir or OnBlock
             if (clickOnBlock && interaction.isAir()) continue;

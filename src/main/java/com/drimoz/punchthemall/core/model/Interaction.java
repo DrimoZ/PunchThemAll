@@ -17,11 +17,14 @@ public class Interaction {
 
     private final List<DropEntry> dropPool;
 
+    private final HashSet<String> biomeList;
+    private final boolean biomeWhitelist;
+
     private Random random;
 
     // Life Cycle
 
-    public Interaction(ResourceLocation id, EInteractionType interactionType, InteractionHand interactionHand, InteractedBlock interactedBlock, List<DropEntry> dropPool) {
+    public Interaction(ResourceLocation id, EInteractionType interactionType, InteractionHand interactionHand, InteractedBlock interactedBlock, List<DropEntry> dropPool, HashSet<String> biomeList, boolean biomeWhitelist) {
         if (id == null) throw new IllegalArgumentException("Missing id for Interaction");
         if (interactionType == null) throw new IllegalArgumentException("Missing type for Interaction");
         if (dropPool == null || dropPool.isEmpty()) throw new IllegalArgumentException("Missing drop_pool for Interaction");
@@ -31,6 +34,9 @@ public class Interaction {
         this.interactionHand = interactionHand;
         this.interactedBlock = interactedBlock;
         this.dropPool = dropPool;
+
+        this.biomeList = biomeList != null ? biomeList : new HashSet<>();
+        this.biomeWhitelist = biomeWhitelist;
     }
 
     // Interface ( Getters )
@@ -54,6 +60,14 @@ public class Interaction {
 
     public List<DropEntry> getDropPool() {
         return dropPool;
+    }
+
+    public HashSet<String> getBiomes() {
+        return this.biomeList;
+    }
+
+    public boolean isBiomeWhitelist() {
+        return biomeWhitelist;
     }
 
     // Interface ( Drop Pool )
@@ -113,4 +127,6 @@ public class Interaction {
                 ", \n\trandom=" + random +
                 '}';
     }
+
+
 }
