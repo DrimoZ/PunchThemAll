@@ -104,8 +104,6 @@ public class InteractionCreator {
             }
 
             if (handItem != ItemStack.EMPTY && itemJson.has("nbt")) {
-                PTALoggers.error("With GsonHelper : " + GsonHelper.getAsJsonObject(itemJson, "nbt"));
-                PTALoggers.error("Without GsonHelper : " + itemJson.get("nbt"));
                 CompoundTag nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(itemJson, "nbt"));
                 handItem.setTag(nbt);
             }
@@ -309,7 +307,11 @@ public class InteractionCreator {
 
     private static CompoundTag getNbtFromString(ResourceLocation id, JsonObject nbtObject) {
         try {
-            return TagParser.parseTag(nbtObject.toString());
+            String nbtString = nbtObject.toString();
+            String regex = "\"(-?\\d+\\.?\\d*)([dsl]?)\"";
+            String cleanedNbtString = nbtString.replaceAll(regex, "$1$2");
+
+            return TagParser.parseTag(cleanedNbtString);
         } catch (CommandSyntaxException e) {
             PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error during parsing NBTs" + e);
             return null;

@@ -172,18 +172,9 @@ public class InteractionRegistry {
                             if (!matchHand) continue;
 
                             for (String key : interaction.getInteractionHand().getItemStack().getTag().getAllKeys()) {
-                                PTALoggers.error("Key : " + key);
-                                PTALoggers.error("Value : " + interaction.getInteractionHand().getItemStack().getTag().get(key));
-                                PTALoggers.error("Has Value : " + playerMainHandItem.getTag().contains(key));
-                                PTALoggers.error("Value : " + playerMainHandItem.getTag().get(key));
-                                PTALoggers.error("Equals : " + Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key)));
-
-
                                 if (!playerMainHandItem.getTag().contains(key)) matchHand = false;
                                 else if (!Objects.equals(interaction.getInteractionHand().getItemStack().getTag().get(key), playerMainHandItem.getTag().get(key))) matchHand = false;
                             }
-                            PTALoggers.error("Match Hand : " + matchHand);
-
                         }
                     }
                     case OFF_HAND -> {
@@ -203,21 +194,13 @@ public class InteractionRegistry {
                     }
                 }
             }
-
-            PTALoggers.error("Match Block : " + matchBlock);
-            PTALoggers.error("Match Hand : " + matchHand);
-
             if (!matchHand) continue;
-
 
             result.add(interaction);
         }
 
-
         return result;
     }
-
-
 
     public List<Interaction> getInteractionsByInteractedBlockAndType(@Nullable Object state, EInteractionType type, boolean isShiftKeyDown) {
         EInteractionType eventType = EInteractionType.getTypeFromEvent(type, isShiftKeyDown);
