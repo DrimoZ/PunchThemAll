@@ -2,12 +2,14 @@ package com.drimoz.punchthemall.jei;
 
 import com.drimoz.punchthemall.PunchThemAll;
 import com.drimoz.punchthemall.core.model.DropEntry;
+import com.drimoz.punchthemall.core.model.EInteractionHand;
 import com.drimoz.punchthemall.core.model.EInteractionType;
 import com.drimoz.punchthemall.core.model.Interaction;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TranslationKeys;
 import com.google.common.collect.ImmutableList;
+import com.mojang.blaze3d.vertex.PoseStack;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
@@ -17,11 +19,18 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+
+import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JeiCategory implements IRecipeCategory<Interaction> {
     public static final ResourceLocation JEI_TEXTURE = new ResourceLocation(PunchThemAll.MOD_ID, "textures/gui/jei.png");
@@ -70,6 +79,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
     private final IDrawable MAIN_HAND;
     private final IDrawable OFF_HAND;
 
+    // Life Cycle
 
     public JeiCategory(IGuiHelper guiHelper) {
         this.ICON = guiHelper.createDrawableItemStack(new ItemStack(Items.DANDELION));
@@ -90,6 +100,8 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         this.MAIN_HAND = guiHelper.createDrawable(JEI_TEXTURE, 90, 18, 18, 18);
         this.OFF_HAND = guiHelper.createDrawable(JEI_TEXTURE, 72, 18, 18, 18);
     }
+
+    // Interface
 
     @Override
     public RecipeType<Interaction> getRecipeType() {
@@ -125,8 +137,9 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         if (interaction.getInteractedBlock().getTransformationChance() > 0) {
             var transformationSlot = builder.addSlot(RecipeIngredientRole.OUTPUT, 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION)
                     .addItemStack(getTransformationItemStack(interaction));
-            addTooltips(transformationSlot, "§o§8" + TranslationKeys.INTERACTION_TRANSFORMATION_CHANCE + " : §l§5" +
-                    getTruncatedChance(interaction.getInteractedBlock().getTransformationChance(), 0, 1) + "%");
+
+            transformationSlot.addTooltipCallback((slotView, tooltip) -> tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString() +
+                    " : §l§5" + getTruncatedChance(interaction.getInteractedBlock().getTransformationChance(), 0, 1) + "%")));
         }
 
         // Set up drop slots
@@ -137,8 +150,8 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
                         .addItemStack(result.getItemStack());
 
                 int totalWeight = interaction.getDropPool().stream().mapToInt(DropEntry::getChance).sum();
-                addTooltips(slot, "§o§8" + TranslationKeys.INTERACTION_OUTPUT_CHANCE + " : §l§5" +
-                        getTruncatedChance(result.getChance(), 0, totalWeight) + "%");
+                slot.addTooltipCallback((slotView, tooltip) -> tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString() +
+                        " : §l§5" + getTruncatedChance(result.getChance(), 0, totalWeight) + "%")));
 
                 slotNumber++;
             }
@@ -147,11 +160,24 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
 
     @Override
     public void draw(Interaction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphics graphics, double mouseX, double mouseY) {
+        boolean isLeftClick = interaction.getInteractionType() == EInteractionType.LEFT_CLICK ||
+                interaction.getInteractionType() == EInteractionType.SHIFT_LEFT_CLICK;
+
+        boolean isShiftClick = interaction.getInteractionType() == EInteractionType.SHIFT_RIGHT_CLICK ||
+                interaction.getInteractionType() == EInteractionType.SHIFT_LEFT_CLICK;
+
         // Draw mouse icon
-        if (interaction.getInteractionType() == EInteractionType.LEFT_CLICK || interaction.getInteractionType() == EInteractionType.SHIFT_LEFT_CLICK) {
-            MOUSE_LEFT_CLICK.draw(graphics, X_MOUSE_ICON, Y_MOUSE_ICON);
-        } else {
-            MOUSE_RIGHT_CLICK.draw(graphics, X_MOUSE_ICON, Y_MOUSE_ICON);
+        IDrawable mouseIcon = isLeftClick ? MOUSE_LEFT_CLICK : MOUSE_RIGHT_CLICK;
+        mouseIcon.draw(graphics, X_MOUSE_ICON, Y_MOUSE_ICON);
+
+        // Draw sneak icon
+        IDrawable sneakIcon = isShiftClick ? SNEAK_CLICK : REGULAR_CLICK;
+        sneakIcon.draw(graphics, X_SNEAK_ICON, Y_SNEAK_ICON);
+
+        if (interaction.getInteractionHand() != null) {
+            // Draw sneak icon
+            IDrawable handIcon = interaction.getInteractionHand().getInteractionHandType().equals(EInteractionHand.ANY_HAND) ? ANY_HAND : interaction.getInteractionHand().getInteractionHandType().equals(EInteractionHand.MAIN_HAND) ? MAIN_HAND : OFF_HAND;
+            handIcon.draw(graphics, X_HAND_ICON, Y_HAND_ICON);
         }
 
         // Draw icons and slots
@@ -167,19 +193,40 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         for (int i = 0; i < interaction.getJeiRowCount(); i++) {
             SLOT_ROW.draw(graphics, 0, HEIGHT_START + i * 18);
         }
+
+        // Tooltip for the mouse icon
+        if (isMouseOver(mouseX, mouseY, X_MOUSE_ICON + 1, Y_MOUSE_ICON + 1, 16, 16)) {
+            graphics.renderTooltip(Minecraft.getInstance().font, Component.translatable(isLeftClick ? TranslationKeys.INTERACTION_CLICK_LEFT : TranslationKeys.INTERACTION_CLICK_RIGHT), (int) mouseX, (int) mouseY);
+        }
+
+        // Tooltip for the sneak icon
+        if (isMouseOver(mouseX, mouseY, X_SNEAK_ICON + 1, Y_SNEAK_ICON + 1, 16, 16)) {
+            graphics.renderTooltip(Minecraft.getInstance().font, Component.translatable(isShiftClick ? TranslationKeys.INTERACTION_POSITION_SNEAK : TranslationKeys.INTERACTION_POSITION_UP), (int) mouseX, (int) mouseY);
+        }
+
+        // Tooltip for the sneak icon
+        if (interaction.getInteractionHand() != null && isMouseOver(mouseX, mouseY, X_HAND_ICON + 1, Y_HAND_ICON + 1, 16, 16)) {
+            graphics.renderTooltip(Minecraft.getInstance().font, Component.translatable(interaction.getInteractionHand().getInteractionHandType().equals(EInteractionHand.ANY_HAND) ? TranslationKeys.INTERACTION_HAND_ANY : interaction.getInteractionHand().getInteractionHandType().equals(EInteractionHand.MAIN_HAND) ? TranslationKeys.INTERACTION_HAND_MAIN : TranslationKeys.INTERACTION_HAND_OFF), (int) mouseX, (int) mouseY);
+        }
+    }
+
+    // Inner Work
+
+    private boolean isMouseOver(double mouseX, double mouseY, int x, int y, int width, int height) {
+        return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
     private ItemStack getHandItemStack(Interaction interaction) {
         if (interaction.getInteractionHand() != null && interaction.getInteractionHand().getItemStack() != null) {
             return interaction.getInteractionHand().getItemStack();
         } else {
-            return new ItemStack(Items.BARRIER).setHoverName(Component.translatable("§d " + TranslationKeys.INTERACTION_HAND_NO_ITEM));
+            return new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d " + Component.translatable(TranslationKeys.INTERACTION_HAND_NO_ITEM).getString()));
         }
     }
 
     private ItemStack getBlockItemStack(Interaction interaction) {
         if (interaction.getInteractedBlock().isAir()) {
-            return new ItemStack(Items.BARRIER).setHoverName(Component.translatable("§d " + TranslationKeys.INTERACTION_BLOCK_WITH_AIR));
+            return new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d " + Component.translatable(TranslationKeys.INTERACTION_BLOCK_WITH_AIR).getString()));
         } else if (interaction.getInteractedBlock().getBlockBase().isBlock()) {
             return new ItemStack(interaction.getInteractedBlock().getBlockBase().getBlock().asItem());
         } else {
@@ -189,7 +236,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
 
     private ItemStack getTransformationItemStack(Interaction interaction) {
         if (interaction.getInteractedBlock().isTransformedAir()) {
-            return new ItemStack(Items.BARRIER).setHoverName(Component.translatable("§d " + TranslationKeys.INTERACTION_TRANSFORMATION_BREAK));
+            return new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d " + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_BREAK).getString()));
         } else if (interaction.getInteractedBlock().getTransformedBase().isBlock()) {
             return new ItemStack(interaction.getInteractedBlock().getTransformedBase().getBlock().asItem());
         } else {
@@ -197,15 +244,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         }
     }
 
-    public static void addTooltips(IRecipeSlotBuilder slot, String componentString) {
-        var tooltipLines = new ImmutableList.Builder<Component>()
-                .add(Component.translatable(componentString))
-                .build();
-
-        slot.addTooltipCallback((slotView, tooltip) -> tooltip.addAll(tooltipLines));
-    }
-
-    public static double getTruncatedChance(double num, double min, double max) {
+    private static double getTruncatedChance(double num, double min, double max) {
         double chance = (num - min) / (max - min) * 100;
 
         double truncatedChance = Math.floor(chance * 1_000_000) / 1_000_000; // Truncate to 6 decimal places for safety
