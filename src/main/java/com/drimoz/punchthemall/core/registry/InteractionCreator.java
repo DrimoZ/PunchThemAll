@@ -107,7 +107,9 @@ public class InteractionCreator {
 
         EInteractionHand handType = EInteractionHand.fromValueOrName(GsonHelper.getAsString(handObject, "hand"));
         ItemStack handItem = ItemStack.EMPTY;
+        CompoundTag nbt = null;
         boolean damageable = false;
+        boolean consumed = false;
 
 
         if (!handType.equals(EInteractionHand.ANY_HAND) && !handObject.has("item")) {
@@ -130,8 +132,8 @@ public class InteractionCreator {
             }
 
             if (handItem != ItemStack.EMPTY && itemJson.has("nbt")) {
-                CompoundTag nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(itemJson, "nbt"));
-                handItem.setTag(nbt);
+                nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(itemJson, "nbt"));
+                handItem.setTag(nbt.copy());
             }
         }
 
@@ -139,7 +141,11 @@ public class InteractionCreator {
             damageable = GsonHelper.getAsBoolean(handObject, "damage");
         }
 
-        return new InteractionHand(handType, handItem, damageable);
+        if (handObject.has("consume") && !handItem.is(ItemStack.EMPTY.getItem())) {
+            consumed = GsonHelper.getAsBoolean(handObject, "consume");
+        }
+
+        return new InteractionHand(handType, handItem, nbt, damageable, consumed);
     }
 
     private static InteractedBlock getInteractedBlock(ResourceLocation id, JsonObject interactedBlockObject) {

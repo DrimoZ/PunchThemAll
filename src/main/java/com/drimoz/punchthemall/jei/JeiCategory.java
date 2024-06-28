@@ -117,7 +117,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
     private void setupInteractionSlots(IRecipeLayoutBuilder builder, Interaction interaction) {
         var handSlot = setupInputSlot(builder, getHandItemStack(interaction), 1 + X_HAND_ITEM, 1 + Y_HAND_ITEM);
         if (interaction.hasInteractionHand()) {
-            handSlot.addTooltipCallback((recipeSlotView, tooltip) -> addStateAndNbtTooltip(tooltip, new ArrayList<>(0), interaction.getInteractionHand().getItemStack().serializeNBT()));
+            handSlot.addTooltipCallback((recipeSlotView, tooltip) -> addStateAndNbtTooltip(tooltip, new ArrayList<>(0), interaction.getInteractionHand().getNbt()));
         }
         var blockSlot = setupInputSlot(builder, getBlockItemStack(interaction), 1 + X_BLOCK, 1 + Y_BLOCK);
         if (!interaction.interactWithAir()) {
@@ -210,7 +210,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         sneakIcon.draw(graphics, X_SNEAK_ICON, Y_SNEAK_ICON);
 
         if (interaction.getInteractionHand() != null) {
-            IDrawable handIcon = switch (interaction.getInteractionHand().getInteractionHandType()) {
+            IDrawable handIcon = switch (interaction.getInteractionHand().getHandType()) {
                 case ANY_HAND -> ANY_HAND;
                 case MAIN_HAND -> MAIN_HAND;
                 case OFF_HAND -> OFF_HAND;
@@ -265,7 +265,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         if (interaction.hasInteractionHand() && isMouseOver(mouseX, mouseY, X_HAND_ICON + 1, Y_HAND_ICON + 1, 16, 16)) {
             graphics.renderTooltip(
                     Minecraft.getInstance().font,
-                    Component.translatable(getHandTranslationKey(interaction.getInteractionHand().getInteractionHandType())),
+                    Component.translatable(getHandTranslationKey(interaction.getInteractionHand().getHandType())),
                     (int) mouseX,
                     (int) mouseY);
         }

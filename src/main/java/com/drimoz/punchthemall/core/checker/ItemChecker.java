@@ -1,15 +1,14 @@
 package com.drimoz.punchthemall.core.checker;
 
-import com.drimoz.punchthemall.core.util.PTALoggers;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.tags.ITagManager;
 
-import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ItemChecker {
 
@@ -24,21 +23,19 @@ public class ItemChecker {
     }
 
     public static Item getFirstItemFromTag(String itemTag) {
+        return getItemsForTag(itemTag).stream().findFirst().orElse(null);
+    }
+
+    public static Set<Item> getItemsForTag(String itemTag) {
         ResourceLocation tagId = new ResourceLocation(itemTag);
         TagKey<Item> tagKey = TagKey.create(ForgeRegistries.ITEMS.getRegistryKey(), tagId);
-
         ITagManager<Item> itemTagManager = ForgeRegistries.ITEMS.tags();
 
         if (itemTagManager == null) {
-            return null;
+            return new HashSet<>();
         }
 
-        PTALoggers.error("GOOD - CONTINUE - " + tagKey);
-        PTALoggers.error("GOOD - CONTINUE - " + itemTagManager.getTag(tagKey));
-
-        Optional<Item> firstItem = itemTagManager.getTag(tagKey)
-                .stream()
-                .findFirst();
-        return firstItem.orElse(null);
+        return itemTagManager.getTag(tagKey).stream().collect(Collectors.toCollection(HashSet::new));
     }
+
 }

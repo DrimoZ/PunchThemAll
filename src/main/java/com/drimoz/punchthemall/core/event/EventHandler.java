@@ -67,7 +67,7 @@ public class EventHandler {
         boolean interactionProcessed = false;
         boolean blockTransformed = false;
 
-        List<Interaction> interactions = InteractionRegistry.getInstance().getCorrectInteractions(type, clickOnBlock, player, blockPos, level);
+        List<Interaction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
 
 
         for (Interaction interaction : interactions) {
@@ -94,66 +94,6 @@ public class EventHandler {
         }
     }
 
-
-
-
-
-
-
-
-    private static void handlePlayerInteractEvent(PlayerInteractEvent event, EInteractionType type) {
-        Player player = event.getEntity();
-        Level level = event.getLevel();
-        BlockPos pos = event.getPos();
-        BlockState blockState = level.getBlockState(pos);
-        FluidState fluidState = level.getFluidState(pos);
-        Direction face = event.getFace();
-
-        if (face == null) {
-            return;
-        }
-
-        boolean interactionProcessed = false;
-        boolean blockTransformed = false;
-        List<Interaction> interactions = InteractionRegistry.getInstance().getInteractionsByInteractedBlockAndType((blockState != null ? blockState : fluidState), type, player.isShiftKeyDown());
-
-        for (Interaction interaction : interactions) {
-            if (interaction.getInteractedBlock().getBlockType() == EInteractionBlock.AIR) continue;
-
-            if (!blockTransformed && processInteraction(player, level, pos, face, interaction)) {
-                interactionProcessed = true;
-                if (shouldBlockTransform(interaction.getInteractedBlock())) {
-                    transformBlock(level, pos, interaction.getInteractedBlock().getTransformedBase());
-                    blockTransformed = true;
-                }
-            }
-        }
-
-        if (interactionProcessed) {
-            event.setCanceled(true);
-            setPlayerOnCooldown(player.getUUID(), player.tickCount);
-        }
-    }
-
-    private static void handlePlayerInteractEventWithAir(PlayerInteractEvent event, EInteractionType type) {
-        Player player = event.getEntity();
-        Level level = event.getLevel();
-
-        boolean interactionProcessed = false;
-        List<Interaction> interactions = InteractionRegistry.getInstance().getInteractionsByInteractedBlockAndType(null, type, player.isShiftKeyDown());
-
-        for (Interaction interaction : interactions) {
-            if (processInteraction(player, level, player.blockPosition(), Direction.UP, interaction)) {
-                interactionProcessed = true;
-            }
-        }
-
-        if (interactionProcessed) {
-            event.setCanceled(true);
-            setPlayerOnCooldown(player.getUUID(), player.tickCount);
-        }
-    }
-
     private static boolean processInteraction(Player player, Level level, BlockPos pos, Direction face, Interaction interaction) {
         InteractionHand interactionHand = interaction.getInteractionHand();
         ItemStack playerMainHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
@@ -167,7 +107,7 @@ public class EventHandler {
             return false;
         }
 
-        switch (interactionHand.getInteractionHandType()) {
+        switch (interactionHand.getHandType()) {
             case ANY_HAND -> {
                 if (tryDropItem(player, level, pos, face, interaction, playerMainHandItem) ||
                         tryDropItem(player, level, pos, face, interaction, playerOffHandItem)) {
