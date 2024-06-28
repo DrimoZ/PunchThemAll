@@ -1,6 +1,13 @@
 {
   "input_type": "right_click",
 
+  "biomes": {
+    "whitelist": false,
+    "list": [
+      "minecraft:plains"
+    ]
+  },
+
   "interacted_block": {
     "block_type": "block",
     "block_base": {

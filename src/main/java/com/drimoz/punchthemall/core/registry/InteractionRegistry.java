@@ -12,7 +12,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -66,8 +65,8 @@ public class InteractionRegistry {
 
 
             // Filter : OnAir or OnBlock
-            if (clickOnBlock && interaction.isAir()) continue;
-            if (!clickOnBlock && !interaction.isAir()) continue;
+            if (clickOnBlock && interaction.interactWithAir()) continue;
+            if (!clickOnBlock && !interaction.interactWithAir()) continue;
 
             // Filter : Corresponding Block / BlockState
             boolean matchBlock = true;

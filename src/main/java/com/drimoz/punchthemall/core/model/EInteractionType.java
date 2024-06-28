@@ -24,4 +24,12 @@ public enum EInteractionType {
             throw new IllegalArgumentException("Unexpected value: " + typeFromEvent);
         }
     }
+
+    public boolean isLeftClick() {
+        return this == LEFT_CLICK || this == SHIFT_LEFT_CLICK;
+    }
+
+    public boolean isShiftClick() {
+        return this == SHIFT_RIGHT_CLICK || this == SHIFT_LEFT_CLICK;
+    }
 }

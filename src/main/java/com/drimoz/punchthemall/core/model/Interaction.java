@@ -72,10 +72,6 @@ public class Interaction {
 
     // Interface ( Drop Pool )
 
-    public void addToPool(DropEntry entry) {
-        this.dropPool.add(entry);
-    }
-
     public int getTotalChance() {
         return this.dropPool.stream().mapToInt(DropEntry::getChance).sum();
     }
@@ -104,16 +100,24 @@ public class Interaction {
 
     // Interface ( Others )
 
-    public boolean isAir() {
-        return this.getInteractedBlock().isAir();
+    public boolean hasInteractionHand() {
+        return interactionHand != null;
     }
 
-    public boolean isTransformedAir() {
-        return this.getInteractedBlock().isTransformedAir();
+    public boolean hasBiomeFilter() {
+        return !biomeList.isEmpty();
+    }
+
+    public boolean interactWithAir() {
+        return this.getInteractedBlock().isAir();
     }
 
     public int getJeiRowCount() {
         return (int) Math.ceil(dropPool.size() / 9.0);
+    }
+
+    public int getTotalPoolWeight() {
+        return this.dropPool.stream().mapToInt(DropEntry::getChance).sum();
     }
 
     @Override

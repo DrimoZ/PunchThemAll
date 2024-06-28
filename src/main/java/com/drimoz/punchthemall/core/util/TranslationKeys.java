@@ -23,4 +23,7 @@ public class TranslationKeys {
 
     public static final String INTERACTION_TRANSFORMATION_CHANCE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.chance";
     public static final String INTERACTION_TRANSFORMATION_BREAK = "gui." + PunchThemAll.MOD_ID + ".category.transformation.break";
+
+    public static final String INTERACTION_BIOME_WHITELIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.whitelist";
+    public static final String INTERACTION_BIOME_BLACKLIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.blacklist";
 }

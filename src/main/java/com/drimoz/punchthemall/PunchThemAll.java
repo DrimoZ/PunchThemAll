@@ -35,12 +35,12 @@ public class PunchThemAll
     private void onCommonSetup(final FMLCommonSetupEvent event) {
         InteractionLoader.initInteractions();
 
-        InteractionRegistry.getInstance().getInteractions().forEach((resourceLocation, interaction) -> {
-            PTALoggers.error("New Interaction : " + interaction.toString());
-            interaction.getDropPool().forEach(dropEntry -> {
-                PTALoggers.error("\tNew Pool : " + dropEntry.getItemStack() + " - " + dropEntry.getChance());
-            });
-        });
+        //InteractionRegistry.getInstance().getInteractions().forEach((resourceLocation, interaction) -> {
+        //    PTALoggers.error("New Interaction : " + interaction.toString());
+        //    interaction.getDropPool().forEach(dropEntry -> {
+        //        PTALoggers.error("\tNew Pool : " + dropEntry.getItemStack() + " - " + dropEntry.getChance());
+        //    });
+        //});
 
         PTALoggers.infoRegisteredModule("Common Setup");
     }

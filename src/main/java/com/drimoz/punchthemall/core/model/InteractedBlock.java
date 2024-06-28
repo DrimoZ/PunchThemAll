@@ -104,6 +104,10 @@ public class InteractedBlock {
         return this.transformedType.equals(EInteractionBlock.AIR);
     }
 
+    public boolean canTransform() {
+        return this.transformationChance > 0;
+    }
+
     @Override
     public String toString() {
         return "InteractedBlock{" +

@@ -11,5 +11,7 @@
   "gui.pta.category.hand.off": "Off Hand",
   "gui.pta.category.block.with_air": "In Air",
   "gui.pta.category.transformation.chance": "Transformation Chance",
-  "gui.pta.category.transformation.break": "Broken Block"
+  "gui.pta.category.transformation.break": "Broken Block",
+  "gui.pta.category.biome.whitelist": "Biome Whitelist",
+  "gui.pta.category.biome.blacklist": "Biome Blacklist"
 }
