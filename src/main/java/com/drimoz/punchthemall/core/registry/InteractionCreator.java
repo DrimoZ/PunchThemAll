@@ -9,6 +9,7 @@ import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
@@ -203,13 +204,13 @@ public class InteractionCreator {
         // State Sets
         Map.Entry<Set<PtaStateRecord<?>>, Set<PtaStateRecord<?>>> states = Map.entry(new HashSet<>(), new HashSet<>());
         if ((!blockSet.isEmpty() || !fluidSet.isEmpty()) && blockJson.has(STRING_BLOCK_STATE)) {
-            states = createBlockStates(id, GsonHelper.getAsJsonObject(json, STRING_BLOCK_STATE), blockSet.isEmpty() ? fluidSet : blockSet);
+            states = createBlockStates(id, GsonHelper.getAsJsonObject(blockJson, STRING_BLOCK_STATE), blockSet.isEmpty() ? fluidSet : blockSet);
         }
 
         // NBTs CompoundTags
         Map.Entry<CompoundTag, CompoundTag> nbts = Map.entry(new CompoundTag(), new CompoundTag());
         if ((!blockSet.isEmpty() || !fluidSet.isEmpty()) && blockJson.has(STRING_BLOCK_NBT)) {
-            nbts = createBlockNBTs(id, GsonHelper.getAsJsonObject(json, STRING_BLOCK_NBT));
+            nbts = createBlockNBTs(id, GsonHelper.getAsJsonObject(blockJson, STRING_BLOCK_NBT));
         }
 
         // Block Creation
@@ -337,9 +338,12 @@ public class InteractionCreator {
 
         if (!json.has(STRING_POOL) || !json.get(STRING_POOL).isJsonArray()) return PtaPool.create(pool);
 
-        for (JsonElement arrayValue: GsonHelper.getAsJsonArray(json, STRING_POOL)) {
-            if (!arrayValue.isJsonObject()) continue;
+        JsonArray dropArray = GsonHelper.getAsJsonArray(json, STRING_POOL);
+        PTALoggers.error("DROP ARRAY : " + dropArray);
+
+        for (JsonElement arrayValue: dropArray) {
             JsonObject dropJson = (JsonObject) arrayValue;
+            PTALoggers.error("DROP : " + dropJson);
 
             // Chance
             if (!dropJson.has(STRING_POOL_CHANCE) || !dropJson.get(STRING_POOL_CHANCE).isJsonPrimitive()) continue;
@@ -367,7 +371,7 @@ public class InteractionCreator {
                 items.add(ItemChecker.getExistingItem(GsonHelper.getAsString(dropJson, STRING_POOL_ITEM)));
             }
             else if (dropJson.has(STRING_POOL_TAG) && dropJson.get(STRING_POOL_TAG).isJsonPrimitive()) {
-                items.addAll(ItemChecker.getItemsForTag(GsonHelper.getAsString(dropJson, STRING_POOL_ITEM)));
+                items.addAll(ItemChecker.getItemsForTag(GsonHelper.getAsString(dropJson, STRING_POOL_TAG)));
             }
             else {
                 errorMissing(id, STRING_POOL_ITEM_FULL + " or " + STRING_POOL_TAG_FULL);
@@ -389,8 +393,9 @@ public class InteractionCreator {
     private static <T extends Comparable<T>> void addStateEntry(Set<PtaStateRecord<?>> stateEntries, Property<T> property, String value) {
         T parsedValue = parsePropertyValue(property, value);
         if (value.equalsIgnoreCase(SAME_STATE) || parsedValue != null) {
-            stateEntries.add(new PtaStateRecord<>(property, parsedValue));
-        } else {
+            stateEntries.add(new PtaStateRecord<>(property, value));
+        }
+        else {
             PTALoggers.error("Failed to parse value " + value + " for property " + property.getName());
         }
     }

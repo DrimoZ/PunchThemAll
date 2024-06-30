@@ -24,6 +24,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE;
+
 public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
     private static final Long COOLDOWN_INTERVAL = 1L;
@@ -57,9 +59,7 @@ public class PlayerInteractionHandler {
         handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, event);
     }
 
-    private static void handlePlayerInteract(
-            PtaTypeEnum type, boolean clickOnBlock, PlayerInteractEvent event
-    ) {
+    private static void handlePlayerInteract(PtaTypeEnum type, boolean clickOnBlock, PlayerInteractEvent event) {
         Player player = event.getEntity();
         Level level = event.getLevel();
         BlockPos blockPos = event.getPos();
@@ -72,7 +72,6 @@ public class PlayerInteractionHandler {
         boolean blockTransformed = false;
 
         Set<PtaInteraction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
-        PTALoggers.error(" Handle Interactions : " + interactions.size());
 
         for (PtaInteraction interaction : interactions) {
             if (interaction.getBlock().isAir()) {
@@ -84,7 +83,6 @@ public class PlayerInteractionHandler {
                 if (!blockTransformed && processInteraction(player, level, blockPos, direction, interaction)) {
                     interactionProcessed = true;
                     if (shouldBlockTransform(interaction.getTransformation())) {
-                        PTALoggers.error("TRANSFORMATION NEEDED");
                         transformBlock(level, blockPos, interaction.getTransformation());
                         blockTransformed = true;
                     }
@@ -94,7 +92,6 @@ public class PlayerInteractionHandler {
 
 
         if (interactionProcessed) {
-            PTALoggers.error("Has Processed Interaction");
             event.setCanceled(true);
             setPlayerOnCooldown(player.getUUID(), player.tickCount);
         }
@@ -188,6 +185,7 @@ public class PlayerInteractionHandler {
             BlockState currentState = level.getBlockState(pos);
             BlockState newState = transformedBlock.getBlock().defaultBlockState();
 
+
             for (PtaStateRecord<?> entry : transformedBlock.getStateList()) {
                 newState = applyStateEntry(newState, entry, currentState);
             }
@@ -206,34 +204,42 @@ public class PlayerInteractionHandler {
         }
     }
 
-    /*BlockState state = transformedBlock.getBlock().defaultBlockState();
-
-            for (PtaStateRecord<?> entry : transformedBlock.getStateList()) {
-                state = applyStateEntry(state, entry);
-            }
-
-            level.setBlockAndUpdate(pos, state);*/
-
     private static <T extends Comparable<T>> BlockState applyStateEntry(BlockState state, PtaStateRecord<T> entry, BlockState currentState) {
         Property<T> property = entry.property();
-        T value = entry.value();
+        String valueString = entry.value();
+        T value;
 
-        if ("copy_state_value".equals(entry.value())) {
+        if (SAME_STATE.equalsIgnoreCase(valueString)) {
             if (currentState.hasProperty(property)) {
                 value = currentState.getValue(property);
             } else {
                 return state;
             }
         }
+        else {
+            value = parsePropertyValue(property, valueString);
+        }
 
+        if (value == null) return state;
         return state.setValue(property, value);
     }
 
 
     private static <T extends Comparable<T>> FluidState applyStateEntry(FluidState state, PtaStateRecord<T> entry) {
         Property<T> property = entry.property();
-        T value = entry.value();
+        String valueString = entry.value();
+        T value = parsePropertyValue(property, valueString);
+        if (value == null) return state;
         return state.setValue(property, value);
+    }
+
+    private static <T extends Comparable<T>> T parsePropertyValue(Property<T> property, String value) {
+        for (T possibleValue : property.getPossibleValues()) {
+            if (possibleValue.toString().equalsIgnoreCase(value)) {
+                return possibleValue;
+            }
+        }
+        return null;
     }
 
     // Inner work ( Player Cooldown )

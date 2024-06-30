@@ -102,8 +102,8 @@ public class PtaTransformation {
             this.nbtList = new CompoundTag();
         }
         else {
-            this.block = null;
-            this.fluid = null;
+            this.block = block;
+            this.fluid = fluid;
             this.stateList = stateList == null ? new HashSet<>() : stateList;
             this.nbtList = nbtList == null ? new CompoundTag() : nbtList;
         }

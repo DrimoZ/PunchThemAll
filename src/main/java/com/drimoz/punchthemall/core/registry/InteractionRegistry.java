@@ -210,10 +210,10 @@ public class InteractionRegistry {
     private boolean matchesState(BlockState blockState, FluidState fluidState, PtaStateRecord<?> stateRecord, boolean isBlock) {
         if (isBlock) {
             return blockState.getProperties().contains(stateRecord.property())
-                    && blockState.getValue(stateRecord.property()).equals(stateRecord.value());
+                    && blockState.getValue(stateRecord.property()).equals(stateRecord.getValue());
         } else {
             return fluidState.getProperties().contains(stateRecord.property())
-                    && fluidState.getValue(stateRecord.property()).equals(stateRecord.value());
+                    && fluidState.getValue(stateRecord.property()).equals(stateRecord.getValue());
         }
     }
 

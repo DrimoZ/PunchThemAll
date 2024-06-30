@@ -65,7 +65,7 @@ public class RegistryConstants {
     public static final String STRING_TRANSFORMATION_FLUID_FULL = STRING_TRANSFORMATION + SEPARATOR + STRING_TRANSFORMATION_FLUID;
     public static final String STRING_TRANSFORMATION_NBT = "fluid";
     public static final String STRING_TRANSFORMATION_NBT_FULL = STRING_TRANSFORMATION + SEPARATOR + STRING_TRANSFORMATION_NBT;
-    public static final String STRING_TRANSFORMATION_STATE = "fluid";
+    public static final String STRING_TRANSFORMATION_STATE = "state";
     public static final String STRING_TRANSFORMATION_STATE_FULL = STRING_TRANSFORMATION + SEPARATOR + STRING_TRANSFORMATION_STATE;
 
     // Pool
