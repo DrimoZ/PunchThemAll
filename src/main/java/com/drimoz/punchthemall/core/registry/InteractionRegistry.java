@@ -75,12 +75,12 @@ public class InteractionRegistry {
             PtaInteraction interaction, PtaTypeEnum eventType, boolean clickOnBlock,
             Player player, BlockPos pos, Level level
     ) {
-        //PTALoggers.error("passesInteractionTypeFilter : " + passesInteractionTypeFilter(interaction, eventType));
-        //PTALoggers.error("passesBiomeAndDimensionFilter : " + passesBiomeAndDimensionFilter(interaction, level, pos));
-        //PTALoggers.error("passesAirOrBlockFilter : " + passesAirOrBlockFilter(interaction, clickOnBlock));
-        //PTALoggers.error("passesBlockStateFilter : " + passesBlockStateFilter(interaction, clickOnBlock, pos, level));
-        //PTALoggers.error("passesBlockEntityNBTFilter : " + passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level));
-        //PTALoggers.error("passesHandItemFilter : " + passesHandItemFilter(interaction, player));
+        // PTALoggers.error("passesInteractionTypeFilter : " + passesInteractionTypeFilter(interaction, eventType));
+        // PTALoggers.error("passesBiomeAndDimensionFilter : " + passesBiomeAndDimensionFilter(interaction, level, pos));
+        // PTALoggers.error("passesAirOrBlockFilter : " + passesAirOrBlockFilter(interaction, clickOnBlock));
+        // PTALoggers.error("passesBlockStateFilter : " + passesBlockStateFilter(interaction, clickOnBlock, pos, level));
+        // PTALoggers.error("passesBlockEntityNBTFilter : " + passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level));
+        // PTALoggers.error("passesHandItemFilter : " + passesHandItemFilter(interaction, player));
 
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&
@@ -194,7 +194,9 @@ public class InteractionRegistry {
             if (hand.hasNbtWhiteList()) {
                 matchesMainHand = matchesMainHand && matchesNBTWhitelist(mainHandItem, hand.getNbtWhiteList());
                 matchesOffHand = matchesOffHand && matchesNBTWhitelist(offHandItem, hand.getNbtWhiteList());
-            } else if (hand.hasNbtBlackList()) {
+            }
+
+            if (hand.hasNbtBlackList()) {
                 matchesMainHand = matchesMainHand && matchesNBTBlacklist(mainHandItem, hand.getNbtBlackList());
                 matchesOffHand = matchesOffHand && matchesNBTBlacklist(offHandItem, hand.getNbtBlackList());
             }

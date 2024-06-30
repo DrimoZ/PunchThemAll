@@ -1,0 +1,27 @@
+{
+  "type": "shift_right_click",
+
+  "hand": {
+    "hand": "main_hand",
+    "item": {
+      "item": "minecraft:golden_apple"
+    },
+    "consumable": true,
+    "chance": 0.5
+  },
+
+  "block": {
+    "block": "minecraft:diamond_block"
+  },
+
+  "transformation": {
+    "chance": 0.5
+  },
+
+  "biome": {
+    "whitelist": [
+      "minecraft:overworld",
+      "minecraft:plains"
+    ]
+  }
+}

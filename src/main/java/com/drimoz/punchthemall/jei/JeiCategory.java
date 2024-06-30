@@ -335,26 +335,26 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         boolean isShiftKeyDown = Minecraft.getInstance().options.keyShift.isDown();
         boolean isSprintKeyDown = Minecraft.getInstance().options.keySprint.isDown();
 
-        if (!isShiftKeyDown) {
-            tooltip.add(
-                    Component.literal(
-                            "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
-                                    Minecraft.getInstance().options.keyShift.getTranslatedKeyMessage().getString() + " §b] " +
-                                    Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " " +
-                                    Component.translatable(TranslationKeys.TEXT_STATE).getString()
-                    )
-            );
-        }
-        if (!isSprintKeyDown) {
-            tooltip.add(
-                    Component.literal(
-                            "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
-                                    Minecraft.getInstance().options.keySprint.getTranslatedKeyMessage().getString() + " §b] " +
-                                    Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " "  +
-                                    Component.translatable(TranslationKeys.TEXT_NBT).getString()
-                    )
-            );
-        }
+        //if (!isShiftKeyDown) {
+        //    tooltip.add(
+        //            Component.literal(
+        //                    "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
+        //                            Minecraft.getInstance().options.keyShift.getTranslatedKeyMessage().getString() + " §b] " +
+        //                            Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " " +
+        //                            Component.translatable(TranslationKeys.TEXT_STATE).getString()
+        //            )
+        //    );
+        //}
+        //if (!isSprintKeyDown) {
+        //    tooltip.add(
+        //            Component.literal(
+        //                    "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
+        //                            Minecraft.getInstance().options.keySprint.getTranslatedKeyMessage().getString() + " §b] " +
+        //                            Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " "  +
+        //                            Component.translatable(TranslationKeys.TEXT_NBT).getString()
+        //            )
+        //    );
+        //}
 
         // Add state tooltip if entries are present
         if (!whitelistStates.isEmpty() || !blacklistStates.isEmpty()) {

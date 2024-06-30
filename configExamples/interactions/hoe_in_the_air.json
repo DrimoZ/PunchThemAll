@@ -1,0 +1,55 @@
+{
+  "type": "right_click",
+
+  "hand": {
+    "hand": "off",
+    "item": {
+      "tag": "minecraft:hoes",
+      "nbt": {
+        "whitelist": {
+          "Damage": {
+            "RangeTag": [0, 500]
+          },
+          "Enchantments": [
+            {
+              "lvl": 3s,
+              "id": "minecraft:unbreaking"
+            },
+            {
+              "lvl": 3s,
+              "id": "minecraft:fortune"
+            }
+          ]
+        },
+        "blacklist": {
+          "Enchantments": [
+            {
+              "lvl": 1s,
+              "id": "minecraft:mending"
+            }
+          ]
+        }
+      }
+    },
+    "damageable": true
+  },
+
+  "pool": [
+    {
+      "tag": "forge:seeds",
+      "chance": 10,
+      "min": 3,
+      "max": 10
+    },
+    {
+      "tag": "forge:nuggets",
+      "chance": 1,
+      "count": 1
+    },
+    {
+      "item": "minecraft:air",
+      "chance": 1,
+      "count": 1
+    }
+  ]
+}

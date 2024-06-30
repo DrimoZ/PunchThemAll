@@ -46,15 +46,12 @@ public class InteractionCreator {
 
         // Hand
         PtaHand hand = createHand(id, json);
-        errorFormat(id, "FORMAT 3");
 
         // Block
         PtaBlock block = createBlock(id, json);
-        errorFormat(id, "FORMAT 4");
 
         // Transformation
         PtaTransformation transformation = createTransformation(id, json);
-        errorFormat(id, "FORMAT 5");
 
         // Pool
         PtaPool pool = createPool(id, json);
@@ -113,7 +110,7 @@ public class InteractionCreator {
 
         Map.Entry<CompoundTag, CompoundTag> itemNBTs = Map.entry(new CompoundTag(), new CompoundTag());
         if (!itemSet.isEmpty() && handItemJson.has(STRING_HAND_ITEM_NBT) && handItemJson.get(STRING_HAND_ITEM_NBT).isJsonObject()) {
-            itemNBTs = createHandItemNbt(id, GsonHelper.getAsJsonObject(handJson, STRING_HAND_ITEM_NBT));
+            itemNBTs = createHandItemNbt(id, GsonHelper.getAsJsonObject(handItemJson, STRING_HAND_ITEM_NBT));
         }
 
         boolean damageable = false;
@@ -156,7 +153,7 @@ public class InteractionCreator {
         if (json.has(STRING_HAND_ITEM_NBT_WHITELIST)) {
             nbtWhiteList = getNbtFromString(id, GsonHelper.getAsJsonObject(json, STRING_HAND_ITEM_NBT_WHITELIST));
         }
-        else if (json.has(STRING_HAND_ITEM_NBT_BLACKLIST)) {
+        if (json.has(STRING_HAND_ITEM_NBT_BLACKLIST)) {
             nbtBlackList = getNbtFromString(id, GsonHelper.getAsJsonObject(json, STRING_HAND_ITEM_NBT_BLACKLIST));
         }
         else {
@@ -339,11 +336,9 @@ public class InteractionCreator {
         if (!json.has(STRING_POOL) || !json.get(STRING_POOL).isJsonArray()) return PtaPool.create(pool);
 
         JsonArray dropArray = GsonHelper.getAsJsonArray(json, STRING_POOL);
-        PTALoggers.error("DROP ARRAY : " + dropArray);
 
         for (JsonElement arrayValue: dropArray) {
             JsonObject dropJson = (JsonObject) arrayValue;
-            PTALoggers.error("DROP : " + dropJson);
 
             // Chance
             if (!dropJson.has(STRING_POOL_CHANCE) || !dropJson.get(STRING_POOL_CHANCE).isJsonPrimitive()) continue;

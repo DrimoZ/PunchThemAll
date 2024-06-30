@@ -13,7 +13,7 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
     // Calculated Properties
 
     public boolean isEmpty() {
-        return items.isEmpty() || min == 0;
+        return items.isEmpty() || min == 0 || items.stream().allMatch(item -> item.equals(Items.AIR));
     }
 
     // Life cycle

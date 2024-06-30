@@ -1,0 +1,49 @@
+{
+  "type": "left_click",
+
+  "hand": {
+    "hand": "main_hand",
+    "item": {
+      "tag": "forge:tools/wrench"
+    },
+    "damageable": true
+  },
+
+  "block": {
+    "block": "ae2:fluix_stairs",
+    "state": {
+      "whitelist": {
+        "half" : "bottom"
+      }
+    }
+  },
+
+  "transformation": {
+    "chance": 0.2,
+    "block": "minecraft:cobblestone_stairs",
+    "state": {
+      "facing": "copy_state_value",
+      "half": "copy_state_value",
+      "shape": "copy_state_value",
+      "waterlogged": "false"
+    }
+  },
+
+  "pool": [
+    {
+      "tag": "forge:gems",
+      "chance": 10,
+      "min": 1,
+      "max": 5
+    },
+    {
+      "item": "minecraft:air",
+      "chance": 100
+    },
+    {
+      "item": "ae2:fluix_crystal",
+      "chance": 40,
+      "count": 2
+    }
+  ]
+}

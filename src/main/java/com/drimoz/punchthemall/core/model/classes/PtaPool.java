@@ -19,7 +19,7 @@ public class PtaPool {
     }
 
     public int getTotalPoolSize() {
-        return (int) this.dropPool.keySet().stream().filter(a -> !a.isEmpty() && a.items().stream().allMatch(item -> item.equals(Items.AIR))).count();
+        return (int) this.dropPool.keySet().stream().filter(a -> !a.isEmpty() && a.items().stream().noneMatch(item -> item.equals(Items.AIR))).count();
     }
 
     public boolean isEmpty() {

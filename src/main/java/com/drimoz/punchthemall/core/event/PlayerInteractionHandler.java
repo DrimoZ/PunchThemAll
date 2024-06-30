@@ -73,6 +73,7 @@ public class PlayerInteractionHandler {
 
         Set<PtaInteraction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
 
+        PTALoggers.error("Interaction count : " + interactions.size());
         for (PtaInteraction interaction : interactions) {
             if (interaction.getBlock().isAir()) {
                 if (processInteraction(player, level, player.blockPosition(), Direction.UP, interaction)) {
