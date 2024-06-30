@@ -40,4 +40,12 @@ public class BlockChecker {
 
         return blockTagManager.getTag(tagKey).stream().collect(Collectors.toCollection(HashSet::new));
     }
+
+    public static boolean isBlockTagExisting(String blockTag) {
+        ResourceLocation tagId = new ResourceLocation(blockTag);
+        TagKey<Block> tagKey = TagKey.create(ForgeRegistries.BLOCKS.getRegistryKey(), tagId);
+        ITagManager<Block> blockTagManager = ForgeRegistries.BLOCKS.tags();
+
+        return blockTagManager != null && blockTagManager.getTagNames().anyMatch(blockTagKey -> blockTagKey.location().equals(tagKey.location()));
+    }
 }

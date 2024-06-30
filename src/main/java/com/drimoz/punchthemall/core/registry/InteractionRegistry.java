@@ -1,15 +1,18 @@
 package com.drimoz.punchthemall.core.registry;
 
-import com.drimoz.punchthemall.core.model.*;
+import com.drimoz.punchthemall.core.model.classes.PtaBlock;
+import com.drimoz.punchthemall.core.model.classes.PtaHand;
+import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
+import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
+import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -25,7 +28,7 @@ public class InteractionRegistry {
     // Private properties
 
     private static final InteractionRegistry INSTANCE = new InteractionRegistry();
-    private final Map<ResourceLocation, Interaction> interactions = new HashMap<>();
+    private final Map<ResourceLocation, PtaInteraction> interactions = new HashMap<>();
 
     // Life cycle
 
@@ -37,27 +40,24 @@ public class InteractionRegistry {
         return INSTANCE;
     }
 
-    public Map<ResourceLocation, Interaction> getInteractions() {
+    public Map<ResourceLocation, PtaInteraction> getInteractions() {
         return interactions;
     }
 
-    public void addInteraction(Interaction interaction) {
+    public void addInteraction(PtaInteraction interaction) {
         interactions.put(interaction.getId(), interaction);
     }
 
-    public Interaction getInteractionById(ResourceLocation id) {
+    public PtaInteraction getInteractionById(ResourceLocation id) {
         return interactions.get(id);
     }
 
-    public List<Interaction> getFilteredInteractions(
-            EInteractionType interactionType, boolean clickOnBlock,
-            Player player, BlockPos pos, Level level
-    ) {
-        List<Interaction> filteredInteractions = new ArrayList<>();
+    public Set<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level) {
+        Set<PtaInteraction> filteredInteractions = new HashSet<>();
 
-        EInteractionType eventType = EInteractionType.getTypeFromEvent(interactionType, player.isShiftKeyDown());
+        PtaTypeEnum eventType = PtaTypeEnum.getTypeFromEvent(interactionType, player.isShiftKeyDown());
 
-        for (Interaction interaction : interactions.values()) {
+        for (PtaInteraction interaction : interactions.values()) {
             if (!passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level)) {
                 continue;
             }
@@ -67,23 +67,21 @@ public class InteractionRegistry {
         return filteredInteractions;
     }
 
-    public int getJEIRowCount() {
-        int maxPool = 0;
 
-        for (Interaction interaction : interactions.values()) {
-            if (maxPool < interaction.getDropPool().size())
-                maxPool = interaction.getDropPool().size();
-        }
-
-        return (int) Math.ceil(maxPool / 9.0);
-    }
 
     // Inner work ( Interaction Filter )
 
     private boolean passesInteractionFilters(
-            Interaction interaction, EInteractionType eventType, boolean clickOnBlock,
+            PtaInteraction interaction, PtaTypeEnum eventType, boolean clickOnBlock,
             Player player, BlockPos pos, Level level
     ) {
+        //PTALoggers.error("passesInteractionTypeFilter : " + passesInteractionTypeFilter(interaction, eventType));
+        //PTALoggers.error("passesBiomeAndDimensionFilter : " + passesBiomeAndDimensionFilter(interaction, level, pos));
+        //PTALoggers.error("passesAirOrBlockFilter : " + passesAirOrBlockFilter(interaction, clickOnBlock));
+        //PTALoggers.error("passesBlockStateFilter : " + passesBlockStateFilter(interaction, clickOnBlock, pos, level));
+        //PTALoggers.error("passesBlockEntityNBTFilter : " + passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level));
+        //PTALoggers.error("passesHandItemFilter : " + passesHandItemFilter(interaction, player));
+
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&
                 passesAirOrBlockFilter(interaction, clickOnBlock) &&
@@ -92,128 +90,153 @@ public class InteractionRegistry {
                 passesHandItemFilter(interaction, player);
     }
 
-    private boolean passesInteractionTypeFilter(Interaction interaction, EInteractionType eventType) {
-        return interaction.getInteractionType().equals(eventType);
+    private boolean passesInteractionTypeFilter(PtaInteraction interaction, PtaTypeEnum eventType) {
+        return interaction.getType().equals(eventType);
     }
 
-    private boolean passesBiomeAndDimensionFilter(Interaction interaction, Level level, BlockPos pos) {
+    private boolean passesBiomeAndDimensionFilter(PtaInteraction interaction, Level level, BlockPos pos) {
         String playerDimensionId = level.dimension().location().toString();
         String playerBiomeId = level.getBiome(pos).unwrapKey().get().location().toString();
 
-        boolean isBiomeWhitelist = interaction.isBiomeWhitelist();
-        boolean matchesBiome = interaction.getBiomes().contains(playerBiomeId) || interaction.getBiomes().contains(playerDimensionId);
+        // Check whitelist
+        if (interaction.hasBiomeWhiteList()) {
+            return interaction.getBiomeWhitelist().contains(playerDimensionId) || interaction.getBiomeWhitelist().contains(playerBiomeId);
+        }
 
-        return isBiomeWhitelist == matchesBiome;
+        // Check blacklist
+        if (interaction.hasBiomeBlackList()) {
+            return interaction.getBiomeBlackList().contains(playerDimensionId) || interaction.getBiomeBlackList().contains(playerBiomeId);
+        }
+
+        return true;
     }
 
-    private boolean passesAirOrBlockFilter(Interaction interaction, boolean clickOnBlock) {
-        return interaction.interactWithAir() == !clickOnBlock;
+    private boolean passesAirOrBlockFilter(PtaInteraction interaction, boolean clickOnBlock) {
+        return interaction.getBlock().isAir() == !clickOnBlock;
     }
 
-    private boolean passesBlockStateFilter(Interaction interaction, boolean clickOnBlock, BlockPos pos, Level level) {
+    private boolean passesBlockStateFilter(PtaInteraction interaction, boolean clickOnBlock, BlockPos pos, Level level) {
         if (!clickOnBlock) {
             return true;
         }
 
-        InteractedBlock interactedBlock = interaction.getInteractedBlock();
-        InteractionBlock interactedBlockBase = interactedBlock.getBlockBase();
+        PtaBlock ptaBlock = interaction.getBlock();
 
-        if (interactedBlockBase.isBlock()) {
-            BlockState worldBlockState = level.getBlockState(pos);
-            Block worldBlock = worldBlockState.getBlock();
+        BlockState blockState = level.getBlockState(pos);
+        FluidState fluidState = level.getFluidState(pos);
 
-            if (!worldBlock.equals(interactedBlockBase.getBlock())) {
-                return false;
-            }
+        Block block = blockState.getBlock();
+        Fluid fluid = fluidState.getType();
 
-            return matchesBlockState(worldBlockState, interactedBlockBase.getStateEntries());
-        } else {
-            FluidState worldFluidState = level.getFluidState(pos);
-            Fluid worldFluid = worldFluidState.getType();
-
-            if (!worldFluid.equals(interactedBlockBase.getFluid())) {
-                return false;
-            }
-
-            return matchesBlockState(worldFluidState.createLegacyBlock(), interactedBlockBase.getStateEntries());
+        // Check if the block or fluid matches the interaction's whitelist or blacklist
+        if (!ptaBlock.isBlockFromSet(block) && !ptaBlock.isFluidFromSet(fluid)) {
+            return false;
         }
+
+        // Validate whitelist states
+        for (PtaStateRecord<?> stateRecord : ptaBlock.getStateWhiteList()) {
+            if (!matchesState(blockState, fluidState, stateRecord, ptaBlock.isBlock())) {
+                return false;
+            }
+        }
+
+        // Validate blacklist states
+        for (PtaStateRecord<?> stateRecord : ptaBlock.getStateBlackList()) {
+            if (matchesState(blockState, fluidState, stateRecord, ptaBlock.isBlock())) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    private boolean passesBlockEntityNBTFilter(Interaction interaction, boolean clickOnBlock, BlockPos pos, Level level) {
-        if (!clickOnBlock || interaction.getInteractedBlock().getBlockBase().getNbt().isEmpty()) {
+    private boolean passesBlockEntityNBTFilter(PtaInteraction interaction, boolean clickOnBlock, BlockPos pos, Level level) {
+        if (!clickOnBlock || (!interaction.getBlock().hasNbtBlackList() && !interaction.getBlock().hasNbtWhiteList())) {
             return true;
         }
 
         BlockEntity worldBlockEntity = level.getBlockEntity(pos);
-
-        if (worldBlockEntity == null) {
-            return false;
-        }
+        if (worldBlockEntity == null) return false;
 
         CompoundTag worldBlockEntityTag = worldBlockEntity.serializeNBT();
 
-        return TagHelper.checkNBTs(worldBlockEntityTag, interaction.getInteractedBlock().getBlockBase().getNbt(), true);
+
+        boolean passesWhiteList = true, passesBlackList = true;
+        if (interaction.getBlock().hasNbtWhiteList())
+            passesWhiteList = TagHelper.containsRequiredTagsWithRange(worldBlockEntityTag, interaction.getBlock().getNbtWhiteList());
+
+        if (interaction.getBlock().hasNbtBlackList())
+            passesBlackList = TagHelper.containsRequiredTagsWithRangeBlacklist(worldBlockEntityTag, interaction.getBlock().getNbtBlackList());
+
+        return passesWhiteList && passesBlackList;
     }
 
-    private boolean passesHandItemFilter(Interaction interaction, Player player) {
-        InteractionHand interactionHand = interaction.getInteractionHand();
+    private boolean passesHandItemFilter(PtaInteraction interaction, Player player) {
+        PtaHand hand = interaction.getHand();
 
         ItemStack mainHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
         ItemStack offHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.OFF_HAND);
 
-        if (interactionHand == null) {
+        if (hand.isEmpty()) {
             return mainHandItem.isEmpty() && offHandItem.isEmpty();
         }
 
-        ItemStack interactionItem = interactionHand.getItemStack();
-
-        if (interactionItem.isEmpty()) {
-            switch (interactionHand.getHandType()) {
-                case ANY_HAND:
-                    return mainHandItem.isEmpty() && offHandItem.isEmpty();
-                case MAIN_HAND:
-                    return mainHandItem.isEmpty();
-                case OFF_HAND:
-                    return offHandItem.isEmpty();
-                default:
-                    return false;
-            }
+        if (hand.getItemSet().isEmpty()) {
+            return switch (hand.getHand()) {
+                case ANY_HAND -> mainHandItem.isEmpty() && offHandItem.isEmpty();
+                case MAIN_HAND -> mainHandItem.isEmpty();
+                case OFF_HAND -> offHandItem.isEmpty();
+            };
         } else {
-            return switch (interactionHand.getHandType()) {
-                case ANY_HAND ->
-                        (matchesItem(mainHandItem, interactionItem) && matchesNBT(mainHandItem, interactionHand.getNbt())) ||
-                                (matchesItem(offHandItem, interactionItem) && matchesNBT(offHandItem, interactionHand.getNbt()));
-                case MAIN_HAND ->
-                        matchesItem(mainHandItem, interactionItem) && matchesNBT(mainHandItem, interactionHand.getNbt());
-                case OFF_HAND ->
-                        matchesItem(offHandItem, interactionItem) && matchesNBT(offHandItem, interactionHand.getNbt());
-                default -> false;
+            boolean matchesMainHand = matchesItem(mainHandItem, hand.getItemSet());
+            boolean matchesOffHand = matchesItem(offHandItem, hand.getItemSet());
+
+            if (hand.hasNbtWhiteList()) {
+                matchesMainHand = matchesMainHand && matchesNBTWhitelist(mainHandItem, hand.getNbtWhiteList());
+                matchesOffHand = matchesOffHand && matchesNBTWhitelist(offHandItem, hand.getNbtWhiteList());
+            } else if (hand.hasNbtBlackList()) {
+                matchesMainHand = matchesMainHand && matchesNBTBlacklist(mainHandItem, hand.getNbtBlackList());
+                matchesOffHand = matchesOffHand && matchesNBTBlacklist(offHandItem, hand.getNbtBlackList());
+            }
+
+            return switch (hand.getHand()) {
+                case ANY_HAND -> (matchesMainHand || matchesOffHand);
+                case MAIN_HAND -> matchesMainHand;
+                case OFF_HAND -> matchesOffHand;
             };
         }
     }
 
-    // Inner work ( Util )
-
-    private boolean matchesBlockState(BlockState state, List<StateEntry<?>> stateEntries) {
-        for (StateEntry<?> entry : stateEntries) {
-            if (!state.getValues().containsKey(entry.getProperty()) ||
-                    !state.getValue(entry.getProperty()).equals(entry.getValue())) {
-                return false;
-            }
+    private boolean matchesState(BlockState blockState, FluidState fluidState, PtaStateRecord<?> stateRecord, boolean isBlock) {
+        if (isBlock) {
+            return blockState.getProperties().contains(stateRecord.property())
+                    && blockState.getValue(stateRecord.property()).equals(stateRecord.value());
+        } else {
+            return fluidState.getProperties().contains(stateRecord.property())
+                    && fluidState.getValue(stateRecord.property()).equals(stateRecord.value());
         }
-        return true;
     }
 
-    private boolean matchesItem(ItemStack itemStack, ItemStack requiredItemStack) {
-        return itemStack.is(requiredItemStack.getItem());
+    private boolean matchesItem(ItemStack itemStack, Set<Item> itemSet) {
+        return itemSet.isEmpty() || itemSet.contains(itemStack.getItem());
     }
 
-    private boolean matchesNBT(ItemStack itemStack, CompoundTag requiredNBT) {
-        if (requiredNBT.isEmpty()) { return true; }
+    private boolean matchesNBTWhitelist(ItemStack itemStack, CompoundTag nbtWhitelist) {
+        return TagHelper.containsRequiredTagsWithRange(itemStack.getTag(), nbtWhitelist);
+    }
 
-        CompoundTag itemNBT = itemStack.getTag();
-        if (itemNBT == null) { return false; }
+    private boolean matchesNBTBlacklist(ItemStack itemStack, CompoundTag nbtBlacklist) {
+        return TagHelper.containsRequiredTagsWithRangeBlacklist(itemStack.getTag(), nbtBlacklist);
+    }
 
-        return TagHelper.checkNBTs(itemNBT, requiredNBT, true);
+    public int getJEIRowCount() {
+        int maxPool = 0;
+
+        for (PtaInteraction interaction : interactions.values()) {
+            if (maxPool < interaction.getPool().getTotalPoolSize())
+                maxPool = interaction.getPool().getTotalPoolSize();
+        }
+
+        return (int) Math.ceil(maxPool / 9.0);
     }
 }

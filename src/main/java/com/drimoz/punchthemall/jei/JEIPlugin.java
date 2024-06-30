@@ -1,7 +1,7 @@
 package com.drimoz.punchthemall.jei;
 
 import com.drimoz.punchthemall.PunchThemAll;
-import com.drimoz.punchthemall.core.model.Interaction;
+import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -13,7 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 
 @JeiPlugin
 public class JEIPlugin implements IModPlugin {
-    public static final RecipeType<Interaction> INTERACTION_RECIPE_TYPE = RecipeType.create(PunchThemAll.MOD_ID, "air_interactions", Interaction.class);
+    public static final RecipeType<PtaInteraction> INTERACTION_RECIPE_TYPE = RecipeType.create(PunchThemAll.MOD_ID, "air_interactions", PtaInteraction.class);
 
 
     @Override

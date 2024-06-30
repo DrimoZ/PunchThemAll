@@ -26,4 +26,11 @@ public class TranslationKeys {
 
     public static final String INTERACTION_BIOME_WHITELIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.whitelist";
     public static final String INTERACTION_BIOME_BLACKLIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.blacklist";
+
+
+    public static final String TEXT_HOLD = "gui." + PunchThemAll.MOD_ID + ".category.text.hold";
+    public static final String TEXT_DISPLAY = "gui." + PunchThemAll.MOD_ID + ".category.text.display";
+    public static final String TEXT_STATE = "gui." + PunchThemAll.MOD_ID + ".category.text.state";
+    public static final String TEXT_NBT = "gui." + PunchThemAll.MOD_ID + ".category.text.nbt";
+
 }

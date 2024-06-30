@@ -1,18 +1,18 @@
-package com.drimoz.punchthemall.core.model;
+package com.drimoz.punchthemall.core.model.enums;
 
-public enum EInteractionHand {
+public enum PtaHandEnum {
     ANY_HAND("any"),
     MAIN_HAND("main"),
     OFF_HAND("off");
 
     private final String value;
 
-    EInteractionHand(String value) {
+    PtaHandEnum(String value) {
         this.value = value;
     }
 
-    public static EInteractionHand fromValueOrName(String type) {
-        for (EInteractionHand interactionType : EInteractionHand.values()) {
+    public static PtaHandEnum fromValueOrName(String type) {
+        for (PtaHandEnum interactionType : PtaHandEnum.values()) {
             if (interactionType.value.equalsIgnoreCase(type) || interactionType.name().equalsIgnoreCase(type)) {
                 return interactionType;
             }
@@ -20,8 +20,8 @@ public enum EInteractionHand {
         throw new IllegalArgumentException("Unknown interaction type: " + type);
     }
 
-    public static EInteractionHand fromValue(String type) {
-        for (EInteractionHand interactionType : EInteractionHand.values()) {
+    public static PtaHandEnum fromValue(String type) {
+        for (PtaHandEnum interactionType : PtaHandEnum.values()) {
             if (interactionType.value.equalsIgnoreCase(type)) {
                 return interactionType;
             }
@@ -29,8 +29,8 @@ public enum EInteractionHand {
         throw new IllegalArgumentException("Unknown interaction type: " + type);
     }
 
-    public static EInteractionHand fromName(String type) {
-        for (EInteractionHand interactionType : EInteractionHand.values()) {
+    public static PtaHandEnum fromName(String type) {
+        for (PtaHandEnum interactionType : PtaHandEnum.values()) {
             if (interactionType.name().equalsIgnoreCase(type)) {
                 return interactionType;
             }

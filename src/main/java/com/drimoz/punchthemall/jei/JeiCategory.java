@@ -1,6 +1,12 @@
 package com.drimoz.punchthemall.jei;
 
-import com.drimoz.punchthemall.core.model.*;
+import com.drimoz.punchthemall.core.model.classes.PtaBlock;
+import com.drimoz.punchthemall.core.model.classes.PtaHand;
+import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
+import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
+import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
+import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.util.TranslationKeys;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
@@ -16,16 +22,18 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.material.Fluid;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static com.drimoz.punchthemall.jei.JeiConstants.*;
 
-public class JeiCategory implements IRecipeCategory<Interaction> {
+public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     // Private Properties
 
@@ -80,7 +88,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
     // Interface
 
     @Override
-    public RecipeType<Interaction> getRecipeType() {
+    public RecipeType<PtaInteraction> getRecipeType() {
         return JEIPlugin.INTERACTION_RECIPE_TYPE;
     }
 
@@ -100,13 +108,13 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
     }
 
     @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, Interaction interaction, IFocusGroup focuses) {
+    public void setRecipe(IRecipeLayoutBuilder builder, PtaInteraction interaction, IFocusGroup focuses) {
         setupInteractionSlots(builder, interaction);
         setupDropSlots(builder, interaction);
     }
 
     @Override
-    public void draw(Interaction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphics graphics, double mouseX, double mouseY) {
+    public void draw(PtaInteraction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphics graphics, double mouseX, double mouseY) {
         drawIcons(interaction, graphics);
         drawSlots(interaction, graphics);
         drawTooltips(interaction, mouseX, mouseY, graphics);
@@ -114,55 +122,62 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
 
     // Inner Work ( Slot )
 
-    private void setupInteractionSlots(IRecipeLayoutBuilder builder, Interaction interaction) {
-        var handSlot = setupInputSlot(builder, getHandItemStack(interaction), 1 + X_HAND_ITEM, 1 + Y_HAND_ITEM);
-        if (interaction.hasInteractionHand()) {
-            handSlot.addTooltipCallback((recipeSlotView, tooltip) -> addStateAndNbtTooltip(tooltip, new ArrayList<>(0), interaction.getInteractionHand().getNbt()));
+    private void setupInteractionSlots(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
+        var handSlot = setupInputSlot(builder, getHandItemStack(interaction.getHand()), 1 + X_HAND_ITEM, 1 + Y_HAND_ITEM);
+        if (!interaction.getHand().isEmpty()) {
+            handSlot.addTooltipCallback(
+                    (recipeSlotView, tooltip) ->
+                            addStateAndNbtTooltip(tooltip,
+                                    new HashSet<>(0), new HashSet<>(0),
+                                    interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList()));
         }
-        var blockSlot = setupInputSlot(builder, getBlockItemStack(interaction), 1 + X_BLOCK, 1 + Y_BLOCK);
-        if (!interaction.interactWithAir()) {
-            blockSlot.addTooltipCallback((recipeSlotView, tooltip) -> {addStateAndNbtTooltip(tooltip, interaction.getInteractedBlock().getBlockBase().getStateEntries(), interaction.getInteractedBlock().getBlockBase().getNbt());});
+        var blockSlot = setupInputSlot(builder, getBlockItemStack(interaction.getBlock()), 1 + X_BLOCK, 1 + Y_BLOCK);
+        if (!interaction.getBlock().isAir()) {
+            blockSlot.addTooltipCallback(
+                    (recipeSlotView, tooltip) ->
+                            addStateAndNbtTooltip(tooltip,
+                                    interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
+                                    interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList()));
         }
 
-        if (interaction.getInteractedBlock().canTransform()) {
+        if (!interaction.getBlock().isAir() && interaction.getTransformation().hasTransformation()) {
             setupTransformationSlot(builder, interaction);
         }
     }
 
-    private void setupDropSlots(IRecipeLayoutBuilder builder, Interaction interaction) {
+    private void setupDropSlots(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
         int slotNumber = 0;
-        int totalWeight = interaction.getTotalPoolWeight();
+        int totalWeight = interaction.getPool().getTotalPoolWeight();
 
-        for (DropEntry result : interaction.getDropPool()) {
-            if (!result.isItemEmpty()) {
+        for (Map.Entry<PtaDropRecord, Integer> result : interaction.getPool().getDropPool().entrySet()) {
+            if (!result.getKey().isEmpty()) {
                 setupDropSlot(builder, result, slotNumber, totalWeight);
                 slotNumber++;
             }
         }
     }
 
-    private void setupTransformationSlot(IRecipeLayoutBuilder builder, Interaction interaction) {
-        var transformationSlot = setupOutputSlot(builder, getTransformationItemStack(interaction), 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION);
+    private void setupTransformationSlot(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
+        var transformationSlot = setupOutputSlot(builder, getTransformationItemStack(interaction.getTransformation()), 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION);
 
         transformationSlot.addTooltipCallback((slotView, tooltip) -> {
-            double chance = interaction.getInteractedBlock().getTransformationChance();
+            double chance = interaction.getTransformation().getChance();
             tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_CHANCE).getString() +
                     " : §l§5" + getTruncatedChance(chance, 0, 1) + "%"));
         });
     }
 
-    private void setupDropSlot(IRecipeLayoutBuilder builder, DropEntry result, int slotNumber, int totalPoolWeight) {
-        var slot = setupOutputSlot(builder, result.getItemStack(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
+    private void setupDropSlot(IRecipeLayoutBuilder builder, Map.Entry<PtaDropRecord, Integer> result, int slotNumber, int totalPoolWeight) {
+        var slot = setupOutputSlot(builder, result.getKey().getItemStack(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
 
         slot.addTooltipCallback((slotView, tooltip) -> {
             tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString() +
-                    " : §l§5" + getTruncatedChance(result.getChance(), 0, totalPoolWeight) + "%"));
+                    " : §l§5" + getTruncatedChance(result.getValue(), 0, totalPoolWeight) + "%"));
         });
     }
 
-    private IRecipeSlotBuilder setupInputSlot(IRecipeLayoutBuilder builder, ItemStack itemStack, int x, int y) {
-        return builder.addSlot(RecipeIngredientRole.INPUT, x, y)
-                .addItemStack(itemStack);
+    private IRecipeSlotBuilder setupInputSlot(IRecipeLayoutBuilder builder, List<ItemStack> itemStacks, int x, int y) {
+        return builder.addSlot(RecipeIngredientRole.INPUT, x, y).addItemStacks(itemStacks);
     }
 
     private IRecipeSlotBuilder setupOutputSlot(IRecipeLayoutBuilder builder, ItemStack itemStack, int x, int y) {
@@ -172,45 +187,45 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
 
     // Inner Work ( ItemStack )
 
-    private ItemStack getHandItemStack(Interaction interaction) {
-        if (interaction.hasInteractionHand() && interaction.getInteractionHand().getItemStack() != null) {
-            return interaction.getInteractionHand().getItemStack();
+    private List<ItemStack> getHandItemStack(PtaHand hand) {
+        if (!hand.isEmpty()) {
+            return hand.getStacks();
         } else {
-            return new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_HAND_NO_ITEM).getString()));
+            return List.of(new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_HAND_NO_ITEM).getString())));
         }
     }
 
-    private ItemStack getBlockItemStack(Interaction interaction) {
-        if (interaction.getInteractedBlock().isAir()) {
-            return new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_BLOCK_WITH_AIR).getString()));
-        } else if (interaction.getInteractedBlock().getBlockBase().isBlock()) {
-            return new ItemStack(interaction.getInteractedBlock().getBlockBase().getBlock().asItem());
+    private List<ItemStack> getBlockItemStack(PtaBlock block) {
+        if (block.isAir()) {
+            return List.of(new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_BLOCK_WITH_AIR).getString())));
+        } else if (block.isBlock()) {
+            return block.getBlockStacks();
         } else {
-            return new ItemStack(interaction.getInteractedBlock().getBlockBase().getFluid().getBucket());
+            return block.getFluidStacks();
         }
     }
 
-    private ItemStack getTransformationItemStack(Interaction interaction) {
-        if (interaction.getInteractedBlock().isTransformedAir()) {
+    private ItemStack getTransformationItemStack(PtaTransformation transformation) {
+        if (transformation.isAir()) {
             return new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_BREAK).getString()));
-        } else if (interaction.getInteractedBlock().getTransformedBase().isBlock()) {
-            return new ItemStack(interaction.getInteractedBlock().getTransformedBase().getBlock().asItem());
+        } else if (transformation.isBlock()) {
+            return new ItemStack(transformation.getBlock());
         } else {
-            return new ItemStack(interaction.getInteractedBlock().getTransformedBase().getFluid().getBucket());
+            return new ItemStack(transformation.getFluid().getBucket());
         }
     }
 
     // Inner Work ( Draw )
 
-    private void drawIcons(Interaction interaction, GuiGraphics graphics) {
-        IDrawable mouseIcon = interaction.getInteractionType().isLeftClick() ? MOUSE_LEFT_CLICK : MOUSE_RIGHT_CLICK;
+    private void drawIcons(PtaInteraction interaction, GuiGraphics graphics) {
+        IDrawable mouseIcon = interaction.getType().isLeftClick() ? MOUSE_LEFT_CLICK : MOUSE_RIGHT_CLICK;
         mouseIcon.draw(graphics, X_MOUSE_ICON, Y_MOUSE_ICON);
 
-        IDrawable sneakIcon = interaction.getInteractionType().isShiftClick() ? SNEAK_CLICK : REGULAR_CLICK;
+        IDrawable sneakIcon = interaction.getType().isShiftClick() ? SNEAK_CLICK : REGULAR_CLICK;
         sneakIcon.draw(graphics, X_SNEAK_ICON, Y_SNEAK_ICON);
 
-        if (interaction.getInteractionHand() != null) {
-            IDrawable handIcon = switch (interaction.getInteractionHand().getHandType()) {
+        if (!interaction.getHand().isEmpty()) {
+            IDrawable handIcon = switch (interaction.getHand().getHand()) {
                 case ANY_HAND -> ANY_HAND;
                 case MAIN_HAND -> MAIN_HAND;
                 case OFF_HAND -> OFF_HAND;
@@ -218,33 +233,33 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
             handIcon.draw(graphics, X_HAND_ICON, Y_HAND_ICON);
         }
 
-        if (interaction.hasBiomeFilter()) {
-            IDrawable biomeIcon = interaction.isBiomeWhitelist() ? BIOME_WHITELIST : BIOME_BLACKLIST;
+        if (interaction.hasBiomeBlackList() || interaction.hasBiomeWhiteList()) {
+            IDrawable biomeIcon = interaction.hasBiomeWhiteList() ? BIOME_WHITELIST : BIOME_BLACKLIST;
             biomeIcon.draw(graphics, X_BIOMES, Y_BIOMES);
         }
 
         ARROW.draw(graphics, X_ARROW, Y_ARROW);
     }
 
-    private void drawSlots(Interaction interaction, GuiGraphics graphics) {
+    private void drawSlots(PtaInteraction interaction, GuiGraphics graphics) {
         SLOT.draw(graphics, X_HAND_ITEM, Y_HAND_ITEM);
         SLOT.draw(graphics, X_BLOCK, Y_BLOCK);
 
-        if (interaction.getInteractedBlock().canTransform()) {
+        if (interaction.getTransformation().hasTransformation()) {
             SLOT.draw(graphics, X_TRANSFORMATION, Y_TRANSFORMATION);
         }
 
-        for (int i = 0; i < interaction.getJeiRowCount(); i++) {
+        for (int i = 0; i < interaction.getPool().getJEIRowCount(); i++) {
             SLOT_ROW.draw(graphics, 0, HEIGHT_START + i * 18);
         }
     }
 
-    private void drawTooltips(Interaction interaction, double mouseX, double mouseY, GuiGraphics graphics) {
+    private void drawTooltips(PtaInteraction interaction, double mouseX, double mouseY, GuiGraphics graphics) {
         if (isMouseOver(mouseX, mouseY, X_MOUSE_ICON + 1, Y_MOUSE_ICON + 1, 16, 16)) {
             graphics.renderTooltip(
                     Minecraft.getInstance().font,
                     Component.translatable(
-                            interaction.getInteractionType().isLeftClick() ?
+                            interaction.getType().isLeftClick() ?
                                     TranslationKeys.INTERACTION_CLICK_LEFT :
                                     TranslationKeys.INTERACTION_CLICK_RIGHT),
                     (int) mouseX,
@@ -255,31 +270,37 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
             graphics.renderTooltip(
                     Minecraft.getInstance().font,
                     Component.translatable(
-                            interaction.getInteractionType().isShiftClick() ?
+                            interaction.getType().isShiftClick() ?
                                     TranslationKeys.INTERACTION_POSITION_SNEAK :
                                     TranslationKeys.INTERACTION_POSITION_UP),
                     (int) mouseX,
                     (int) mouseY);
         }
 
-        if (interaction.hasInteractionHand() && isMouseOver(mouseX, mouseY, X_HAND_ICON + 1, Y_HAND_ICON + 1, 16, 16)) {
+        if (!interaction.getHand().isEmpty() && isMouseOver(mouseX, mouseY, X_HAND_ICON + 1, Y_HAND_ICON + 1, 16, 16)) {
             graphics.renderTooltip(
                     Minecraft.getInstance().font,
-                    Component.translatable(getHandTranslationKey(interaction.getInteractionHand().getHandType())),
+                    Component.translatable(getHandTranslationKey(interaction.getHand().getHand())),
                     (int) mouseX,
                     (int) mouseY);
         }
 
-        if (!interaction.getBiomes().isEmpty() && isMouseOver(mouseX, mouseY, X_BIOMES + 1, Y_BIOMES + 1, 16, 16)) {
+        if ((interaction.hasBiomeWhiteList() || interaction.hasBiomeBlackList()) && isMouseOver(mouseX, mouseY, X_BIOMES + 1, Y_BIOMES + 1, 16, 16)) {
             List<Component> tooltipComponents = new ArrayList<>();
             tooltipComponents.add(Component.literal("§7" +
-                    Component.translatable(interaction.isBiomeWhitelist() ?
+                    Component.translatable(interaction.hasBiomeWhiteList() ?
                             TranslationKeys.INTERACTION_BIOME_WHITELIST :
                             TranslationKeys.INTERACTION_BIOME_BLACKLIST).getString() +
                     " : "));
 
-            for (String biome : interaction.getBiomes()) {
-                tooltipComponents.add(Component.literal("§6- " + biome.toLowerCase()));
+            if (interaction.hasBiomeWhiteList()) {
+                for (String biome : interaction.getBiomeWhitelist()) {
+                    tooltipComponents.add(Component.literal("§6- " + biome.toLowerCase()));
+                }
+            } else {
+                for (String biome : interaction.getBiomeBlackList()) {
+                    tooltipComponents.add(Component.literal("§6- " + biome.toLowerCase()));
+                }
             }
 
             graphics.renderTooltip(Minecraft.getInstance().font, tooltipComponents, Optional.empty(), (int) mouseX, (int) mouseY);
@@ -297,7 +318,7 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         return Math.floor(chance * 1_000_000) / 1_000_000;
     }
 
-    private String getHandTranslationKey(EInteractionHand hand) {
+    private String getHandTranslationKey(PtaHandEnum hand) {
         switch (hand) {
             case ANY_HAND:
                 return TranslationKeys.INTERACTION_HAND_ANY;
@@ -310,22 +331,68 @@ public class JeiCategory implements IRecipeCategory<Interaction> {
         }
     }
 
-    private void addStateAndNbtTooltip(List<Component> tooltip, List<StateEntry<?>> stateEntries, CompoundTag nbt) {
+    private void addStateAndNbtTooltip(List<Component> tooltip, Set<PtaStateRecord<?>> whitelistStates, Set<PtaStateRecord<?>> blacklistStates, CompoundTag whitelistNbt, CompoundTag blacklistNbt) {
+        boolean isShiftKeyDown = Minecraft.getInstance().options.keyShift.isDown();
+        boolean isSprintKeyDown = Minecraft.getInstance().options.keySprint.isDown();
+
+        if (!isShiftKeyDown) {
+            tooltip.add(
+                    Component.literal(
+                            "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
+                                    Minecraft.getInstance().options.keyShift.getTranslatedKeyMessage().getString() + " §b] " +
+                                    Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " " +
+                                    Component.translatable(TranslationKeys.TEXT_STATE).getString()
+                    )
+            );
+        }
+        if (!isSprintKeyDown) {
+            tooltip.add(
+                    Component.literal(
+                            "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
+                                    Minecraft.getInstance().options.keySprint.getTranslatedKeyMessage().getString() + " §b] " +
+                                    Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " "  +
+                                    Component.translatable(TranslationKeys.TEXT_NBT).getString()
+                    )
+            );
+        }
+
         // Add state tooltip if entries are present
-        if (!stateEntries.isEmpty()) {
+        if (!whitelistStates.isEmpty() || !blacklistStates.isEmpty()) {
             tooltip.add(Component.literal(""));
             tooltip.add(Component.literal("§6State :"));
-            for (StateEntry<?> state : stateEntries) {
-                tooltip.add(Component.literal("§8 - " + state.getProperty().getName() + " : §5" + state.getValue().toString()));
+
+            if (!whitelistStates.isEmpty()) {
+                tooltip.add(Component.literal(" Whitelist :"));
+                for (PtaStateRecord<?> state : whitelistStates) {
+                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value().toString()));
+                }
+            }
+
+            if (!blacklistStates.isEmpty()) {
+                tooltip.add(Component.literal(" Blacklist :"));
+                for (PtaStateRecord<?> state : whitelistStates) {
+                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value().toString()));
+                }
             }
         }
 
         // Add NBT tooltip if NBT tag is present
-        if (!nbt.isEmpty()) {
+        if (!whitelistStates.isEmpty() || !blacklistStates.isEmpty()) {
             tooltip.add(Component.literal(""));
             tooltip.add(Component.literal("§6NBT :"));
-            for (String key : nbt.getAllKeys()) {
-                tooltip.add(Component.literal("§8 - " + key + " : §5" + nbt.get(key)));
+
+            if (!whitelistNbt.isEmpty()) {
+                tooltip.add(Component.literal(" Whitelist :"));
+                for (String key : whitelistNbt.getAllKeys()) {
+                    tooltip.add(Component.literal("§8  - " + key + " : §5" + whitelistNbt.get(key)));
+                }
+            }
+
+            if (!blacklistNbt.isEmpty()) {
+                tooltip.add(Component.literal(" Blacklist :"));
+                for (String key : blacklistNbt.getAllKeys()) {
+                    tooltip.add(Component.literal("§8  - " + key + " : §5" + blacklistNbt.get(key)));
+                }
             }
         }
     }

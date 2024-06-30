@@ -11,7 +11,13 @@
   "gui.pta.category.hand.off": "Off Hand",
   "gui.pta.category.block.with_air": "In Air",
   "gui.pta.category.transformation.chance": "Transformation Chance",
-  "gui.pta.category.transformation.break": "Broken Block",
+  "gui.pta.category.transformation.break": "Air",
   "gui.pta.category.biome.whitelist": "Biome Whitelist",
-  "gui.pta.category.biome.blacklist": "Biome Blacklist"
+  "gui.pta.category.biome.blacklist": "Biome Blacklist",
+  "gui.pta.category.text.hold": "Hold",
+  "gui.pta.category.text.display": "to display",
+  "gui.pta.category.text.nbt": "NBTs",
+  "gui.pta.category.text.state": "BlockStates",
+  "gui.pta.category.text.whitelist": "Whitelist",
+  "gui.pta.category.text.blacklist": "Blacklist"
 }

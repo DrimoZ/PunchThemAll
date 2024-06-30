@@ -1,7 +1,8 @@
 package com.drimoz.punchthemall.core.registry;
 
 import com.drimoz.punchthemall.PunchThemAll;
-import com.drimoz.punchthemall.core.model.Interaction;
+import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
@@ -24,26 +25,22 @@ public class InteractionLoader {
         }
 
         var files = dir.listFiles((FileFilter) FileFilterUtils.suffixFileFilter(".json"));
-
-        if (files == null)
-            return;
-
-
+        if (files == null) return;
 
         for (var file : files) {
             JsonObject json;
             InputStreamReader reader = null;
             ResourceLocation id = null;
-            Interaction interaction = null;
+            PtaInteraction interaction = null;
 
             try {
-                var parser = new JsonParser();
                 reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8);
-                json = parser.parse(reader).getAsJsonObject();
+                json = JsonParser.parseReader(reader).getAsJsonObject();
                 var name = file.getName().replace(".json", "");
                 id = new ResourceLocation(PunchThemAll.MOD_ID, name);
 
-                interaction = InteractionCreator.create(id, json);
+                interaction = InteractionCreator.createInteraction(id, json);
+                PTALoggers.error("Interaction Created : " + interaction);
 
                 reader.close();
             } catch (Exception e) {

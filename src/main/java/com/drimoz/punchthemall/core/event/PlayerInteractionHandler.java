@@ -1,13 +1,17 @@
 package com.drimoz.punchthemall.core.event;
 
-import com.drimoz.punchthemall.core.model.*;
+import com.drimoz.punchthemall.core.model.classes.*;
+import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
+import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
+import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.FluidState;
@@ -15,12 +19,12 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class EventHandler {
+public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
     private static final Long COOLDOWN_INTERVAL = 1L;
 
@@ -29,32 +33,32 @@ public class EventHandler {
         if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
         if (event.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
-        handlePlayerInteract(EInteractionType.LEFT_CLICK, true, event);
+        handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, true, event);
     }
 
     @SubscribeEvent
     public static void onPlayerRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
-        handlePlayerInteract(EInteractionType.RIGHT_CLICK, true, event);
+        handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, true, event);
     }
 
     @SubscribeEvent
     public static void onPlayerLeftClickItem(PlayerInteractEvent.LeftClickEmpty event) {
         if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
-        handlePlayerInteract(EInteractionType.LEFT_CLICK, false, event);
+        handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, event);
     }
 
     @SubscribeEvent
     public static void onPlayerRightClickItem(PlayerInteractEvent.RightClickItem event) {
         if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
-        handlePlayerInteract(EInteractionType.RIGHT_CLICK, false, event);
+        handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, event);
     }
 
     private static void handlePlayerInteract(
-            EInteractionType type, boolean clickOnBlock, PlayerInteractEvent event
+            PtaTypeEnum type, boolean clickOnBlock, PlayerInteractEvent event
     ) {
         Player player = event.getEntity();
         Level level = event.getLevel();
@@ -67,11 +71,11 @@ public class EventHandler {
         boolean interactionProcessed = false;
         boolean blockTransformed = false;
 
-        List<Interaction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
+        Set<PtaInteraction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
+        PTALoggers.error(" Handle Interactions : " + interactions.size());
 
-
-        for (Interaction interaction : interactions) {
-            if (interaction.getInteractedBlock().getBlockType().equals(EInteractionBlock.AIR)) {
+        for (PtaInteraction interaction : interactions) {
+            if (interaction.getBlock().isAir()) {
                 if (processInteraction(player, level, player.blockPosition(), Direction.UP, interaction)) {
                     interactionProcessed = true;
                 }
@@ -79,8 +83,9 @@ public class EventHandler {
             else {
                 if (!blockTransformed && processInteraction(player, level, blockPos, direction, interaction)) {
                     interactionProcessed = true;
-                    if (shouldBlockTransform(interaction.getInteractedBlock())) {
-                        transformBlock(level, blockPos, interaction.getInteractedBlock().getTransformedBase());
+                    if (shouldBlockTransform(interaction.getTransformation())) {
+                        PTALoggers.error("TRANSFORMATION NEEDED");
+                        transformBlock(level, blockPos, interaction.getTransformation());
                         blockTransformed = true;
                     }
                 }
@@ -89,55 +94,58 @@ public class EventHandler {
 
 
         if (interactionProcessed) {
+            PTALoggers.error("Has Processed Interaction");
             event.setCanceled(true);
             setPlayerOnCooldown(player.getUUID(), player.tickCount);
         }
     }
 
-    private static boolean processInteraction(Player player, Level level, BlockPos pos, Direction face, Interaction interaction) {
-        InteractionHand interactionHand = interaction.getInteractionHand();
+    private static boolean processInteraction(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction) {
+        PtaHand hand = interaction.getHand();
+
         ItemStack playerMainHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
         ItemStack playerOffHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.OFF_HAND);
 
-        if (interactionHand == null || interactionHand.getItemStack().isEmpty()) {
+        if (hand.isEmpty()) {
             if (playerMainHandItem.isEmpty()) {
-                dropItem(level, pos, face, interaction.getRandomItem());
+                dropItem(level, pos, face, interaction.getPool().getRandomItemStack());
                 return true;
             }
             return false;
         }
 
-        switch (interactionHand.getHandType()) {
+        switch (hand.getHand()) {
             case ANY_HAND -> {
                 if (tryDropItem(player, level, pos, face, interaction, playerMainHandItem) ||
                         tryDropItem(player, level, pos, face, interaction, playerOffHandItem)) {
                     return true;
                 }
-                break;
             }
             case MAIN_HAND -> {
                 if(tryDropItem(player, level, pos, face, interaction, playerMainHandItem)) {
                     return true;
                 }
-                break;
             }
             case OFF_HAND -> {
                 if(tryDropItem(player, level, pos, face, interaction, playerOffHandItem)) {
                     return true;
                 }
-                break;
             }
         }
 
         return false;
     }
 
-    private static boolean tryDropItem(Player player, Level level, BlockPos pos, Direction face, Interaction interaction, ItemStack handItem) {
-        if (handItem.is(interaction.getInteractionHand().getItemStack().getItem())) {
-            dropItem(level, pos, face, interaction.getRandomItem());
-            if (interaction.getInteractionHand().isDamageable() && handItem.isDamageableItem()) {
+    private static boolean tryDropItem(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
+        if (interaction.getHand().getItemSet().contains(handItem.getItem())) {
+            if (interaction.getHand().isConsumed() && interaction.getHand().shouldConsume()) {
+                consumeItem(handItem);
+            }
+            else if (interaction.getHand().isDamageable() && handItem.isDamageableItem() && interaction.getHand().shouldConsume()) {
                 useItemDurability(handItem, player);
             }
+
+            dropItem(level, pos, face, interaction.getPool().getRandomItemStack());
             return true;
         }
         return false;
@@ -150,6 +158,10 @@ public class EventHandler {
         }
     }
 
+    private static void consumeItem(ItemStack itemStack) {
+        itemStack.shrink(1);
+    }
+
     private static void dropItem(Level level, BlockPos pos, Direction face, ItemStack itemStack) {
         double x = pos.getX() + 0.5 + face.getStepX() * 0.75;
         double y = pos.getY() + 0.5 + face.getStepY() * 0.75;
@@ -160,28 +172,33 @@ public class EventHandler {
         level.addFreshEntity(itemEntity);
     }
 
-    private static boolean shouldBlockTransform(InteractedBlock interactedBlock) {
-        if (interactedBlock.getTransformationChance() > 0) {
+    private static boolean shouldBlockTransform(PtaTransformation transformation) {
+        if (transformation.getChance() > 0) {
             double randomValue = ThreadLocalRandom.current().nextDouble();
-            return randomValue <= interactedBlock.getTransformationChance();
+            return randomValue <= transformation.getChance();
         }
         return false;
     }
 
-    private static void transformBlock(Level level, BlockPos pos, InteractionBlock transformedBlock) {
-        if (transformedBlock.isBlock()) {
-            BlockState state = transformedBlock.getBlock().defaultBlockState();
+    private static void transformBlock(Level level, BlockPos pos, PtaTransformation transformedBlock) {
+        if (transformedBlock.isAir()) {
+            level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
+        }
+        else if (transformedBlock.isBlock()) {
+            BlockState currentState = level.getBlockState(pos);
+            BlockState newState = transformedBlock.getBlock().defaultBlockState();
 
-            for (StateEntry<?> entry : transformedBlock.getStateEntries()) {
-                state = applyStateEntry(state, entry);
+            for (PtaStateRecord<?> entry : transformedBlock.getStateList()) {
+                newState = applyStateEntry(newState, entry, currentState);
             }
 
-            level.setBlockAndUpdate(pos, state);
+            level.setBlockAndUpdate(pos, newState);
         }
         else {
+            // Apply the same for fluids
             FluidState state = transformedBlock.getFluid().defaultFluidState();
 
-            for (StateEntry<?> entry : transformedBlock.getStateEntries()) {
+            for (PtaStateRecord<?> entry : transformedBlock.getStateList()) {
                 state = applyStateEntry(state, entry);
             }
 
@@ -189,15 +206,33 @@ public class EventHandler {
         }
     }
 
-    private static <T extends Comparable<T>> BlockState applyStateEntry(BlockState state, StateEntry<T> entry) {
-        Property<T> property = entry.getProperty();
-        T value = entry.getValue();
+    /*BlockState state = transformedBlock.getBlock().defaultBlockState();
+
+            for (PtaStateRecord<?> entry : transformedBlock.getStateList()) {
+                state = applyStateEntry(state, entry);
+            }
+
+            level.setBlockAndUpdate(pos, state);*/
+
+    private static <T extends Comparable<T>> BlockState applyStateEntry(BlockState state, PtaStateRecord<T> entry, BlockState currentState) {
+        Property<T> property = entry.property();
+        T value = entry.value();
+
+        if ("copy_state_value".equals(entry.value())) {
+            if (currentState.hasProperty(property)) {
+                value = currentState.getValue(property);
+            } else {
+                return state;
+            }
+        }
+
         return state.setValue(property, value);
     }
 
-    private static <T extends Comparable<T>> FluidState applyStateEntry(FluidState state, StateEntry<T> entry) {
-        Property<T> property = entry.getProperty();
-        T value = entry.getValue();
+
+    private static <T extends Comparable<T>> FluidState applyStateEntry(FluidState state, PtaStateRecord<T> entry) {
+        Property<T> property = entry.property();
+        T value = entry.value();
         return state.setValue(property, value);
     }
 

@@ -3,6 +3,7 @@ package com.drimoz.punchthemall.core.checker;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.tags.ITagManager;
@@ -37,5 +38,13 @@ public class FluidChecker {
         }
 
         return fluidTagManager.getTag(tagKey).stream().collect(Collectors.toCollection(HashSet::new));
+    }
+
+    public static boolean isFluidTagExisting(String fluidTag) {
+        ResourceLocation tagId = new ResourceLocation(fluidTag);
+        TagKey<Fluid> tagKey = TagKey.create(ForgeRegistries.FLUIDS.getRegistryKey(), tagId);
+        ITagManager<Fluid> fluidTagManager = ForgeRegistries.FLUIDS.tags();
+
+        return fluidTagManager != null && fluidTagManager.getTagNames().anyMatch(fluidTagKey -> fluidTagKey.location().equals(tagKey.location()));
     }
 }

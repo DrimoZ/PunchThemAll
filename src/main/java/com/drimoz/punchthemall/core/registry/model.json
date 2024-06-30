@@ -1,0 +1,58 @@
+{
+  "type": "",
+
+  "hand": {
+    "hand": "",
+    "item": {
+      "item/tag": "",
+      "nbt": {
+        "whitelist": [],
+        "blacklist": []
+      }
+    },
+    "consumable": false,
+    "damageable": false,
+    "chance": 0
+  },
+
+  "block": {
+    "block/fluid/tag": "",
+    "nbt": {
+      "whitelist": {},
+      "blacklist": {}
+    },
+    "state": {
+      "whitelist": {
+        "s1" : "",
+        "s2": ""
+      },
+      "blacklist": {}
+    }
+  },
+
+  "transformation": {
+    "chance": 0,
+    "block/fluid": "",
+    "nbt": {},
+    "state": {
+      "s1": "",
+      "s2": "copy_initial"
+    }
+  },
+
+  "pool": {
+    "pool": [
+      {
+        "item/tag": "",
+        "chance": 0,
+        "min": 0,
+        "max": 0
+      },
+      {
+        "item/tag": "",
+        "chance": 0,
+        "count": 0
+      }
+    ]
+  }
+}
