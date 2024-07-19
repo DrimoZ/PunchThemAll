@@ -92,8 +92,8 @@ public class PtaHand {
         return new PtaHand(hand, itemSet, nbtWhiteList, nbtBlackList, chance, damageable, consumed);
     }
 
-    public static PtaHand createEmpty() {
-        return new PtaHand(null, null, null, null, 0, false, false);
+    public static PtaHand createEmpty(PtaHandEnum hand) {
+        return new PtaHand(hand, null, null, null, 0, false, false);
     }
 
     protected PtaHand(PtaHandEnum hand, Set<Item> itemSet,  CompoundTag nbtWhiteList, CompoundTag nbtBlackList, double chance, boolean damageable, boolean consumed) {

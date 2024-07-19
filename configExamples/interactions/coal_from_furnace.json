@@ -1,0 +1,30 @@
+{
+  "type": "shift_right_click",
+
+  "hand": {
+    "hand": "main_hand"
+  },
+
+  "block": {
+    "block": "minecraft:furnace",
+    "state": {
+      "whitelist": {
+        "lit": true
+      }
+    }
+  },
+
+  "pool": [
+    {
+      "tag": "minecraft:coal",
+      "chance": 25,
+      "min": 1,
+      "max": 3
+    },
+    {
+      "item": "minecraft:air",
+      "chance": 75,
+      "count": 1
+    }
+  ]
+}

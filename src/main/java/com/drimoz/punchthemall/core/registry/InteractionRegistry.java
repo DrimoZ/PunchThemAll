@@ -160,7 +160,6 @@ public class InteractionRegistry {
 
         CompoundTag worldBlockEntityTag = worldBlockEntity.serializeNBT();
 
-
         boolean passesWhiteList = true, passesBlackList = true;
         if (interaction.getBlock().hasNbtWhiteList())
             passesWhiteList = TagHelper.containsRequiredTagsWithRange(worldBlockEntityTag, interaction.getBlock().getNbtWhiteList());

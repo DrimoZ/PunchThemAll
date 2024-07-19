@@ -1,5 +1,6 @@
 package com.drimoz.punchthemall.core.model.classes;
 
+import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import net.minecraft.resources.ResourceLocation;
 
@@ -78,7 +79,7 @@ public class PtaInteraction {
 
         this.id = id;
         this.type = type;
-        this.hand = hand == null ? PtaHand.createEmpty() : hand;
+        this.hand = hand == null ? PtaHand.createEmpty(PtaHandEnum.ANY_HAND) : hand;
         this.block = block == null ? PtaBlock.createAir() : block;
         this.transformation = transformation == null || this.block.isAir() ? PtaTransformation.createAir(0) : transformation;
         this.pool = pool;

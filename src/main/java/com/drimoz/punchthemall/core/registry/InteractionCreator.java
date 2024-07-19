@@ -88,7 +88,7 @@ public class InteractionCreator {
     // Inner Work ( Hand )
 
     private static PtaHand createHand(ResourceLocation id, JsonObject json) {
-        if (!json.has(STRING_HAND) || !json.get(STRING_HAND).isJsonObject()) return PtaHand.createEmpty();
+        if (!json.has(STRING_HAND) || !json.get(STRING_HAND).isJsonObject()) return PtaHand.createEmpty(PtaHandEnum.ANY_HAND);
 
         // Json
         JsonObject handJson = GsonHelper.getAsJsonObject(json, STRING_HAND);
@@ -103,7 +103,7 @@ public class InteractionCreator {
         // Items
         if (!handJson.has(STRING_HAND_ITEM)) {
             errorMissing(id, STRING_HAND_ITEM_FULL);
-            return null;
+            return PtaHand.createEmpty(hand);
         }
         JsonObject handItemJson = GsonHelper.getAsJsonObject(handJson, STRING_HAND_ITEM);
         Set<Item> itemSet = createHandItemSet(id, handItemJson);

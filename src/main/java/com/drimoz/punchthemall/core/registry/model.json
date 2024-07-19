@@ -6,8 +6,8 @@
     "item": {
       "item/tag": "",
       "nbt": {
-        "whitelist": [],
-        "blacklist": []
+        "whitelist": {},
+        "blacklist": {}
       }
     },
     "consumable": false,
@@ -22,10 +22,7 @@
       "blacklist": {}
     },
     "state": {
-      "whitelist": {
-        "s1" : "",
-        "s2": ""
-      },
+      "whitelist": {},
       "blacklist": {}
     }
   },
@@ -35,8 +32,7 @@
     "block/fluid": "",
     "nbt": {},
     "state": {
-      "s1": "",
-      "s2": "copy_initial"
+      "axis_y": "copy_initial"
     }
   },
 
