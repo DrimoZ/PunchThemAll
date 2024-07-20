@@ -4,14 +4,19 @@ import com.drimoz.punchthemall.core.model.classes.*;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
-import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.FluidState;
@@ -73,7 +78,6 @@ public class PlayerInteractionHandler {
 
         Set<PtaInteraction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
 
-        PTALoggers.error("Interaction count : " + interactions.size());
         for (PtaInteraction interaction : interactions) {
             if (interaction.getBlock().isAir()) {
                 if (processInteraction(player, level, player.blockPosition(), Direction.UP, interaction)) {
@@ -90,7 +94,6 @@ public class PlayerInteractionHandler {
                 }
             }
         }
-
 
         if (interactionProcessed) {
             event.setCanceled(true);
@@ -178,31 +181,57 @@ public class PlayerInteractionHandler {
         return false;
     }
 
-    private static void transformBlock(Level level, BlockPos pos, PtaTransformation transformedBlock) {
-        if (transformedBlock.isAir()) {
+    private static void transformBlock(Level level, BlockPos pos, PtaTransformation ptaTransformation) {
+
+        if (ptaTransformation.hasParticles()) {
+            ((ServerLevel) level).sendParticles(
+                    ptaTransformation.getParticles(),
+                    pos.getX() + 0.5,
+                    pos.getY() + 0.5,
+                    pos.getZ() + 0.5,
+                    25,
+                    0.5, 0.5, 0.5,
+                    1
+            );
+        }
+
+        if (ptaTransformation.isAir()) {
             level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
         }
-        else if (transformedBlock.isBlock()) {
+        else if (ptaTransformation.isBlock()) {
             BlockState currentState = level.getBlockState(pos);
-            BlockState newState = transformedBlock.getBlock().defaultBlockState();
+            BlockState newState = ptaTransformation.getBlock().defaultBlockState();
 
 
-            for (PtaStateRecord<?> entry : transformedBlock.getStateList()) {
+            for (PtaStateRecord<?> entry : ptaTransformation.getStateList()) {
                 newState = applyStateEntry(newState, entry, currentState);
             }
 
             level.setBlockAndUpdate(pos, newState);
+
+            if (ptaTransformation.hasNbtList()) {
+                applyNBTs(level, pos, ptaTransformation.getNbtList());
+            }
         }
         else {
-            // Apply the same for fluids
-            FluidState state = transformedBlock.getFluid().defaultFluidState();
+            FluidState state = ptaTransformation.getFluid().defaultFluidState();
 
-            for (PtaStateRecord<?> entry : transformedBlock.getStateList()) {
+            for (PtaStateRecord<?> entry : ptaTransformation.getStateList()) {
                 state = applyStateEntry(state, entry);
             }
 
             level.setBlockAndUpdate(pos, state.createLegacyBlock());
+
+            if (ptaTransformation.hasNbtList()) {
+                applyNBTs(level, pos, ptaTransformation.getNbtList());
+            }
         }
+
+        if (ptaTransformation.hasSound()) {
+            level.playSound(null, pos, ptaTransformation.getSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
+        }
+
+
     }
 
     private static <T extends Comparable<T>> BlockState applyStateEntry(BlockState state, PtaStateRecord<T> entry, BlockState currentState) {
@@ -225,7 +254,6 @@ public class PlayerInteractionHandler {
         return state.setValue(property, value);
     }
 
-
     private static <T extends Comparable<T>> FluidState applyStateEntry(FluidState state, PtaStateRecord<T> entry) {
         Property<T> property = entry.property();
         String valueString = entry.value();
@@ -241,6 +269,14 @@ public class PlayerInteractionHandler {
             }
         }
         return null;
+    }
+
+    private static void applyNBTs(Level level, BlockPos pos, CompoundTag customNBT) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity != null) {
+            blockEntity.load(customNBT);
+            blockEntity.setChanged();
+        }
     }
 
     // Inner work ( Player Cooldown )

@@ -1,7 +1,9 @@
 package com.drimoz.punchthemall.core.model.classes;
 
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
+import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
 
@@ -21,6 +23,8 @@ public class PtaTransformation {
     private final Fluid fluid;
     private final Set<PtaStateRecord<?>> stateList;
     private final CompoundTag nbtList;
+    private final SoundEvent sound;
+    private final ParticleOptions particles;
 
     // Calculated Properties
 
@@ -29,15 +33,15 @@ public class PtaTransformation {
     }
 
     public boolean isAir() {
-        return block == null && fluid == null;
+        return hasTransformation() && block == null && fluid == null;
     }
 
     public boolean isBlock() {
-        return block != null && fluid == null;
+        return hasTransformation() && block != null && fluid == null;
     }
 
     public boolean isFluid() {
-        return block == null && fluid != null;
+        return hasTransformation() && block == null && fluid != null;
     }
 
     public boolean hasStateList() {
@@ -48,8 +52,15 @@ public class PtaTransformation {
         return !nbtList.isEmpty();
     }
 
-    // Getters
+    public boolean hasSound() {
+        return hasTransformation() && sound != null;
+    }
 
+    public boolean hasParticles() {
+        return hasTransformation() && particles != null;
+    }
+
+    // Getters
 
     public double getChance() {
         return chance;
@@ -71,24 +82,33 @@ public class PtaTransformation {
         return nbtList;
     }
 
-    // Life cycle
-
-    public static PtaTransformation createBlock (double chance, Block block, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList) {
-        return new PtaTransformation(chance, block, null, stateList, nbtList);
+    public SoundEvent getSound() {
+        return sound;
     }
 
-    public static PtaTransformation createFluid (double chance, Fluid fluid, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList) {
-        return new PtaTransformation(chance, null, fluid, stateList, nbtList);
+    public ParticleOptions getParticles() {
+        return particles;
+    }
+
+    // Life cycle
+
+    public static PtaTransformation createBlock (double chance, Block block, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
+        return new PtaTransformation(chance, block, null, stateList, nbtList, sound, particles);
+    }
+
+    public static PtaTransformation createFluid (double chance, Fluid fluid, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
+        return new PtaTransformation(chance, null, fluid, stateList, nbtList, sound, particles);
     }
 
     public static PtaTransformation createAir (double chance) {
-        return new PtaTransformation(chance, null,null,null,null);
+        return new PtaTransformation(chance, null,null,null,null, null, null);
     }
 
     protected PtaTransformation (
             double chance,
             Block block, Fluid fluid,
-            Set<PtaStateRecord<?>> stateList, CompoundTag nbtList
+            Set<PtaStateRecord<?>> stateList, CompoundTag nbtList,
+            SoundEvent sound, ParticleOptions particles
     ) {
         if (block != null && fluid != null)
             throw new IllegalArgumentException("Transformation must be either a Fluid or a Block.");
@@ -100,12 +120,16 @@ public class PtaTransformation {
             this.fluid = null;
             this.stateList = new HashSet<>();
             this.nbtList = new CompoundTag();
+            this.sound = null;
+            this.particles = null;
         }
         else {
             this.block = block;
             this.fluid = fluid;
             this.stateList = stateList == null ? new HashSet<>() : stateList;
             this.nbtList = nbtList == null ? new CompoundTag() : nbtList;
+            this.sound = sound;
+            this.particles = particles;
         }
     }
 
@@ -123,6 +147,8 @@ public class PtaTransformation {
                 ", fluid=" + fluid +
                 ", stateList=" + stateList +
                 ", nbtList=" + nbtList +
+                ", sound=" + sound +
+                ", particles=" + particles +
                 '}';
     }
 }
