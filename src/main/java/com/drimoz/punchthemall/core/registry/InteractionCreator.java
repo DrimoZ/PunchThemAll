@@ -14,9 +14,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -24,11 +28,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraftforge.registries.ForgeRegistries;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static com.drimoz.punchthemall.core.registry.RegistryConstants.*;
 
@@ -55,7 +57,6 @@ public class InteractionCreator {
 
         // Pool
         PtaPool pool = createPool(id, json);
-        errorFormat(id, "FORMAT 6");
 
         // Biomes
         Set<String> biomeWhiteList = new HashSet<>(), biomeBlackList = new HashSet<>();
@@ -69,8 +70,6 @@ public class InteractionCreator {
                 biomeBlackList.addAll(GsonHelper.getAsJsonArray(biomeJson, STRING_BIOME_BLACKLIST).asList().stream().map(jsonElement -> jsonElement.getAsString().replace("\"", "")).toList());
             }
         }
-        errorFormat(id, "FORMAT 7");
-
 
         return new PtaInteraction(id, type, hand, block, transformation, pool, biomeWhiteList, biomeBlackList);
     }
@@ -321,10 +320,26 @@ public class InteractionCreator {
             nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(transformationJson, STRING_TRANSFORMATION_NBT));
         }
 
+        SoundEvent sound = null;
+        if (transformationJson.has(STRING_TRANSFORMATION_SOUND)) {
+            String soundName = GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_SOUND);
+            sound = ForgeRegistries.SOUND_EVENTS.getValue(new ResourceLocation(soundName));
+        }
+
+        // Particles
+        ParticleOptions particle = null;
+        if (transformationJson.has(STRING_TRANSFORMATION_PARTICLES)) {
+            String particleBlockId = GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_PARTICLES);
+
+            if (BlockChecker.doesBlockExist(particleBlockId)) {
+                particle = new BlockParticleOption(ParticleTypes.BLOCK, BlockChecker.getExistingBlock(particleBlockId).defaultBlockState());
+            }
+        }
+
         if (block != null)
-            return PtaTransformation.createBlock(chance, block, state, nbt);
+            return PtaTransformation.createBlock(chance, block, state, nbt, sound, particle);
         else if (fluid != null)
-            return PtaTransformation.createFluid(chance, fluid, state, nbt);
+            return PtaTransformation.createFluid(chance, fluid, state, nbt, sound, particle);
         return PtaTransformation.createAir(0);
     }
 
