@@ -26,4 +26,8 @@ public class JeiConstants {
         public static final int Y_TRANSFORMATION = Y_SNEAK_ICON;
         public static final int X_BIOMES = X_TRANSFORMATION;
         public static final int Y_BIOMES = Y_MOUSE_ICON;
+        public static final int X_DAMAGE = X_MOUSE_ICON + 18;
+        public static final int Y_DAMAGE = 0;
+        public static final int X_HUNGER = X_DAMAGE + 11;
+        public static final int Y_HUNGER = Y_DAMAGE;
 }

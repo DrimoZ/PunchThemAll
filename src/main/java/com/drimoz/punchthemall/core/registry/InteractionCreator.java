@@ -7,6 +7,7 @@ import com.drimoz.punchthemall.core.model.classes.*;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
+import com.drimoz.punchthemall.core.model.records.PtaInteractionRecord;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.google.gson.JsonArray;
@@ -43,6 +44,46 @@ public class InteractionCreator {
             return null;
         }
 
+        PtaInteractionRecord hunger = null;
+        if (json.has(STRING_HUNGER) && json.get(STRING_HUNGER).isJsonObject()) {
+            JsonObject hungerJson = GsonHelper.getAsJsonObject(json, STRING_HUNGER);
+
+            if (hungerJson.has(STRING_HUNGER_CHANCE) && hungerJson.get(STRING_HUNGER_CHANCE).isJsonPrimitive()) {
+                double chance = GsonHelper.getAsDouble(hungerJson, STRING_HUNGER_CHANCE);
+
+                if (hungerJson.has(STRING_HUNGER_COUNT) && hungerJson.get(STRING_HUNGER_COUNT).isJsonPrimitive()) {
+                    int count = GsonHelper.getAsInt(hungerJson, STRING_HUNGER_COUNT);
+                    hunger = new PtaInteractionRecord(chance, count, count);
+                }
+                else if(hungerJson.has(STRING_HUNGER_MIN) && hungerJson.get(STRING_HUNGER_MIN).isJsonPrimitive() &&
+                        hungerJson.has(STRING_HUNGER_MAX) && hungerJson.get(STRING_HUNGER_MAX).isJsonPrimitive()) {
+                    int min = GsonHelper.getAsInt(hungerJson, STRING_HUNGER_MIN);
+                    int max = GsonHelper.getAsInt(hungerJson, STRING_HUNGER_MAX);
+                    hunger = new PtaInteractionRecord(chance, min, max);
+                }
+            }
+        }
+
+        PtaInteractionRecord damage = null;
+        if (json.has(STRING_DAMAGE) && json.get(STRING_DAMAGE).isJsonObject()) {
+            JsonObject damageJson = GsonHelper.getAsJsonObject(json, STRING_DAMAGE);
+
+            if (damageJson.has(STRING_DAMAGE_CHANCE) && damageJson.get(STRING_DAMAGE_CHANCE).isJsonPrimitive()) {
+                double chance = GsonHelper.getAsDouble(damageJson, STRING_DAMAGE_CHANCE);
+
+                if (damageJson.has(STRING_DAMAGE_COUNT) && damageJson.get(STRING_DAMAGE_COUNT).isJsonPrimitive()) {
+                    int count = GsonHelper.getAsInt(damageJson, STRING_DAMAGE_COUNT);
+                    damage = new PtaInteractionRecord(chance, count, count);
+                }
+                else if(damageJson.has(STRING_DAMAGE_MIN) && damageJson.get(STRING_DAMAGE_MIN).isJsonPrimitive() &&
+                        damageJson.has(STRING_DAMAGE_MAX) && damageJson.get(STRING_DAMAGE_MAX).isJsonPrimitive()) {
+                    int min = GsonHelper.getAsInt(damageJson, STRING_DAMAGE_MIN);
+                    int max = GsonHelper.getAsInt(damageJson, STRING_DAMAGE_MAX);
+                    damage = new PtaInteractionRecord(chance, min, max);
+                }
+            }
+        }
+
         // Type
         PtaTypeEnum type = PtaTypeEnum.fromString(GsonHelper.getAsString(json, STRING_TYPE));
 
@@ -71,7 +112,7 @@ public class InteractionCreator {
             }
         }
 
-        return new PtaInteraction(id, type, hand, block, transformation, pool, biomeWhiteList, biomeBlackList);
+        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, pool, biomeWhiteList, biomeBlackList);
     }
 
     // Inner Work ( Global )

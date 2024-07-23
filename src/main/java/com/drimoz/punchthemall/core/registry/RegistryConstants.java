@@ -8,11 +8,33 @@ public class RegistryConstants {
     public static final String SEPARATOR = ".";
 
     public static final String STRING_TYPE = "type";
+    public static final String STRING_HUNGER = "hunger";
+    public static final String STRING_DAMAGE = "damage";
     public static final String STRING_HAND = "hand";
     public static final String STRING_BLOCK = "block";
     public static final String STRING_TRANSFORMATION = "transformation";
     public static final String STRING_POOL = "pool";
     public static final String STRING_BIOME = "biome";
+
+    // Hunger
+    public static final String STRING_HUNGER_CHANCE = "chance";
+    public static final String STRING_HUNGER_CHANCE_FULL = STRING_HUNGER + SEPARATOR + STRING_HUNGER_CHANCE;
+    public static final String STRING_HUNGER_COUNT = "count";
+    public static final String STRING_HUNGER_COUNT_FULL = STRING_HUNGER + SEPARATOR + STRING_HUNGER_COUNT;
+    public static final String STRING_HUNGER_MIN = "min";
+    public static final String STRING_HUNGER_MIN_FULL = STRING_HUNGER + SEPARATOR + STRING_HUNGER_MIN;
+    public static final String STRING_HUNGER_MAX = "max";
+    public static final String STRING_HUNGER_MAX_FULL = STRING_HUNGER + SEPARATOR + STRING_HUNGER_MAX;
+
+    // Damage
+    public static final String STRING_DAMAGE_CHANCE = "chance";
+    public static final String STRING_DAMAGE_CHANCE_FULL = STRING_DAMAGE + SEPARATOR + STRING_DAMAGE_CHANCE;
+    public static final String STRING_DAMAGE_COUNT = "count";
+    public static final String STRING_DAMAGE_COUNT_FULL = STRING_DAMAGE + SEPARATOR + STRING_DAMAGE_COUNT;
+    public static final String STRING_DAMAGE_MIN = "min";
+    public static final String STRING_DAMAGE_MIN_FULL = STRING_DAMAGE + SEPARATOR + STRING_DAMAGE_MIN;
+    public static final String STRING_DAMAGE_MAX = "max";
+    public static final String STRING_DAMAGE_MAX_FULL = STRING_DAMAGE + SEPARATOR + STRING_DAMAGE_MAX;
 
     // Hand
     public static final String STRING_HAND_HAND = "hand";

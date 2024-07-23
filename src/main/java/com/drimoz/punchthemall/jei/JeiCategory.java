@@ -21,13 +21,14 @@ import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NumericTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.material.Fluid;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -58,6 +59,9 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     private final IDrawable BIOME_WHITELIST;
     private final IDrawable BIOME_BLACKLIST;
 
+    private final IDrawable PLAYER_DAMAGE;
+    private final IDrawable PLAYER_HUNGER;
+
     // Life Cycle
 
     public JeiCategory(IGuiHelper guiHelper) {
@@ -83,6 +87,9 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
         this.BIOME_WHITELIST = guiHelper.createDrawable(JeiConstants.JEI_TEXTURE, 0, 36, 18, 18);
         this.BIOME_BLACKLIST = guiHelper.createDrawable(JeiConstants.JEI_TEXTURE, 18, 36, 18, 18);
+
+        this.PLAYER_DAMAGE = guiHelper.createDrawable(JeiConstants.JEI_TEXTURE, 0, 54, 11, 11);
+        this.PLAYER_HUNGER = guiHelper.createDrawable(JeiConstants.JEI_TEXTURE, 18, 54, 11, 11);
     }
 
     // Interface
@@ -126,11 +133,30 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         var handSlot = setupInputSlot(builder, getHandItemStack(interaction.getHand()), 1 + X_HAND_ITEM, 1 + Y_HAND_ITEM);
         if (!interaction.getHand().isEmpty()) {
             handSlot.addTooltipCallback(
-                    (recipeSlotView, tooltip) ->
-                            addStateAndNbtTooltip(tooltip,
-                                    new HashSet<>(0), new HashSet<>(0),
-                                    interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList()));
+                    (recipeSlotView, tooltip) -> {
+                        if (interaction.getHand().getChance() > 0) {
+                            tooltip.add(Component.empty());
+                            tooltip.add(
+                              Component.literal(
+                                      "§5" + getTruncatedChance(interaction.getHand().getChance(), 0, 1) + "% §7"
+                                              + Component.translatable(TranslationKeys.INTERACTION_HAND_CHANCE).getString() + " §5"
+                                              + (
+                                              interaction.getHand().isConsumed() ?
+                                                      Component.translatable(TranslationKeys.INTERACTION_HAND_CONSUME).getString() :
+                                                      Component.translatable(TranslationKeys.INTERACTION_HAND_DAMAGE).getString()
+                                              )
+                              )
+                            );
+                        }
+
+                        addStateAndNbtTooltip(tooltip,
+                                new HashSet<>(0), new HashSet<>(0),
+                                interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList()
+                        );
+                    }
+            );
         }
+
         var blockSlot = setupInputSlot(builder, getBlockItemStack(interaction.getBlock()), 1 + X_BLOCK, 1 + Y_BLOCK);
         if (!interaction.getBlock().isAir()) {
             blockSlot.addTooltipCallback(
@@ -158,7 +184,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     private void setupTransformationSlot(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
-        var transformationSlot = setupOutputSlot(builder, getTransformationItemStack(interaction.getTransformation()), 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION);
+        var transformationSlot = setupOutputSlot(builder, List.of(getTransformationItemStack(interaction.getTransformation())), 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION);
 
         transformationSlot.addTooltipCallback((slotView, tooltip) -> {
             double chance = interaction.getTransformation().getChance();
@@ -168,11 +194,35 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     private void setupDropSlot(IRecipeLayoutBuilder builder, Map.Entry<PtaDropRecord, Integer> result, int slotNumber, int totalPoolWeight) {
-        var slot = setupOutputSlot(builder, result.getKey().getItemStack(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
+        PtaDropRecord record = result.getKey();
+        IRecipeSlotBuilder slot = setupOutputSlot(builder, record.items().stream().map(ItemStack::new).toList(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
 
         slot.addTooltipCallback((slotView, tooltip) -> {
-            tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString() +
-                    " : §l§5" + getTruncatedChance(result.getValue(), 0, totalPoolWeight) + "%"));
+            tooltip.add(
+                    Component.literal(
+                            "§7" +
+                                    Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString() +
+                                    " : §5" + getTruncatedChance(result.getValue(), 0, totalPoolWeight) + "%"
+                    )
+            );
+
+            if (record.min() == record.max()) {
+                tooltip.add(
+                        Component.literal(
+                                "§7" +
+                                        Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() +
+                                        " : §5" + record.min()
+                        )
+                );
+            }
+            else {
+                tooltip.add(
+                        Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min())
+                );
+                tooltip.add(
+                        Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max())
+                );
+            }
         });
     }
 
@@ -180,9 +230,9 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         return builder.addSlot(RecipeIngredientRole.INPUT, x, y).addItemStacks(itemStacks);
     }
 
-    private IRecipeSlotBuilder setupOutputSlot(IRecipeLayoutBuilder builder, ItemStack itemStack, int x, int y) {
+    private IRecipeSlotBuilder setupOutputSlot(IRecipeLayoutBuilder builder, List<ItemStack> itemStacks, int x, int y) {
         return builder.addSlot(RecipeIngredientRole.OUTPUT, x, y)
-                .addItemStack(itemStack);
+                .addItemStacks(itemStacks);
     }
 
     // Inner Work ( ItemStack )
@@ -236,6 +286,14 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         if (interaction.hasBiomeBlackList() || interaction.hasBiomeWhiteList()) {
             IDrawable biomeIcon = interaction.hasBiomeWhiteList() ? BIOME_WHITELIST : BIOME_BLACKLIST;
             biomeIcon.draw(graphics, X_BIOMES, Y_BIOMES);
+        }
+
+        if (interaction.hasHurtPlayer()) {
+            PLAYER_DAMAGE.draw(graphics, X_DAMAGE, Y_DAMAGE);
+        }
+
+        if (interaction.hasConsumeFood()) {
+            PLAYER_HUNGER.draw(graphics, X_HUNGER + (interaction.hasHurtPlayer() ? 0 : -18), Y_HUNGER);
         }
 
         ARROW.draw(graphics, X_ARROW, Y_ARROW);
@@ -305,6 +363,48 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
             graphics.renderTooltip(Minecraft.getInstance().font, tooltipComponents, Optional.empty(), (int) mouseX, (int) mouseY);
         }
+
+        if (interaction.hasHurtPlayer() && isMouseOver(mouseX, mouseY, X_DAMAGE + 1, Y_DAMAGE + 1, 8, 8)) {
+            List<Component> tooltipComponents = new ArrayList<>();
+
+            tooltipComponents.add(Component.literal(
+                    Component.translatable(TranslationKeys.INTERACTION_DAMAGE_TITLE).getString()
+            ));
+            tooltipComponents.add(Component.literal(
+                    "§7 - " + Component.translatable(TranslationKeys.INTERACTION_DAMAGE_CHANCE).getString()
+                            + " : §5" + Math.floor((interaction.getHurtPlayer().chance() * 100) * 1_000_000) / 1_000_000 + "%"
+            ));
+            tooltipComponents.add(Component.literal(
+                    "§7 - " + Component.translatable(TranslationKeys.INTERACTION_DAMAGE_HEART).getString() + " : §5"
+                            + (interaction.getHurtPlayer().min() == interaction.getHurtPlayer().max() ?
+                                ((double) interaction.getHurtPlayer().min() / 2) :
+                                ((double) interaction.getHurtPlayer().min() / 2) + " - " + ((double) interaction.getHurtPlayer().max() / 2)
+                            )
+            ));
+
+            graphics.renderTooltip(Minecraft.getInstance().font, tooltipComponents,Optional.empty(), (int) mouseX, (int) mouseY);
+        }
+
+        if (interaction.hasConsumeFood() && isMouseOver(mouseX, mouseY, X_HUNGER + 1 + (interaction.hasHurtPlayer() ? 0 : -18), Y_HUNGER + 1, 8, 8)) {
+            List<Component> tooltipComponents = new ArrayList<>();
+
+            tooltipComponents.add(Component.literal(
+                    Component.translatable(TranslationKeys.INTERACTION_HUNGER_TITLE).getString()
+            ));
+            tooltipComponents.add(Component.literal(
+                    "§7 - " + Component.translatable(TranslationKeys.INTERACTION_HUNGER_CHANCE).getString()
+                            + " : §5" + Math.floor((interaction.getConsumeFood().chance() * 100) * 1_000_000) / 1_000_000 + "%"
+            ));
+            tooltipComponents.add(Component.literal(
+                    "§7 - " + Component.translatable(TranslationKeys.INTERACTION_HUNGER_HUNGER).getString() + " : §5"
+                            + (interaction.getConsumeFood().min() == interaction.getConsumeFood().max() ?
+                            ((double) interaction.getConsumeFood().min() / 2) :
+                            ((double) interaction.getConsumeFood().min() / 2) + " - " + ((double) interaction.getConsumeFood().max() / 2)
+                    )
+            ));
+
+            graphics.renderTooltip(Minecraft.getInstance().font, tooltipComponents,Optional.empty(), (int) mouseX, (int) mouseY);
+        }
     }
 
     // Inner Work ( Util )
@@ -332,68 +432,127 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     private void addStateAndNbtTooltip(List<Component> tooltip, Set<PtaStateRecord<?>> whitelistStates, Set<PtaStateRecord<?>> blacklistStates, CompoundTag whitelistNbt, CompoundTag blacklistNbt) {
-        boolean isShiftKeyDown = Minecraft.getInstance().options.keyShift.isDown();
-        boolean isSprintKeyDown = Minecraft.getInstance().options.keySprint.isDown();
-
-        //if (!isShiftKeyDown) {
-        //    tooltip.add(
-        //            Component.literal(
-        //                    "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
-        //                            Minecraft.getInstance().options.keyShift.getTranslatedKeyMessage().getString() + " §b] " +
-        //                            Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " " +
-        //                            Component.translatable(TranslationKeys.TEXT_STATE).getString()
-        //            )
-        //    );
-        //}
-        //if (!isSprintKeyDown) {
-        //    tooltip.add(
-        //            Component.literal(
-        //                    "§b" + Component.translatable(TranslationKeys.TEXT_HOLD).getString() + " [ §6" +
-        //                            Minecraft.getInstance().options.keySprint.getTranslatedKeyMessage().getString() + " §b] " +
-        //                            Component.translatable(TranslationKeys.TEXT_DISPLAY).getString() + " "  +
-        //                            Component.translatable(TranslationKeys.TEXT_NBT).getString()
-        //            )
-        //    );
-        //}
 
         // Add state tooltip if entries are present
         if (!whitelistStates.isEmpty() || !blacklistStates.isEmpty()) {
             tooltip.add(Component.literal(""));
-            tooltip.add(Component.literal("§6State :"));
+            tooltip.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_TEXT_STATE).getString() + " :"));
 
             if (!whitelistStates.isEmpty()) {
-                tooltip.add(Component.literal(" Whitelist :"));
+                tooltip.add(Component.literal( " " + Component.translatable(TranslationKeys.INTERACTION_TEXT_WHITELIST).getString() + " :"));
                 for (PtaStateRecord<?> state : whitelistStates) {
-                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value().toString()));
+                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value()));
                 }
             }
 
             if (!blacklistStates.isEmpty()) {
-                tooltip.add(Component.literal(" Blacklist :"));
+                tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
                 for (PtaStateRecord<?> state : whitelistStates) {
-                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value().toString()));
+                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value()));
                 }
             }
         }
 
         // Add NBT tooltip if NBT tag is present
-        if (!whitelistStates.isEmpty() || !blacklistStates.isEmpty()) {
+        if (!whitelistNbt.isEmpty() || !blacklistNbt.isEmpty()) {
             tooltip.add(Component.literal(""));
-            tooltip.add(Component.literal("§6NBT :"));
+            tooltip.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_TEXT_NBT).getString() + " :"));
 
             if (!whitelistNbt.isEmpty()) {
-                tooltip.add(Component.literal(" Whitelist :"));
+                tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_WHITELIST).getString() + " :"));
                 for (String key : whitelistNbt.getAllKeys()) {
-                    tooltip.add(Component.literal("§8  - " + key + " : §5" + whitelistNbt.get(key)));
+                    tooltip.add(formatNbtDisplay(key, whitelistNbt.get(key)));
                 }
             }
 
             if (!blacklistNbt.isEmpty()) {
-                tooltip.add(Component.literal(" Blacklist :"));
+                tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
                 for (String key : blacklistNbt.getAllKeys()) {
-                    tooltip.add(Component.literal("§8  - " + key + " : §5" + blacklistNbt.get(key)));
+                    tooltip.add(formatNbtDisplay(key, blacklistNbt.get(key)));
                 }
             }
         }
+    }
+
+    private Component formatNbtDisplay(String key, Tag value) {
+        if (key.equals("Enchantments") && value instanceof ListTag listTag) {
+            return formatEnchantments(listTag);
+        } else if (value instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
+            ListTag rangeTag = compoundTag.getList("RangeTag", Tag.TAG_INT);
+            if (rangeTag.size() == 2) {
+                int min = rangeTag.getInt(0);
+                int max = rangeTag.getInt(1);
+                return Component.literal("§8  - " + key + " : §5" + min + " - " + max);
+            }
+            return Component.literal("§8  - " + key + " : §5" + value);
+        } else if (value instanceof ListTag listTag) {
+            StringBuilder listText = new StringBuilder("§8  - " + key + " : §5[");
+            for (Tag listElement : listTag) {
+                listText.append(listElement.getAsString()).append(", ");
+            }
+            // Remove the trailing comma and space, then close the list
+            if (listText.length() > 5) {
+                listText.setLength(listText.length() - 2);
+            }
+            listText.append("]");
+            return Component.literal(listText.toString());
+        } else {
+            return Component.literal("§8  - " + key + " : §5" + value);
+        }
+    }
+
+    private Component formatEnchantments(ListTag enchantments) {
+        StringBuilder enchantmentText = new StringBuilder("§8  - Enchantments : §5");
+
+        for (Tag enchantmentTag : enchantments) {
+            if (enchantmentTag instanceof CompoundTag enchantmentCompound) {
+                String id = enchantmentCompound.getString("id");
+                Tag levelTag = enchantmentCompound.get("lvl");
+                String enchantmentName = getEnchantmentName(id);
+
+                enchantmentText.append("\n§8    - §d").append(enchantmentName).append(" §5 ").append(formatEnchantmentLevel(levelTag));
+            }
+        }
+
+        return Component.literal(enchantmentText.toString());
+    }
+
+    private String formatEnchantmentLevel(Tag levelTag) {
+        if (levelTag instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
+            ListTag rangeTag = compoundTag.getList("RangeTag", Tag.TAG_SHORT);
+            if (rangeTag.size() == 2) {
+                int min = rangeTag.getShort(0);
+                int max = rangeTag.getShort(1);
+                return toRomanNumeral(min) + " - " + toRomanNumeral(max);
+            }
+        } else if (levelTag instanceof NumericTag numericTag) {
+            int level = numericTag.getAsInt();
+            if (level == 1) {
+                return "";
+            }
+            return toRomanNumeral(level);
+        }
+        return "";
+    }
+
+    private String getEnchantmentName(String enchantmentId) {
+        ResourceLocation resourceLocation = new ResourceLocation(enchantmentId);
+        return Component.translatable(ForgeRegistries.ENCHANTMENTS.getValue(resourceLocation).getDescriptionId()).getString();
+    }
+
+    private String toRomanNumeral(int number) {
+        if (number < 1 || number > 3999) {
+            throw new IllegalArgumentException("Number out of range (must be 1-3999)");
+        }
+        StringBuilder roman = new StringBuilder();
+        int[] values = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
+        String[] symbols = {"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
+        for (int i = 0; i < values.length; i++) {
+            while (number >= values[i]) {
+                number -= values[i];
+                roman.append(symbols[i]);
+            }
+        }
+        return roman.toString();
     }
 }

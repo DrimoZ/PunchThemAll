@@ -12,7 +12,9 @@
           },
           "Enchantments": [
             {
-              "lvl": 3s,
+              "lvl": {
+                "RangeTag": [2s, 7s]
+              },
               "id": "minecraft:unbreaking"
             },
             {

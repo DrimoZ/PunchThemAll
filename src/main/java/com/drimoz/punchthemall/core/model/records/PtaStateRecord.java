@@ -1,7 +1,6 @@
 package com.drimoz.punchthemall.core.model.records;
 
 import com.drimoz.punchthemall.core.registry.RegistryConstants;
-import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.world.level.block.state.properties.Property;
 
 public record PtaStateRecord<T extends Comparable<T>>(Property<T> property, String value) {

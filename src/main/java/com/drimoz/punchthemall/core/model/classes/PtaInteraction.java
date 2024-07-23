@@ -2,6 +2,7 @@ package com.drimoz.punchthemall.core.model.classes;
 
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
+import com.drimoz.punchthemall.core.model.records.PtaInteractionRecord;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.HashSet;
@@ -13,6 +14,9 @@ public class PtaInteraction {
 
     private final ResourceLocation id;
     private final PtaTypeEnum type;
+
+    private final PtaInteractionRecord hurtPlayer;
+    private final PtaInteractionRecord consumeFood;
 
     private final PtaHand hand;
     private final PtaBlock block;
@@ -32,6 +36,14 @@ public class PtaInteraction {
         return biomeWhitelist.isEmpty() && !biomeBlackList.isEmpty();
     }
 
+    public boolean hasHurtPlayer() {
+        return hurtPlayer != null;
+    }
+
+    public boolean hasConsumeFood() {
+        return consumeFood != null;
+    }
+
     // Getters
 
     public ResourceLocation getId() {
@@ -40,6 +52,14 @@ public class PtaInteraction {
 
     public PtaTypeEnum getType() {
         return type;
+    }
+
+    public PtaInteractionRecord getHurtPlayer() {
+        return hurtPlayer;
+    }
+
+    public PtaInteractionRecord getConsumeFood() {
+        return consumeFood;
     }
 
     public PtaHand getHand() {
@@ -70,6 +90,7 @@ public class PtaInteraction {
 
     public PtaInteraction(
             ResourceLocation id, PtaTypeEnum type,
+            PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
             PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaPool pool,
             Set<String> biomeWhitelist, Set<String> biomeBlackList
     ) {
@@ -79,6 +100,8 @@ public class PtaInteraction {
 
         this.id = id;
         this.type = type;
+        this.hurtPlayer = hurtPlayer;
+        this.consumeFood = consumeFood;
         this.hand = hand == null ? PtaHand.createEmpty(PtaHandEnum.ANY_HAND) : hand;
         this.block = block == null ? PtaBlock.createAir() : block;
         this.transformation = transformation == null || this.block.isAir() ? PtaTransformation.createAir(0) : transformation;
@@ -104,7 +127,8 @@ public class PtaInteraction {
                 ", \n\ttransformation=" + transformation +
                 ", \n\tpool=" + pool +
                 ", \n\tbiomeWhitelist=" + biomeWhitelist +
-                ", \n\tbiomeBlackList=" + biomeBlackList +
+                ", \n\thunger=" + consumeFood +
+                ", \n\tdamage=" + hurtPlayer +
                 "\n}";
     }
 }

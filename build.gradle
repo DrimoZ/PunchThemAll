@@ -171,11 +171,20 @@ dependencies {
 
     runtimeOnly fg.deobf("curse.maven:applied-energistics-2-223794:5447039")
     runtimeOnly fg.deobf("curse.maven:jade-324717:5339264")
-    //implementation fg.deobf("curse.maven:ex-deorum-901420:5421677")
+    runtimeOnly fg.deobf("curse.maven:ex-deorum-901420:5421677")
 
     runtimeOnly fg.deobf("curse.maven:cucumber-272335:5228968")
     runtimeOnly fg.deobf("curse.maven:placebo-283644:5414631")
     runtimeOnly fg.deobf("curse.maven:click-machine-298275:4761099")
+
+    runtimeOnly fg.deobf("curse.maven:cofh-core-69162:5374122")
+    runtimeOnly fg.deobf("curse.maven:thermal-foundation-222880:5443583")
+    runtimeOnly fg.deobf("curse.maven:thermal-cultivation-271835:5372746")
+    runtimeOnly fg.deobf("curse.maven:thermal-dynamics-227443:5372747")
+    runtimeOnly fg.deobf("curse.maven:thermal-expansion-69163:5372749")
+    runtimeOnly fg.deobf("curse.maven:thermal-innovation-291737:5372751")
+    runtimeOnly fg.deobf("curse.maven:thermal-integration-626708:5374210")
+    runtimeOnly fg.deobf("curse.maven:thermal-locomotion-406959:5372752")
 
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
