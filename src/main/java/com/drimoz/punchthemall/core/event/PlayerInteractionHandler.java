@@ -42,8 +42,10 @@ public class PlayerInteractionHandler {
         if (!(event.getEntity() instanceof FakePlayer) && isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
 
+        PTALoggers.error("" + event);
+
         if (event instanceof PlayerInteractEvent.LeftClickBlock leftClickBlockEvent) {
-            if (leftClickBlockEvent.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
+            if (!(event.getEntity() instanceof FakePlayer) && leftClickBlockEvent.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
             handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, true, leftClickBlockEvent);
         }
         else if (event instanceof PlayerInteractEvent.LeftClickEmpty leftClickEmptyEvent) {
@@ -91,6 +93,13 @@ public class PlayerInteractionHandler {
         Level level = event.getLevel();
         BlockPos blockPos = event.getPos();
         Direction direction = event.getFace();
+
+        PTALoggers.error("player : " + player);
+        PTALoggers.error("level : " + level);
+        PTALoggers.error("blockPos : " + blockPos);
+        PTALoggers.error("direction : " + direction);
+
+
 
         if (level.isClientSide()) return;
         if (!(player instanceof FakePlayer) && isPlayerOnCooldown(player.getUUID(), player.tickCount)) return;

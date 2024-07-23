@@ -5,6 +5,7 @@ import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
+import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -74,6 +75,8 @@ public class InteractionRegistry {
             PtaInteraction interaction, PtaTypeEnum eventType, boolean clickOnBlock,
             Player player, BlockPos pos, Level level
     ) {
+
+        // PTALoggers.error("Interaction : " + interaction.getId().getPath());
         // PTALoggers.error("passesInteractionTypeFilter : " + passesInteractionTypeFilter(interaction, eventType));
         // PTALoggers.error("passesBiomeAndDimensionFilter : " + passesBiomeAndDimensionFilter(interaction, level, pos));
         // PTALoggers.error("passesAirOrBlockFilter : " + passesAirOrBlockFilter(interaction, clickOnBlock));
@@ -175,8 +178,14 @@ public class InteractionRegistry {
         ItemStack mainHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
         ItemStack offHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.OFF_HAND);
 
+        PTALoggers.error("mainHandItem : " + mainHandItem);
+        PTALoggers.error("offHandItem : " + offHandItem);
+
         if (player instanceof FakePlayer) {
-            offHandItem = mainHandItem;
+            if (mainHandItem != null) {
+                offHandItem = mainHandItem;
+
+            }
         }
 
         if (hand.isEmpty()) {
