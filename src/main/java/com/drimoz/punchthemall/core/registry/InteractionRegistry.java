@@ -178,14 +178,8 @@ public class InteractionRegistry {
         ItemStack mainHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
         ItemStack offHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.OFF_HAND);
 
-        PTALoggers.error("mainHandItem : " + mainHandItem);
-        PTALoggers.error("offHandItem : " + offHandItem);
-
         if (player instanceof FakePlayer) {
-            if (mainHandItem != null) {
                 offHandItem = mainHandItem;
-
-            }
         }
 
         if (hand.isEmpty()) {

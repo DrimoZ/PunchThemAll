@@ -94,13 +94,6 @@ public class PlayerInteractionHandler {
         BlockPos blockPos = event.getPos();
         Direction direction = event.getFace();
 
-        PTALoggers.error("player : " + player);
-        PTALoggers.error("level : " + level);
-        PTALoggers.error("blockPos : " + blockPos);
-        PTALoggers.error("direction : " + direction);
-
-
-
         if (level.isClientSide()) return;
         if (!(player instanceof FakePlayer) && isPlayerOnCooldown(player.getUUID(), player.tickCount)) return;
 
@@ -108,8 +101,6 @@ public class PlayerInteractionHandler {
         boolean blockTransformed = false;
 
         Set<PtaInteraction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
-
-        PTALoggers.error("Interactions : " + interactions.size());
 
         for (PtaInteraction interaction : interactions) {
             if (interaction.getBlock().isAir()) {
