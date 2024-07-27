@@ -2,6 +2,7 @@ package com.drimoz.punchthemall.core.model.classes;
 
 
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
+import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -9,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * @author drimoz
@@ -24,7 +26,7 @@ public class PtaHand {
     private final CompoundTag nbtBlackList;
     private final double chance;
     private final boolean damageable;
-    private final boolean consumed;
+    private final boolean consumable;
 
     // Calculated Properties
 
@@ -78,8 +80,8 @@ public class PtaHand {
         return !isEmpty() && chance > 0 && damageable;
     }
 
-    public boolean isConsumed() {
-        return !isEmpty() && chance > 0 && consumed;
+    public boolean isConsumable() {
+        return !isEmpty() && chance > 0 && consumable;
     }
 
     // Life Cycle
@@ -96,11 +98,11 @@ public class PtaHand {
         return new PtaHand(hand, null, null, null, 0, false, false);
     }
 
-    protected PtaHand(PtaHandEnum hand, Set<Item> itemSet,  CompoundTag nbtWhiteList, CompoundTag nbtBlackList, double chance, boolean damageable, boolean consumed) {
+    protected PtaHand(PtaHandEnum hand, Set<Item> itemSet,  CompoundTag nbtWhiteList, CompoundTag nbtBlackList, double chance, boolean damageable, boolean consumable) {
         this.hand = hand;
         this.chance = chance < 0 ? 0 : chance > 1 ? 1 : chance;
         this.damageable = damageable;
-        this.consumed = consumed;
+        this.consumable = consumable;
 
         if (itemSet == null || itemSet.isEmpty()) {
             this.itemSet = itemSet != null ? itemSet : new HashSet<>();
@@ -121,7 +123,7 @@ public class PtaHand {
     }
 
     public boolean shouldConsume() {
-        return !isEmpty() && chance > 0 && Math.random() < chance;
+        return !isEmpty() && chance > 0 && ThreadLocalRandom.current().nextDouble() <= chance;
     }
 
     // Interface ( Util )
@@ -135,7 +137,7 @@ public class PtaHand {
                 ", nbtBlackList=" + nbtBlackList +
                 ", chance=" + chance +
                 ", damageable=" + damageable +
-                ", consumed=" + consumed +
+                ", consumable=" + consumable +
                 '}';
     }
 

@@ -100,8 +100,8 @@ public class PtaTransformation {
         return new PtaTransformation(chance, null, fluid, stateList, nbtList, sound, particles);
     }
 
-    public static PtaTransformation createAir (double chance) {
-        return new PtaTransformation(chance, null,null,null,null, null, null);
+    public static PtaTransformation createAir (double chance, SoundEvent sound, ParticleOptions particles) {
+        return new PtaTransformation(chance, null,null,null,null, sound, particles);
     }
 
     protected PtaTransformation (
@@ -114,22 +114,21 @@ public class PtaTransformation {
             throw new IllegalArgumentException("Transformation must be either a Fluid or a Block.");
 
         this.chance = chance < 0 ? 0 : chance > 1 ? 1 : chance;
+        this.sound = sound;
+        this.particles = particles;
 
         if (block == null && fluid == null) {
             this.block = null;
             this.fluid = null;
             this.stateList = new HashSet<>();
             this.nbtList = new CompoundTag();
-            this.sound = null;
-            this.particles = null;
+
         }
         else {
             this.block = block;
             this.fluid = fluid;
             this.stateList = stateList == null ? new HashSet<>() : stateList;
             this.nbtList = nbtList == null ? new CompoundTag() : nbtList;
-            this.sound = sound;
-            this.particles = particles;
         }
     }
 

@@ -104,7 +104,7 @@ public class PtaInteraction {
         this.consumeFood = consumeFood;
         this.hand = hand == null ? PtaHand.createEmpty(PtaHandEnum.ANY_HAND) : hand;
         this.block = block == null ? PtaBlock.createAir() : block;
-        this.transformation = transformation == null || this.block.isAir() ? PtaTransformation.createAir(0) : transformation;
+        this.transformation = transformation == null || this.block.isAir() ? PtaTransformation.createAir(0, null, null) : transformation;
         this.pool = pool;
         this.biomeWhitelist = biomeWhitelist == null ? new HashSet<>() : biomeWhitelist;
         this.biomeBlackList = biomeBlackList == null ? new HashSet<>() : biomeBlackList;

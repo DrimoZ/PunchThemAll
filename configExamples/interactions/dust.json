@@ -1,0 +1,50 @@
+{
+    "type": "shift_left_click",
+
+    "hunger": {
+        "chance": 0.1,
+        "min": 0,
+        "max": 3
+    },
+
+    "hand": {
+        "hand": "main_hand",
+        "item": {
+            "tag": "minecraft:shovels",
+            "nbt": {
+                "blacklist": {
+                    "Enchantments": [
+                        {
+                            "id": "minecraft:silk_touch"
+                        }
+                    ]
+                }
+            }
+        },
+        "damagable": true
+    },
+
+    "block": {
+        "block": "minecraft:sand"
+    },
+  
+  "transformation": {
+        "chance": 0.7,
+        "block": "exdeorum:dust",
+        "particles": "exdeorun:dust"
+    },
+  
+    "pool": [
+        {
+            "item": "ae2:sky_dust",
+            "chance": 5,
+            "min": 1,
+            "max": 2
+        },
+        {
+            "item": "minecraft:air",
+            "chance": 95,
+            "count": 1
+        }
+    ]
+}

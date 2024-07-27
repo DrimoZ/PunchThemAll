@@ -24,6 +24,7 @@ public class TranslationKeys {
     public static final String INTERACTION_HAND_CHANCE = "gui." + PunchThemAll.MOD_ID + ".category.hand.chance";
     public static final String INTERACTION_HAND_CONSUME = "gui." + PunchThemAll.MOD_ID + ".category.hand.consume";
     public static final String INTERACTION_HAND_DAMAGE = "gui." + PunchThemAll.MOD_ID + ".category.hand.damage";
+    public static final String INTERACTION_HAND_ENCHANTMENTS = "gui." + PunchThemAll.MOD_ID + ".category.hand.enchantments";
 
     public static final String INTERACTION_BLOCK_WITH_AIR = "gui." + PunchThemAll.MOD_ID + ".category.block.with_air";
 

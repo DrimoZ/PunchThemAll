@@ -1,8 +1,19 @@
 {
   "type": "right_click",
 
+  "damage": {
+    "chance": 1.0,
+    "count": 1
+  },
+
+  "hunger": {
+    "chance": 0.5,
+    "min": 2,
+    "max": 8
+  },
+
   "hand": {
-    "hand": "off",
+    "hand": "off_hand",
     "item": {
       "tag": "minecraft:hoes",
       "nbt": {

@@ -15,6 +15,7 @@
   "gui.pta.category.hand.chance": "chance the item get",
   "gui.pta.category.hand.consume": "Consumed",
   "gui.pta.category.hand.damage":  "Damaged",
+  "gui.pta.category.hand.enchantments":  "Enchantments",
   "gui.pta.category.block.with_air": "In Air",
   "gui.pta.category.transformation.chance": "Transformation Chance",
   "gui.pta.category.transformation.break": "Air",

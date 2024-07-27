@@ -1,0 +1,55 @@
+{
+    "type": "shift_left_click",
+
+    "hunger": {
+        "chance": 0.1,
+        "min": 0,
+        "max": 3
+    },
+
+    "hand": {
+        "hand": "main_hand",
+        "item": {
+            "tag": "exdeorum:hammers",
+            "nbt": {
+                "blacklist": {
+                    "Enchantments": [
+                        {
+                            "id": "minecraft:silk_touch"
+                        }
+                    ]
+                }
+            }
+        },
+        "damagable": true
+    },
+
+    "block": {
+        "block": "minecraft:cobblestone"
+    },
+  
+    "transformation": {
+        "chance": 0.6,
+        "block": "minecraft:gravel",
+        "particles": "minecraft:gravel"
+    },
+    
+    "pool": [
+        {
+            "tag": "exdeorum:pebbles",
+            "chance": 5,
+            "min": 1,
+            "max": 3
+        },
+        {
+            "item": "exdeorum:stone_pebble",
+            "chance": 10,
+            "count": 1
+        },
+        {
+            "item": "minecraft:air",
+            "chance": 85,
+            "count": 1
+        }
+    ]
+}

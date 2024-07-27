@@ -1,0 +1,70 @@
+{
+    "type": "shift_left_click",
+
+    "hunger": {
+        "chance": 0.1,
+        "min": 0,
+        "max": 3
+    },
+
+    "block": {
+        "block": "exdeorum:dust"
+    },
+  
+    "transformation": {
+        "chance": 0.7,
+        "block": "minecraft:button",
+        "sound": "minecraft:ambient.beacon.deactivate"
+    },
+  
+    "pool": [
+        {
+            "item": "minecraft:bone_meal",
+            "chance": 100,
+            "min": 1,
+            "max": 7
+        },
+        {
+            "item": "minecraft:gunpowder",
+            "chance": 80,
+            "min": 1,
+            "max": 2
+        },
+        {
+            "item": "minecraft:glowstone_dust",
+            "chance": 80,
+            "min": 1,
+            "max": 4
+        },
+        {
+            "item": "minecraft:redstone",
+            "chance": 60,
+            "min": 1,
+            "max": 5
+        },
+        {
+            "item": "ae2:certus_quartz_dust",
+            "chance": 60,
+            "min": 1,
+            "max": 3
+        },
+        {
+            "item": "minecraft:prismarine_shard",
+            "chance": 80,
+            "min": 1,
+            "max": 5
+        },
+        {
+            "item": "thermal:niter_dust",
+            "chance": 60,
+            "min": 1,
+            "max": 3
+        },
+        {
+            "item": "thermal:sulfur_dust",
+            "chance": 60,
+            "min": 1,
+            "max": 3
+        }
+    ]
+}

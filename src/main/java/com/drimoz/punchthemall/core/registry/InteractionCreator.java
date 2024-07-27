@@ -25,6 +25,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
@@ -322,7 +323,7 @@ public class InteractionCreator {
     // Inner Work ( Transformation )
 
     private static PtaTransformation createTransformation(ResourceLocation id, JsonObject json) {
-        if (!json.has(STRING_TRANSFORMATION) || !json.get(STRING_TRANSFORMATION).isJsonObject()) return PtaTransformation.createAir(0);
+        if (!json.has(STRING_TRANSFORMATION) || !json.get(STRING_TRANSFORMATION).isJsonObject()) return PtaTransformation.createAir(0, null, null);
 
         // Json
         JsonObject transformationJson = GsonHelper.getAsJsonObject(json, STRING_TRANSFORMATION);
@@ -330,23 +331,21 @@ public class InteractionCreator {
         // Chance
         if (!transformationJson.has(STRING_TRANSFORMATION_CHANCE)) {
             errorMissing(id, STRING_TRANSFORMATION_CHANCE_FULL);
-            return PtaTransformation.createAir(0);
+            return PtaTransformation.createAir(0, null, null);
         }
 
         double chance = GsonHelper.getAsDouble(transformationJson, STRING_TRANSFORMATION_CHANCE);
-        if (chance <= 0) return PtaTransformation.createAir(0);
+        if (chance <= 0) return PtaTransformation.createAir(0, null, null);
 
         // Block
         Block block = null;
         Fluid fluid = null;
         if (transformationJson.has(STRING_TRANSFORMATION_BLOCK)) {
             block = BlockChecker.getExistingBlock(GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_BLOCK));
+            if (block.equals(Blocks.AIR)) block = null;
         }
         else if (transformationJson.has(STRING_TRANSFORMATION_FLUID)) {
             fluid = FluidChecker.getExistingFluid(GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_FLUID));
-        }
-        else {
-            return PtaTransformation.createAir(chance);
         }
 
         // State
@@ -363,6 +362,7 @@ public class InteractionCreator {
 
         SoundEvent sound = null;
         if (transformationJson.has(STRING_TRANSFORMATION_SOUND)) {
+
             String soundName = GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_SOUND);
             sound = ForgeRegistries.SOUND_EVENTS.getValue(new ResourceLocation(soundName));
         }
@@ -381,7 +381,8 @@ public class InteractionCreator {
             return PtaTransformation.createBlock(chance, block, state, nbt, sound, particle);
         else if (fluid != null)
             return PtaTransformation.createFluid(chance, fluid, state, nbt, sound, particle);
-        return PtaTransformation.createAir(0);
+
+        return PtaTransformation.createAir(chance, sound, particle);
     }
 
     // Inner Work ( Pool )

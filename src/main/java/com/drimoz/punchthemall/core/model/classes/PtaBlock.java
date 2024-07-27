@@ -138,6 +138,10 @@ public class PtaBlock {
         else return fluidSet.stream().map(fluid -> new ItemStack(fluid.getBucket())).toList();
     }
 
+    public Fluid getFluid() {
+        return fluidSet.stream().findFirst().orElse(null);
+    }
+
     public boolean isBlockFromSet(Block block) {
         return isBlock() && blockSet.contains(block);
     }

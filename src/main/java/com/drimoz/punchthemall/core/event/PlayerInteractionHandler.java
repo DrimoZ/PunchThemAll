@@ -4,22 +4,28 @@ import com.drimoz.punchthemall.core.model.classes.*;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
-import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -37,12 +43,25 @@ public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
     private static final Long COOLDOWN_INTERVAL = 1L;
 
+    private static BlockHitResult rayTrace(Level world, Player player, ClipContext.Fluid fluidMode) {
+        float pitch = player.getXRot();
+        float yaw = player.getYRot();
+        Vec3 eyePosition = player.getEyePosition(1.0F);
+        float f2 = Mth.cos(-yaw * 0.017453292F - (float)Math.PI);
+        float f3 = Mth.sin(-yaw * 0.017453292F - (float)Math.PI);
+        float f4 = -Mth.cos(-pitch * 0.017453292F);
+        float f5 = Mth.sin(-pitch * 0.017453292F);
+        float f6 = f3 * f4;
+        float f7 = f2 * f4;
+        double reach = player.getAttribute(ForgeMod.ENTITY_REACH.get()).getValue();
+        Vec3 targetPosition = eyePosition.add((double)f6 * reach, (double)f5 * reach, (double)f7 * reach);
+        return world.clip(new ClipContext(eyePosition, targetPosition, ClipContext.Block.OUTLINE, fluidMode, player));
+    }
+
     @SubscribeEvent(priority = EventPriority.HIGH, receiveCanceled = true)
     public static void onPlayerInteract(PlayerInteractEvent event) {
         if (!(event.getEntity() instanceof FakePlayer) && isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
         if (event.getLevel().isClientSide()) return;
-
-        PTALoggers.error("" + event);
 
         if (event instanceof PlayerInteractEvent.LeftClickBlock leftClickBlockEvent) {
             if (!(event.getEntity() instanceof FakePlayer) && leftClickBlockEvent.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
@@ -94,13 +113,35 @@ public class PlayerInteractionHandler {
         BlockPos blockPos = event.getPos();
         Direction direction = event.getFace();
 
+        BlockHitResult hitResult = rayTrace(level, player, ClipContext.Fluid.SOURCE_ONLY);
+
         if (level.isClientSide()) return;
         if (!(player instanceof FakePlayer) && isPlayerOnCooldown(player.getUUID(), player.tickCount)) return;
 
+
+
         boolean interactionProcessed = false;
         boolean blockTransformed = false;
+        boolean fluidInteraction = false;
 
-        Set<PtaInteraction> interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
+
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            BlockPos pos = hitResult.getBlockPos();
+            FluidState fluidState = level.getFluidState(pos);
+
+            if (fluidState.getType() == Fluids.WATER || fluidState.isSource()) {
+                fluidInteraction = true;
+            }
+        }
+
+        Set<PtaInteraction> interactions;
+
+        if (fluidInteraction) {
+            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, hitResult.getBlockPos(), level);
+        }
+        else {
+            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
+        }
 
         for (PtaInteraction interaction : interactions) {
             if (interaction.getBlock().isAir()) {
@@ -110,11 +151,11 @@ public class PlayerInteractionHandler {
                 }
             }
             else {
-                if (!blockTransformed && processInteraction(player, level, blockPos, direction, interaction)) {
+                if (!blockTransformed && processInteraction(player, level, fluidInteraction ? hitResult.getBlockPos() : blockPos, direction, interaction)) {
                     interactionProcessed = true;
                     if (shouldBlockTransform(interaction.getTransformation())) {
                         if (!(player instanceof FakePlayer)) processPlayer(player, interaction);
-                        transformBlock(level, blockPos, interaction.getTransformation());
+                        transformBlock(level, fluidInteraction ? hitResult.getBlockPos() : blockPos, interaction.getTransformation());
                         blockTransformed = true;
                     }
                 }
@@ -201,7 +242,7 @@ public class PlayerInteractionHandler {
 
     private static boolean tryDropItem(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
         if (interaction.getHand().getItemSet().contains(handItem.getItem())) {
-            if (interaction.getHand().isConsumed() && interaction.getHand().shouldConsume()) {
+            if (interaction.getHand().isConsumable() && interaction.getHand().shouldConsume()) {
                 consumeItem(handItem);
             }
             else if (interaction.getHand().isDamageable() && handItem.isDamageableItem() && interaction.getHand().shouldConsume()) {
@@ -350,6 +391,4 @@ public class PlayerInteractionHandler {
     private static void setPlayerOnCooldown(UUID UUID, long currentTick) {
         PLAYER_COOLDOWNS.put(UUID, currentTick);
     }
-
-
 }

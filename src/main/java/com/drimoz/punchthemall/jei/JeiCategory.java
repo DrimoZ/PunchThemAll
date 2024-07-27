@@ -28,6 +28,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
@@ -141,7 +142,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                                       "§5" + getTruncatedChance(interaction.getHand().getChance(), 0, 1) + "% §7"
                                               + Component.translatable(TranslationKeys.INTERACTION_HAND_CHANCE).getString() + " §5"
                                               + (
-                                              interaction.getHand().isConsumed() ?
+                                              interaction.getHand().isConsumable() ?
                                                       Component.translatable(TranslationKeys.INTERACTION_HAND_CONSUME).getString() :
                                                       Component.translatable(TranslationKeys.INTERACTION_HAND_DAMAGE).getString()
                                               )
@@ -157,8 +158,36 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             );
         }
 
-        var blockSlot = setupInputSlot(builder, getBlockItemStack(interaction.getBlock()), 1 + X_BLOCK, 1 + Y_BLOCK);
-        if (!interaction.getBlock().isAir()) {
+
+        IRecipeSlotBuilder blockSlot;
+
+        if (interaction.getBlock().isAir()) {
+            blockSlot = setupInputSlot(
+                    builder,
+                    List.of(
+                            new ItemStack(Items.BARRIER)
+                                    .setHoverName(
+                                            Component.literal(
+                                                    "§d" + Component.translatable(
+                                                            TranslationKeys.INTERACTION_BLOCK_WITH_AIR
+                                                    ).getString()
+                                            )
+                                    )
+                    ),
+                    1 + X_BLOCK,
+                    1 + Y_BLOCK);
+
+        } else if (interaction.getBlock().isBlock()) {
+            blockSlot = setupInputSlot(builder, interaction.getBlock().getBlockStacks(), 1 + X_BLOCK, 1 + Y_BLOCK);
+
+            blockSlot.addTooltipCallback(
+                    (recipeSlotView, tooltip) ->
+                            addStateAndNbtTooltip(tooltip,
+                                    interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
+                                    interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList()));
+        } else if (interaction.getBlock().isFluid()) {
+            blockSlot = setupFluidInputSlot(builder, interaction.getBlock().getFluid(), new CompoundTag(), 1 + X_BLOCK, 1 + Y_BLOCK);
+
             blockSlot.addTooltipCallback(
                     (recipeSlotView, tooltip) ->
                             addStateAndNbtTooltip(tooltip,
@@ -230,6 +259,10 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         return builder.addSlot(RecipeIngredientRole.INPUT, x, y).addItemStacks(itemStacks);
     }
 
+    private IRecipeSlotBuilder setupFluidInputSlot(IRecipeLayoutBuilder builder, Fluid fluid, CompoundTag nbt, int x, int y) {
+        return builder.addSlot(RecipeIngredientRole.INPUT, x, y).addFluidStack(fluid, 1000, nbt);
+    }
+
     private IRecipeSlotBuilder setupOutputSlot(IRecipeLayoutBuilder builder, List<ItemStack> itemStacks, int x, int y) {
         return builder.addSlot(RecipeIngredientRole.OUTPUT, x, y)
                 .addItemStacks(itemStacks);
@@ -242,16 +275,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             return hand.getStacks();
         } else {
             return List.of(new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_HAND_NO_ITEM).getString())));
-        }
-    }
-
-    private List<ItemStack> getBlockItemStack(PtaBlock block) {
-        if (block.isAir()) {
-            return List.of(new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_BLOCK_WITH_AIR).getString())));
-        } else if (block.isBlock()) {
-            return block.getBlockStacks();
-        } else {
-            return block.getFluidStacks();
         }
     }
 
@@ -293,7 +316,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
 
         if (interaction.hasConsumeFood()) {
-            PLAYER_HUNGER.draw(graphics, X_HUNGER + (interaction.hasHurtPlayer() ? 0 : -18), Y_HUNGER);
+            PLAYER_HUNGER.draw(graphics, X_HUNGER + (interaction.hasHurtPlayer() ? 0 : -11), Y_HUNGER);
         }
 
         ARROW.draw(graphics, X_ARROW, Y_ARROW);
@@ -385,7 +408,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             graphics.renderTooltip(Minecraft.getInstance().font, tooltipComponents,Optional.empty(), (int) mouseX, (int) mouseY);
         }
 
-        if (interaction.hasConsumeFood() && isMouseOver(mouseX, mouseY, X_HUNGER + 1 + (interaction.hasHurtPlayer() ? 0 : -18), Y_HUNGER + 1, 8, 8)) {
+        if (interaction.hasConsumeFood() && isMouseOver(mouseX, mouseY, X_HUNGER + 1 + (interaction.hasHurtPlayer() ? 0 : -11), Y_HUNGER + 1, 8, 8)) {
             List<Component> tooltipComponents = new ArrayList<>();
 
             tooltipComponents.add(Component.literal(
@@ -461,60 +484,58 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             if (!whitelistNbt.isEmpty()) {
                 tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_WHITELIST).getString() + " :"));
                 for (String key : whitelistNbt.getAllKeys()) {
-                    tooltip.add(formatNbtDisplay(key, whitelistNbt.get(key)));
+                    formatNbtDisplay(tooltip, key,  whitelistNbt.get(key));
                 }
             }
 
             if (!blacklistNbt.isEmpty()) {
                 tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
                 for (String key : blacklistNbt.getAllKeys()) {
-                    tooltip.add(formatNbtDisplay(key, blacklistNbt.get(key)));
+                    formatNbtDisplay(tooltip, key,  blacklistNbt.get(key));
                 }
             }
         }
     }
 
-    private Component formatNbtDisplay(String key, Tag value) {
+    private void formatNbtDisplay(List<Component> tooltip, String key, Tag value) {
         if (key.equals("Enchantments") && value instanceof ListTag listTag) {
-            return formatEnchantments(listTag);
+            formatEnchantments(tooltip, listTag);
         } else if (value instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
             ListTag rangeTag = compoundTag.getList("RangeTag", Tag.TAG_INT);
             if (rangeTag.size() == 2) {
                 int min = rangeTag.getInt(0);
                 int max = rangeTag.getInt(1);
-                return Component.literal("§8  - " + key + " : §5" + min + " - " + max);
+                tooltip.add(Component.literal("§8  - " + key + " : §5" + min + " - " + max));
             }
-            return Component.literal("§8  - " + key + " : §5" + value);
         } else if (value instanceof ListTag listTag) {
             StringBuilder listText = new StringBuilder("§8  - " + key + " : §5[");
+
             for (Tag listElement : listTag) {
                 listText.append(listElement.getAsString()).append(", ");
             }
-            // Remove the trailing comma and space, then close the list
+
             if (listText.length() > 5) {
                 listText.setLength(listText.length() - 2);
             }
+
             listText.append("]");
-            return Component.literal(listText.toString());
+            tooltip.add(Component.literal(listText.toString()));
         } else {
-            return Component.literal("§8  - " + key + " : §5" + value);
+            tooltip.add(Component.literal("§8  - " + key + " : §5" + value));
         }
     }
 
-    private Component formatEnchantments(ListTag enchantments) {
-        StringBuilder enchantmentText = new StringBuilder("§8  - Enchantments : §5");
+    private void formatEnchantments(List<Component> tooltip, ListTag enchantments) {
+        tooltip.add(Component.literal("§8  - " + Component.translatable(TranslationKeys.INTERACTION_HAND_ENCHANTMENTS).getString() + " : §5"));
 
         for (Tag enchantmentTag : enchantments) {
             if (enchantmentTag instanceof CompoundTag enchantmentCompound) {
                 String id = enchantmentCompound.getString("id");
                 Tag levelTag = enchantmentCompound.get("lvl");
                 String enchantmentName = getEnchantmentName(id);
-
-                enchantmentText.append("\n§8    - §d").append(enchantmentName).append(" §5 ").append(formatEnchantmentLevel(levelTag));
+                tooltip.add(Component.literal("§8    - §d" + enchantmentName + " §5 " + formatEnchantmentLevel(levelTag)));
             }
         }
-
-        return Component.literal(enchantmentText.toString());
     }
 
     private String formatEnchantmentLevel(Tag levelTag) {
