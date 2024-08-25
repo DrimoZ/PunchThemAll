@@ -21,7 +21,7 @@ public class InteractionLoader {
 
         var dir = FMLPaths.CONFIGDIR.get().resolve(PunchThemAll.FILE_DESTINATION + "/interactions").toFile();
         if (!dir.exists() && dir.mkdirs()) {
-            PunchThemAll.LOGGER.info("Created /config/" + PunchThemAll.FILE_DESTINATION + "/interactions/ directory");
+            PTALoggers.info("Created /config/" + PunchThemAll.FILE_DESTINATION + "/interactions/ directory");
         }
 
         var files = dir.listFiles((FileFilter) FileFilterUtils.suffixFileFilter(".json"));
@@ -40,11 +40,10 @@ public class InteractionLoader {
                 id = new ResourceLocation(PunchThemAll.MOD_ID, name);
 
                 interaction = InteractionCreator.createInteraction(id, json);
-                PTALoggers.error("Interaction Created : " + interaction);
 
                 reader.close();
             } catch (Exception e) {
-                PunchThemAll.LOGGER.error("An error occurred while creating interaction with id {}", id, e);
+               PTALoggers.error("An error occurred while creating interaction with id " + id + " : " + e);
             } finally {
                 IOUtils.closeQuietly(reader);
             }

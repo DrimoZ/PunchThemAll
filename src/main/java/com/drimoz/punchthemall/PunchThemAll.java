@@ -48,10 +48,10 @@ public class PunchThemAll
     public void onServerStartup(ServerStartingEvent event) {
         InteractionLoader.initInteractions();
 
-        PTALoggers.error("Registered Interactions Count : " + InteractionRegistry.getInstance().getInteractions().values().size());
         for (PtaInteraction i : InteractionRegistry.getInstance().getInteractions().values()) {
-            PTALoggers.error("New Interaction Registered : \n" + i);
+            PTALoggers.info("New Interaction Registered : " + i.getId().getPath());
         }
+        PTALoggers.info("Registered Interactions Count : " + InteractionRegistry.getInstance().getInteractions().values().size());
 
         PTALoggers.infoRegisteredModule("Server Starting");
 

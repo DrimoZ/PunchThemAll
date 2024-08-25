@@ -11,6 +11,7 @@ import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.util.TranslationKeys;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
+import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
@@ -133,7 +134,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     private void setupInteractionSlots(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
         var handSlot = setupInputSlot(builder, getHandItemStack(interaction.getHand()), 1 + X_HAND_ITEM, 1 + Y_HAND_ITEM);
         if (!interaction.getHand().isEmpty()) {
-            handSlot.addTooltipCallback(
+            handSlot.addRichTooltipCallback(
                     (recipeSlotView, tooltip) -> {
                         if (interaction.getHand().getChance() > 0) {
                             tooltip.add(Component.empty());
@@ -180,7 +181,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         } else if (interaction.getBlock().isBlock()) {
             blockSlot = setupInputSlot(builder, interaction.getBlock().getBlockStacks(), 1 + X_BLOCK, 1 + Y_BLOCK);
 
-            blockSlot.addTooltipCallback(
+            blockSlot.addRichTooltipCallback(
                     (recipeSlotView, tooltip) ->
                             addStateAndNbtTooltip(tooltip,
                                     interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
@@ -188,7 +189,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         } else if (interaction.getBlock().isFluid()) {
             blockSlot = setupFluidInputSlot(builder, interaction.getBlock().getFluid(), new CompoundTag(), 1 + X_BLOCK, 1 + Y_BLOCK);
 
-            blockSlot.addTooltipCallback(
+            blockSlot.addRichTooltipCallback(
                     (recipeSlotView, tooltip) ->
                             addStateAndNbtTooltip(tooltip,
                                     interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
@@ -215,7 +216,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     private void setupTransformationSlot(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
         var transformationSlot = setupOutputSlot(builder, List.of(getTransformationItemStack(interaction.getTransformation())), 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION);
 
-        transformationSlot.addTooltipCallback((slotView, tooltip) -> {
+        transformationSlot.addRichTooltipCallback((slotView, tooltip) -> {
             double chance = interaction.getTransformation().getChance();
             tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_CHANCE).getString() +
                     " : §l§5" + getTruncatedChance(chance, 0, 1) + "%"));
@@ -226,7 +227,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         PtaDropRecord record = result.getKey();
         IRecipeSlotBuilder slot = setupOutputSlot(builder, record.items().stream().map(ItemStack::new).toList(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
 
-        slot.addTooltipCallback((slotView, tooltip) -> {
+        slot.addRichTooltipCallback((slotView, tooltip) -> {
             tooltip.add(
                     Component.literal(
                             "§7" +
@@ -454,7 +455,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
-    private void addStateAndNbtTooltip(List<Component> tooltip, Set<PtaStateRecord<?>> whitelistStates, Set<PtaStateRecord<?>> blacklistStates, CompoundTag whitelistNbt, CompoundTag blacklistNbt) {
+    private void addStateAndNbtTooltip(ITooltipBuilder tooltip, Set<PtaStateRecord<?>> whitelistStates, Set<PtaStateRecord<?>> blacklistStates, CompoundTag whitelistNbt, CompoundTag blacklistNbt) {
 
         // Add state tooltip if entries are present
         if (!whitelistStates.isEmpty() || !blacklistStates.isEmpty()) {
@@ -497,7 +498,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
-    private void formatNbtDisplay(List<Component> tooltip, String key, Tag value) {
+    private void formatNbtDisplay(ITooltipBuilder tooltip, String key, Tag value) {
         if (key.equals("Enchantments") && value instanceof ListTag listTag) {
             formatEnchantments(tooltip, listTag);
         } else if (value instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
@@ -525,7 +526,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
-    private void formatEnchantments(List<Component> tooltip, ListTag enchantments) {
+    private void formatEnchantments(ITooltipBuilder tooltip, ListTag enchantments) {
         tooltip.add(Component.literal("§8  - " + Component.translatable(TranslationKeys.INTERACTION_HAND_ENCHANTMENTS).getString() + " : §5"));
 
         for (Tag enchantmentTag : enchantments) {
