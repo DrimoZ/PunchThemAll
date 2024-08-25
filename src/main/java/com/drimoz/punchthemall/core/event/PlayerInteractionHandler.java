@@ -1,5 +1,6 @@
 package com.drimoz.punchthemall.core.event;
 
+import com.drimoz.punchthemall.PTAConfig;
 import com.drimoz.punchthemall.core.model.classes.*;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
@@ -8,6 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -30,6 +32,7 @@ import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.LogicalSide;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,30 +44,18 @@ import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE
 
 public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
-    private static final Long COOLDOWN_INTERVAL = 1L;
-
-    private static BlockHitResult rayTrace(Level world, Player player, ClipContext.Fluid fluidMode) {
-        float pitch = player.getXRot();
-        float yaw = player.getYRot();
-        Vec3 eyePosition = player.getEyePosition(1.0F);
-        float f2 = Mth.cos(-yaw * 0.017453292F - (float)Math.PI);
-        float f3 = Mth.sin(-yaw * 0.017453292F - (float)Math.PI);
-        float f4 = -Mth.cos(-pitch * 0.017453292F);
-        float f5 = Mth.sin(-pitch * 0.017453292F);
-        float f6 = f3 * f4;
-        float f7 = f2 * f4;
-        double reach = player.getAttribute(ForgeMod.ENTITY_REACH.get()).getValue();
-        Vec3 targetPosition = eyePosition.add((double)f6 * reach, (double)f5 * reach, (double)f7 * reach);
-        return world.clip(new ClipContext(eyePosition, targetPosition, ClipContext.Block.OUTLINE, fluidMode, player));
-    }
+    private static final Long COOLDOWN_INTERVAL = PTAConfig.interactionCooldown.get().longValue();
 
     @SubscribeEvent(priority = EventPriority.HIGH, receiveCanceled = true)
     public static void onPlayerInteract(PlayerInteractEvent event) {
-        if (!(event.getEntity() instanceof FakePlayer) && isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
+        Player entity = event.getEntity();
+        if (entity instanceof FakePlayer && !PTAConfig.allowFakePlayers.get()) return;
+
+        if (!(entity instanceof FakePlayer) && isPlayerOnCooldown(entity.getUUID(), entity.tickCount)) return;
         if (event.getLevel().isClientSide()) return;
 
         if (event instanceof PlayerInteractEvent.LeftClickBlock leftClickBlockEvent) {
-            if (!(event.getEntity() instanceof FakePlayer) && leftClickBlockEvent.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
+            if (!(entity instanceof FakePlayer) && leftClickBlockEvent.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
             handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, true, leftClickBlockEvent);
         }
         else if (event instanceof PlayerInteractEvent.LeftClickEmpty leftClickEmptyEvent) {
@@ -111,19 +102,16 @@ public class PlayerInteractionHandler {
         Player player = event.getEntity();
         Level level = event.getLevel();
         BlockPos blockPos = event.getPos();
-        Direction direction = event.getFace();
+        Direction direction = getPlayerFacingDirection(player, level); // Perform ray tracing to get the direction
 
         BlockHitResult hitResult = rayTrace(level, player, ClipContext.Fluid.SOURCE_ONLY);
 
         if (level.isClientSide()) return;
         if (!(player instanceof FakePlayer) && isPlayerOnCooldown(player.getUUID(), player.tickCount)) return;
 
-
-
         boolean interactionProcessed = false;
         boolean blockTransformed = false;
         boolean fluidInteraction = false;
-
 
         if (hitResult.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = hitResult.getBlockPos();
@@ -153,8 +141,8 @@ public class PlayerInteractionHandler {
             else {
                 if (!blockTransformed && processInteraction(player, level, fluidInteraction ? hitResult.getBlockPos() : blockPos, direction, interaction)) {
                     interactionProcessed = true;
+                    if (!(player instanceof FakePlayer)) processPlayer(player, interaction);
                     if (shouldBlockTransform(interaction.getTransformation())) {
-                        if (!(player instanceof FakePlayer)) processPlayer(player, interaction);
                         transformBlock(level, fluidInteraction ? hitResult.getBlockPos() : blockPos, interaction.getTransformation());
                         blockTransformed = true;
                     }
@@ -380,6 +368,40 @@ public class PlayerInteractionHandler {
             blockEntity.load(customNBT);
             blockEntity.setChanged();
         }
+    }
+
+    // Raytracing
+
+    private static BlockHitResult rayTrace(Level world, Player player, ClipContext.Fluid fluidMode) {
+        float pitch = player.getXRot();
+        float yaw = player.getYRot();
+        Vec3 eyePosition = player.getEyePosition(1.0F);
+        float f2 = Mth.cos(-yaw * 0.017453292F - (float)Math.PI);
+        float f3 = Mth.sin(-yaw * 0.017453292F - (float)Math.PI);
+        float f4 = -Mth.cos(-pitch * 0.017453292F);
+        float f5 = Mth.sin(-pitch * 0.017453292F);
+        float f6 = f3 * f4;
+        float f7 = f2 * f4;
+        double reach = player.getAttribute(ForgeMod.ENTITY_REACH.get()).getValue();
+        Vec3 targetPosition = eyePosition.add((double)f6 * reach, (double)f5 * reach, (double)f7 * reach);
+        return world.clip(new ClipContext(eyePosition, targetPosition, ClipContext.Block.OUTLINE, fluidMode, player));
+    }
+
+    private static Direction getPlayerFacingDirection(Player player, Level level) {
+        if (player instanceof ServerPlayer) {
+            Vec3 eyePosition = player.getEyePosition(1.0F); // Player's eye position
+            Vec3 lookVector = player.getLookAngle(); // Direction the player is looking
+
+            double reachDistance = player.getAttribute(ForgeMod.BLOCK_REACH.get()).getValue();
+            Vec3 reachEnd = eyePosition.add(lookVector.x * reachDistance, lookVector.y * reachDistance, lookVector.z * reachDistance);
+
+            BlockHitResult blockHitResult = level.clip(new ClipContext(eyePosition, reachEnd, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+
+            if (blockHitResult.getType() == HitResult.Type.BLOCK) {
+                return blockHitResult.getDirection();
+            }
+        }
+        return null;
     }
 
     // Inner work ( Player Cooldown )
