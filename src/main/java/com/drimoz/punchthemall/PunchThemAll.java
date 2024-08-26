@@ -1,16 +1,12 @@
 package com.drimoz.punchthemall;
 
+import com.drimoz.punchthemall.core.event.DataReloadListener;
 import com.drimoz.punchthemall.core.event.PlayerInteractionHandler;
-import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
-import com.drimoz.punchthemall.core.registry.InteractionLoader;
-import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
@@ -36,22 +32,22 @@ public class PunchThemAll
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, PTAConfig.COMMON_CONFIG,  FILE_DESTINATION + "/" + MOD_ID + "-common.toml");
 
+        MinecraftForge.EVENT_BUS.register(PlayerInteractionHandler.class);
+        MinecraftForge.EVENT_BUS.addListener(this::addReloadListener);
         MinecraftForge.EVENT_BUS.register(this);
         PTALoggers.infoModCompleted();
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
-        PTALoggers.infoRegisteredModule("Common Setup");
+        PTALoggers.infoRegisteredModule("Common Setup Event");
     }
 
     private void onClientSetup(final FMLClientSetupEvent event) {
-        PTALoggers.infoRegisteredModule("Client Setup");
+        PTALoggers.infoRegisteredModule("Client Setup Event");
     }
 
-    @SubscribeEvent
-    public void onServerStarted(ServerStartedEvent event) {
-        MinecraftForge.EVENT_BUS.register(PlayerInteractionHandler.class);
-
-        PTALoggers.infoRegisteredModule("Server Started");
+    public void addReloadListener(AddReloadListenerEvent event) {
+        event.addListener(new DataReloadListener());
+        PTALoggers.infoRegisteredModule("Add ReloadListener Event");
     }
 }

@@ -80,13 +80,14 @@ public class InteractionRegistry {
             Player player, BlockPos pos, Level level
     ) {
 
-        // PTALoggers.error("Interaction : " + interaction.getId().getPath());
-        // PTALoggers.error("passesInteractionTypeFilter : " + passesInteractionTypeFilter(interaction, eventType));
-        // PTALoggers.error("passesBiomeAndDimensionFilter : " + passesBiomeAndDimensionFilter(interaction, level, pos));
-        // PTALoggers.error("passesAirOrBlockFilter : " + passesAirOrBlockFilter(interaction, clickOnBlock));
-        // PTALoggers.error("passesBlockStateFilter : " + passesBlockStateFilter(interaction, clickOnBlock, pos, level));
-        // PTALoggers.error("passesBlockEntityNBTFilter : " + passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level));
-        // PTALoggers.error("passesHandItemFilter : " + passesHandItemFilter(interaction, player));
+        // PTALoggers.info("=================================");
+        // PTALoggers.info("Interaction : " + interaction.getId().getPath());
+        // PTALoggers.info("passesInteractionTypeFilter : " + passesInteractionTypeFilter(interaction, eventType));
+        // PTALoggers.info("passesBiomeAndDimensionFilter : " + passesBiomeAndDimensionFilter(interaction, level, pos));
+        // PTALoggers.info("passesAirOrBlockFilter : " + passesAirOrBlockFilter(interaction, clickOnBlock));
+        // PTALoggers.info("passesBlockStateFilter : " + passesBlockStateFilter(interaction, clickOnBlock, pos, level));
+        // PTALoggers.info("passesBlockEntityNBTFilter : " + passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level));
+        // PTALoggers.info("passesHandItemFilter : " + passesHandItemFilter(interaction, player));
 
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&

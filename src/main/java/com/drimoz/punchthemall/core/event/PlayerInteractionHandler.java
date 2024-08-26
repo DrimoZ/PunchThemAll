@@ -1,7 +1,10 @@
 package com.drimoz.punchthemall.core.event;
 
 import com.drimoz.punchthemall.PTAConfig;
-import com.drimoz.punchthemall.core.model.classes.*;
+import com.drimoz.punchthemall.core.model.classes.PtaHand;
+import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
+import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
@@ -12,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -30,10 +34,10 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.ForgeMod;
 import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.LogicalSide;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -69,35 +73,6 @@ public class PlayerInteractionHandler {
             handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, rightClickItemEvent);
         }
     }
-
-//    @SubscribeEvent
-//    public static void onPlayerLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-//        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
-//        if (event.getLevel().isClientSide()) return;
-//        if (event.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
-//        handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, true, event);
-//    }
-//
-//    @SubscribeEvent
-//    public static void onPlayerRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-//        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
-//        if (event.getLevel().isClientSide()) return;
-//        handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, true, event);
-//    }
-//
-//    @SubscribeEvent
-//    public static void onPlayerLeftClickItem(PlayerInteractEvent.LeftClickEmpty event) {
-//        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
-//        if (event.getLevel().isClientSide()) return;
-//        handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, event);
-//    }
-//
-//    @SubscribeEvent
-//    public static void onPlayerRightClickItem(PlayerInteractEvent.RightClickItem event) {
-//        if (isPlayerOnCooldown(event.getEntity().getUUID(), event.getEntity().tickCount)) return;
-//        if (event.getLevel().isClientSide()) return;
-//        handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, event);
-//    }
 
     private static void handlePlayerInteract(PtaTypeEnum type, boolean clickOnBlock, PlayerInteractEvent event) {
         Player player = event.getEntity();
@@ -198,6 +173,11 @@ public class PlayerInteractionHandler {
     }
 
     private static void processPlayer(Player player, PtaInteraction interaction) {
+        InteractionHand hand = InteractionHand.MAIN_HAND;
+        if (interaction.getHand().getHand().equals(PtaHandEnum.OFF_HAND)) hand = InteractionHand.OFF_HAND;
+
+        player.swing(hand);
+
         if (interaction.hasHurtPlayer() && interaction.getHurtPlayer().shouldExecute()) {
             // Hurt player for interaction.getHurtPlayer().getValue() in Minecraft ways
             player.hurt(player.damageSources().generic(), interaction.getHurtPlayer().getValue());
@@ -402,8 +382,8 @@ public class PlayerInteractionHandler {
 
     private static Direction getPlayerFacingDirection(Player player, Level level) {
         if (player instanceof ServerPlayer) {
-            Vec3 eyePosition = player.getEyePosition(1.0F); // Player's eye position
-            Vec3 lookVector = player.getLookAngle(); // Direction the player is looking
+            Vec3 eyePosition = player.getEyePosition(1.0F);
+            Vec3 lookVector = player.getLookAngle();
 
             double reachDistance = player.getAttribute(ForgeMod.BLOCK_REACH.get()).getValue();
             Vec3 reachEnd = eyePosition.add(lookVector.x * reachDistance, lookVector.y * reachDistance, lookVector.z * reachDistance);
@@ -418,6 +398,11 @@ public class PlayerInteractionHandler {
     }
 
     // Inner work ( Player Cooldown )
+
+    @SubscribeEvent
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent ev) {
+        PLAYER_COOLDOWNS.remove(ev.getEntity().getUUID());
+    }
 
     private static boolean isPlayerOnCooldown(UUID UUID, long currentTick) {
         return PLAYER_COOLDOWNS.getOrDefault(UUID, -1L) >= currentTick - COOLDOWN_INTERVAL;
