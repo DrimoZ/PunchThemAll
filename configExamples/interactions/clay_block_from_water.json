@@ -1,0 +1,20 @@
+{
+    "type": "right_click",
+
+    "hand": {
+        "hand": "main_hand",
+        "item": {
+            "item": "minecraft:clay_ball"
+        },
+        "consumable": true
+    },
+
+    "block": {
+        "fluid": "minecraft:water"
+    },
+  
+    "transformation": {
+        "chance": 1.0,
+        "block": "minecraft:clay"
+    }
+}

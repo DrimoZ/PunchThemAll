@@ -1,0 +1,22 @@
+{
+    "type": "left_click",
+    "damage": {
+        "chance": 1.0,
+        "count": 1
+    },
+    "block": {
+        "block": "minecraft:bedrock"
+    },
+    "pool": [
+        {
+            "item": "minecraft:bedrock",
+            "chance": 35,
+            "count": 1
+        },
+        {
+            "item": "minecraft:air",
+            "chance": 65,
+            "count": 1
+        }
+    ]
+}

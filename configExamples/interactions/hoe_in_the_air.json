@@ -13,7 +13,7 @@
   },
 
   "hand": {
-    "hand": "off_hand",
+    "hand": "off",
     "item": {
       "tag": "minecraft:hoes",
       "nbt": {

@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 public class InteractionLoader {
 
     public static void initInteractions() {
+        InteractionRegistry.getInstance().clearInteractions();
 
         var dir = FMLPaths.CONFIGDIR.get().resolve(PunchThemAll.FILE_DESTINATION + "/interactions").toFile();
         if (!dir.exists() && dir.mkdirs()) {

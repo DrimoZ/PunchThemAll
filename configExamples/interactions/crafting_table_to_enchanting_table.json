@@ -1,0 +1,22 @@
+{
+  "type": "right_click",
+
+  "block": {
+    "block": "minecraft:crafting_table"
+  },
+
+  "hand": {
+    "hand": "main_hand",
+    "consumable": true,
+    "item": {
+      "item": "minecraft:diamond_block"
+    }
+  },
+
+  "transformation": {
+    "chance": 1.0,
+    "block": "minecraft:enchanting_table",
+    "particles": "minecraft:diamond_block",
+    "sound": "minecraft:block.beacon.activate"
+  }
+}

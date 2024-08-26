@@ -49,19 +49,6 @@ public class PunchThemAll
     }
 
     @SubscribeEvent
-    public void onServerStartup(ServerStartingEvent event) {
-        InteractionLoader.initInteractions();
-
-        for (PtaInteraction i : InteractionRegistry.getInstance().getInteractions().values()) {
-            PTALoggers.info("New Interaction Registered : " + i.getId().getPath());
-        }
-        PTALoggers.info("Registered Interactions Count : " + InteractionRegistry.getInstance().getInteractions().values().size());
-
-        PTALoggers.infoRegisteredModule("Server Starting");
-
-    }
-
-    @SubscribeEvent
     public void onServerStarted(ServerStartedEvent event) {
         MinecraftForge.EVENT_BUS.register(PlayerInteractionHandler.class);
 

@@ -40,6 +40,10 @@ public class InteractionRegistry {
         return INSTANCE;
     }
 
+    public void clearInteractions() {
+        this.interactions.clear();
+    }
+
     public Map<ResourceLocation, PtaInteraction> getInteractions() {
         return interactions;
     }

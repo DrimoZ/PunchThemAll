@@ -13,8 +13,8 @@
   
     "transformation": {
         "chance": 0.7,
-        "block": "minecraft:button",
-        "sound": "minecraft:ambient.beacon.deactivate"
+        "block": "minecraft:air",
+        "sound": "minecraft:block.anvil.hit"
     },
   
     "pool": [
