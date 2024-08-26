@@ -34,7 +34,7 @@ public class PunchThemAll
         modEventBus.addListener(this::onCommonSetup);
         modEventBus.addListener(this::onClientSetup);
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, PTAConfig.COMMON_CONFIG, "punchthemall/pta-common.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, PTAConfig.COMMON_CONFIG,  FILE_DESTINATION + "/" + MOD_ID + "-common.toml");
 
         MinecraftForge.EVENT_BUS.register(this);
         PTALoggers.infoModCompleted();
@@ -66,6 +66,5 @@ public class PunchThemAll
         MinecraftForge.EVENT_BUS.register(PlayerInteractionHandler.class);
 
         PTALoggers.infoRegisteredModule("Server Started");
-
     }
 }

@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
 import net.minecraft.world.item.ItemStack;
@@ -168,7 +169,7 @@ public class PlayerInteractionHandler {
 
         if (hand.isEmpty()) {
             if (playerMainHandItem.isEmpty()) {
-                dropItem(level, pos, face, interaction.getPool().getRandomItemStack());
+                dropItem(player, level, pos, face, interaction.getPool().getRandomItemStack());
                 return true;
             }
             return false;
@@ -237,7 +238,7 @@ public class PlayerInteractionHandler {
                 useItemDurability(handItem, player);
             }
 
-            dropItem(level, pos, face, interaction.getPool().getRandomItemStack());
+            dropItem(player, level, pos, face, interaction.getPool().getRandomItemStack());
             return true;
         }
         return false;
@@ -254,14 +255,26 @@ public class PlayerInteractionHandler {
         itemStack.shrink(1);
     }
 
-    private static void dropItem(Level level, BlockPos pos, Direction face, ItemStack itemStack) {
-        double x = pos.getX() + 0.5 + face.getStepX() * 0.75;
-        double y = pos.getY() + 0.5 + face.getStepY() * 0.75;
-        double z = pos.getZ() + 0.5 + face.getStepZ() * 0.75;
+    private static void dropItem(Player player, Level level, BlockPos pos, Direction face, ItemStack itemStack) {
+        if (!PTAConfig.dropInInventory.get() || !tryInsertIntoInventory(player, itemStack)) {
+            double x = pos.getX() + 0.5 + face.getStepX() * 0.75;
+            double y = pos.getY() + 0.5 + face.getStepY() * 0.75;
+            double z = pos.getZ() + 0.5 + face.getStepZ() * 0.75;
 
-        ItemEntity itemEntity = new ItemEntity(level, x, y, z, itemStack.copy());
-        itemEntity.setDeltaMovement(face.getStepX() * 0.1, face.getStepY() * 0.1, face.getStepZ() * 0.1);
-        level.addFreshEntity(itemEntity);
+            ItemEntity itemEntity = new ItemEntity(level, x, y, z, itemStack.copy());
+            itemEntity.setDeltaMovement(face.getStepX() * 0.1, face.getStepY() * 0.1, face.getStepZ() * 0.1);
+            level.addFreshEntity(itemEntity);
+        }
+    }
+
+    private static boolean tryInsertIntoInventory(Player player, ItemStack itemStack) {
+        Inventory fakeInventory = player.getInventory();
+        return insertItemIntoInventory(fakeInventory, itemStack);
+    }
+
+    private static boolean insertItemIntoInventory(Inventory inventory, ItemStack itemStack) {
+        boolean addedToInventory = inventory.add(itemStack);
+        return addedToInventory && itemStack.isEmpty();
     }
 
     private static boolean shouldBlockTransform(PtaTransformation transformation) {
