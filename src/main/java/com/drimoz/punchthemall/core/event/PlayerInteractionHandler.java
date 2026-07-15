@@ -202,9 +202,10 @@ public class PlayerInteractionHandler {
 
     private static void processPlayer(Player player, PtaInteraction interaction) {
         InteractionHand hand = InteractionHand.MAIN_HAND;
-        if (interaction.getHand().getHand().equals(PtaHandEnum.OFF_HAND)) hand = InteractionHand.OFF_HAND;
-
-        player.swing(hand);
+        if (interaction.getHand() != null && interaction.getHand().getHand() != null) {
+            if (interaction.getHand().getHand().equals(PtaHandEnum.OFF_HAND)) hand = InteractionHand.OFF_HAND;
+            player.swing(hand);
+        }
 
         if (PTAConfig.PLAYERS.allowPlayerDamage.get() && interaction.hasHurtPlayer() && interaction.getHurtPlayer().shouldExecute()) {
             // Hurt player for interaction.getHurtPlayer().getValue() in Minecraft ways
