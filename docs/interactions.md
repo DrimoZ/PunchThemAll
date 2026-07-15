@@ -108,3 +108,85 @@ interactions/automation/click_machine_only.json
 
 Keep filenames lowercase with underscores to avoid resource-location issues and
 to make generated IDs stable across operating systems.
+
+## JSON authoring robustness
+
+The interaction reader validates common reusable shapes before creating runtime
+objects. This keeps the format extensible while giving pack authors clearer logs.
+Top-level metadata can be added without changing gameplay; `enabled: false` skips
+a file without deleting it, and `schema_version` is reserved for future migrations:
+
+
+```json
+{
+  "schema_version": 1,
+  "enabled": true,
+  "type": "shift_left_click"
+}
+```
+
+* `hunger`, `damage`, and pool entries all use the same count range pattern:
+  either `count` or `min`/`max`.
+* `pool` is optional so transformation-only interactions remain possible; when
+  present, it must be an array of objects and invalid entries are skipped
+  independently so one bad drop does not discard the whole file unless
+  `fail_fast = true`.
+* Pool `chance` values must be positive weights.
+* `biome.whitelist` and `biome.blacklist` are parsed as string arrays. If both
+  are present, the loader logs the conflict so the file can be cleaned up.
+* Transformation state is read from `transformation.state`, matching the JSON
+  format documented for block/fluid state filters.
+
+For future features, prefer adding new optional objects or sections rather than
+changing the meaning of existing keys. This lets older interaction files keep
+loading while newer packs opt in to expanded behavior.
+
+### Selector formats
+
+Selectors now accept both the historical single-value keys and plural list keys.
+This makes small files stay concise while larger packs can group related targets
+without duplicating whole interaction files.
+
+Hand item selectors support any combination of:
+
+```json
+"hand": {
+  "hand": "main_hand",
+  "item": {
+    "item": "minecraft:stick",
+    "items": ["minecraft:bone", "minecraft:blaze_rod"],
+    "tag": "forge:tools/hammers",
+    "tags": ["forge:tools/wrenches"]
+  }
+}
+```
+
+Block target selectors support block, fluid, and tag lists:
+
+```json
+"block": {
+  "blocks": ["minecraft:cobblestone", "minecraft:stone"],
+  "state": {
+    "blacklist": {
+      "waterlogged": "true"
+    }
+  }
+}
+```
+
+Pool entries support item and tag lists too:
+
+```json
+"pool": [
+  {
+    "items": ["minecraft:flint", "minecraft:gravel"],
+    "chance": 10,
+    "min": 1,
+    "max": 2
+  }
+]
+```
+
+Avoid mixing block and fluid targets in the same `block` selector. If both are
+present, the loader logs the conflict and keeps the block targets because the
+runtime model treats block and fluid targets as different interaction kinds.
