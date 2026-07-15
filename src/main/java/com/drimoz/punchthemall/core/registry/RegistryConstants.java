@@ -7,6 +7,8 @@ public class RegistryConstants {
     public static final String INCORRECT_FORMAT = "Incorrect Json format";
     public static final String SEPARATOR = ".";
 
+    public static final String STRING_SCHEMA_VERSION = "schema_version";
+    public static final String STRING_ENABLED = "enabled";
     public static final String STRING_TYPE = "type";
     public static final String STRING_HUNGER = "hunger";
     public static final String STRING_DAMAGE = "damage";
@@ -14,6 +16,11 @@ public class RegistryConstants {
     public static final String STRING_BLOCK = "block";
     public static final String STRING_TRANSFORMATION = "transformation";
     public static final String STRING_POOL = "pool";
+
+    public static final String STRING_CHANCE = "chance";
+    public static final String STRING_COUNT = "count";
+    public static final String STRING_MIN = "min";
+    public static final String STRING_MAX = "max";
     public static final String STRING_BIOME = "biome";
 
     // Hunger
@@ -43,8 +50,12 @@ public class RegistryConstants {
     public static final String STRING_HAND_ITEM_FULL = STRING_HAND + SEPARATOR + STRING_HAND_ITEM;
     public static final String STRING_HAND_ITEM_ITEM = "item";
     public static final String STRING_HAND_ITEM_ITEM_FULL = STRING_HAND_ITEM_FULL + SEPARATOR + STRING_HAND_ITEM_ITEM;
+    public static final String STRING_HAND_ITEM_ITEMS = "items";
+    public static final String STRING_HAND_ITEM_ITEMS_FULL = STRING_HAND_ITEM_FULL + SEPARATOR + STRING_HAND_ITEM_ITEMS;
     public static final String STRING_HAND_ITEM_TAG = "tag";
     public static final String STRING_HAND_ITEM_TAG_FULL = STRING_HAND_ITEM_FULL + SEPARATOR + STRING_HAND_ITEM_TAG;
+    public static final String STRING_HAND_ITEM_TAGS = "tags";
+    public static final String STRING_HAND_ITEM_TAGS_FULL = STRING_HAND_ITEM_FULL + SEPARATOR + STRING_HAND_ITEM_TAGS;
     public static final String STRING_HAND_ITEM_NBT = "nbt";
     public static final String STRING_HAND_ITEM_NBT_FULL = STRING_HAND_ITEM_FULL + SEPARATOR + STRING_HAND_ITEM_NBT;
     public static final String STRING_HAND_ITEM_NBT_WHITELIST = "whitelist";
@@ -61,10 +72,16 @@ public class RegistryConstants {
     // Block
     public static final String STRING_BLOCK_BLOCK = "block";
     public static final String STRING_BLOCK_BLOCK_FULL = STRING_BLOCK + SEPARATOR + STRING_BLOCK_BLOCK;
+    public static final String STRING_BLOCK_BLOCKS = "blocks";
+    public static final String STRING_BLOCK_BLOCKS_FULL = STRING_BLOCK + SEPARATOR + STRING_BLOCK_BLOCKS;
     public static final String STRING_BLOCK_FLUID = "fluid";
     public static final String STRING_BLOCK_FLUID_FULL = STRING_BLOCK + SEPARATOR + STRING_BLOCK_FLUID;
+    public static final String STRING_BLOCK_FLUIDS = "fluids";
+    public static final String STRING_BLOCK_FLUIDS_FULL = STRING_BLOCK + SEPARATOR + STRING_BLOCK_FLUIDS;
     public static final String STRING_BLOCK_TAG = "tag";
     public static final String STRING_BLOCK_TAG_FULL = STRING_BLOCK + SEPARATOR + STRING_BLOCK_TAG;
+    public static final String STRING_BLOCK_TAGS = "tags";
+    public static final String STRING_BLOCK_TAGS_FULL = STRING_BLOCK + SEPARATOR + STRING_BLOCK_TAGS;
     public static final String STRING_BLOCK_NBT = "nbt";
     public static final String STRING_BLOCK_NBT_FULL = STRING_BLOCK + SEPARATOR + STRING_BLOCK_NBT;
     public static final String STRING_BLOCK_NBT_WHITELIST = "whitelist";
@@ -99,10 +116,14 @@ public class RegistryConstants {
     public static final String STRING_POOL_ENTRY_FULL = STRING_POOL + SEPARATOR + STRING_POOL_ENTRY;
     public static final String STRING_POOL_ITEM = "item";
     public static final String STRING_POOL_ITEM_FULL = STRING_POOL_ENTRY_FULL + SEPARATOR + STRING_POOL_ITEM;
+    public static final String STRING_POOL_ITEMS = "items";
+    public static final String STRING_POOL_ITEMS_FULL = STRING_POOL_ENTRY_FULL + SEPARATOR + STRING_POOL_ITEMS;
     public static final String STRING_POOL_NBT = "nbt";
     public static final String STRING_POOL_NBT_FULL = STRING_POOL_ENTRY_FULL + SEPARATOR + STRING_POOL_NBT;
     public static final String STRING_POOL_TAG = "tag";
     public static final String STRING_POOL_TAG_FULL = STRING_POOL_ENTRY_FULL + SEPARATOR + STRING_POOL_TAG;
+    public static final String STRING_POOL_TAGS = "tags";
+    public static final String STRING_POOL_TAGS_FULL = STRING_POOL_ENTRY_FULL + SEPARATOR + STRING_POOL_TAGS;
     public static final String STRING_POOL_COUNT = "count";
     public static final String STRING_POOL_COUNT_FULL = STRING_POOL_ENTRY_FULL + SEPARATOR + STRING_POOL_COUNT;
     public static final String STRING_POOL_MIN = "min";
