@@ -1,6 +1,6 @@
 # PunchThemAll configuration
 
-PunchThemAll uses a Forge common config file located at:
+PunchThemAll uses a NeoForge common config file located at:
 
 ```text
 config/punchthemall/pta-common.toml

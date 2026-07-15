@@ -5,8 +5,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.tags.ITagManager;
+import net.neoforged.neoforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.registries.tags.ITagManager;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -16,12 +16,12 @@ import java.util.stream.Collectors;
 public class BlockChecker {
 
     public static boolean doesBlockExist(String blockName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(blockName);
+        ResourceLocation blockResourceLocation = ResourceLocation.parse(blockName);
         return ForgeRegistries.BLOCKS.containsKey(blockResourceLocation);
     }
 
     public static Block getExistingBlock(String blockName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(blockName);
+        ResourceLocation blockResourceLocation = ResourceLocation.parse(blockName);
         return ForgeRegistries.BLOCKS.getValue(blockResourceLocation);
     }
 
@@ -30,7 +30,7 @@ public class BlockChecker {
     }
 
     public static Set<Block> getBlocksForTag(String blockTag) {
-        ResourceLocation tagId = new ResourceLocation(blockTag);
+        ResourceLocation tagId = ResourceLocation.parse(blockTag);
         TagKey<Block> tagKey = TagKey.create(ForgeRegistries.BLOCKS.getRegistryKey(), tagId);
         ITagManager<Block> blockTagManager = ForgeRegistries.BLOCKS.tags();
 
@@ -42,7 +42,7 @@ public class BlockChecker {
     }
 
     public static boolean isBlockTagExisting(String blockTag) {
-        ResourceLocation tagId = new ResourceLocation(blockTag);
+        ResourceLocation tagId = ResourceLocation.parse(blockTag);
         TagKey<Block> tagKey = TagKey.create(ForgeRegistries.BLOCKS.getRegistryKey(), tagId);
         ITagManager<Block> blockTagManager = ForgeRegistries.BLOCKS.tags();
 

@@ -31,7 +31,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -331,7 +331,7 @@ public class InteractionCreator {
         if (transformationJson.has(STRING_TRANSFORMATION_SOUND)) {
 
             String soundName = GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_SOUND);
-            sound = ForgeRegistries.SOUND_EVENTS.getValue(new ResourceLocation(soundName));
+            sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.parse(soundName));
         }
 
         // Particles

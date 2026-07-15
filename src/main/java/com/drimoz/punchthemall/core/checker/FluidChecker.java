@@ -5,8 +5,8 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.tags.ITagManager;
+import net.neoforged.neoforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.registries.tags.ITagManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -15,12 +15,12 @@ import java.util.stream.Collectors;
 public class FluidChecker {
 
     public static boolean doesFluidExist(String fluidName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(fluidName);
+        ResourceLocation blockResourceLocation = ResourceLocation.parse(fluidName);
         return ForgeRegistries.FLUIDS.containsKey(blockResourceLocation);
     }
 
     public static Fluid getExistingFluid(String fluidName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(fluidName);
+        ResourceLocation blockResourceLocation = ResourceLocation.parse(fluidName);
         return ForgeRegistries.FLUIDS.getValue(blockResourceLocation);
     }
 
@@ -29,7 +29,7 @@ public class FluidChecker {
     }
 
     public static Set<Fluid> getFluidsForTag(String fluidTag) {
-        ResourceLocation tagId = new ResourceLocation(fluidTag);
+        ResourceLocation tagId = ResourceLocation.parse(fluidTag);
         TagKey<Fluid> tagKey = TagKey.create(ForgeRegistries.FLUIDS.getRegistryKey(), tagId);
         ITagManager<Fluid> fluidTagManager = ForgeRegistries.FLUIDS.tags();
 
@@ -41,7 +41,7 @@ public class FluidChecker {
     }
 
     public static boolean isFluidTagExisting(String fluidTag) {
-        ResourceLocation tagId = new ResourceLocation(fluidTag);
+        ResourceLocation tagId = ResourceLocation.parse(fluidTag);
         TagKey<Fluid> tagKey = TagKey.create(ForgeRegistries.FLUIDS.getRegistryKey(), tagId);
         ITagManager<Fluid> fluidTagManager = ForgeRegistries.FLUIDS.tags();
 

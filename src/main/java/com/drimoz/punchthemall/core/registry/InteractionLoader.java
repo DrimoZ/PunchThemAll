@@ -7,7 +7,7 @@ import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
@@ -78,6 +78,6 @@ public class InteractionLoader {
         if (PTAConfig.LOADER.lowerCaseGeneratedIds.get()) {
             relativeName = relativeName.toLowerCase();
         }
-        return new ResourceLocation(PunchThemAll.MOD_ID, relativeName);
+        return ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, relativeName);
     }
 }

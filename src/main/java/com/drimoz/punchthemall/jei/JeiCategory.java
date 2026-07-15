@@ -20,7 +20,7 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NumericTag;
@@ -30,7 +30,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -123,7 +123,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     @Override
-    public void draw(PtaInteraction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphics graphics, double mouseX, double mouseY) {
+    public void draw(PtaInteraction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor graphics, double mouseX, double mouseY) {
         drawIcons(interaction, graphics);
         drawSlots(interaction, graphics);
         drawTooltips(interaction, mouseX, mouseY, graphics);
@@ -291,7 +291,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     // Inner Work ( Draw )
 
-    private void drawIcons(PtaInteraction interaction, GuiGraphics graphics) {
+    private void drawIcons(PtaInteraction interaction, GuiGraphicsExtractor graphics) {
         IDrawable mouseIcon = interaction.getType().isLeftClick() ? MOUSE_LEFT_CLICK : MOUSE_RIGHT_CLICK;
         mouseIcon.draw(graphics, X_MOUSE_ICON, Y_MOUSE_ICON);
 
@@ -323,7 +323,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         ARROW.draw(graphics, X_ARROW, Y_ARROW);
     }
 
-    private void drawSlots(PtaInteraction interaction, GuiGraphics graphics) {
+    private void drawSlots(PtaInteraction interaction, GuiGraphicsExtractor graphics) {
         SLOT.draw(graphics, X_HAND_ITEM, Y_HAND_ITEM);
         SLOT.draw(graphics, X_BLOCK, Y_BLOCK);
 
@@ -336,7 +336,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
-    private void drawTooltips(PtaInteraction interaction, double mouseX, double mouseY, GuiGraphics graphics) {
+    private void drawTooltips(PtaInteraction interaction, double mouseX, double mouseY, GuiGraphicsExtractor graphics) {
         if (isMouseOver(mouseX, mouseY, X_MOUSE_ICON + 1, Y_MOUSE_ICON + 1, 16, 16)) {
             List<Component> tooltipComponents = new ArrayList<>();
             tooltipComponents.add(Component.translatable(
@@ -557,7 +557,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     private String getEnchantmentName(String enchantmentId) {
-        ResourceLocation resourceLocation = new ResourceLocation(enchantmentId);
+        ResourceLocation resourceLocation = ResourceLocation.parse(enchantmentId);
         var enchantment = ForgeRegistries.ENCHANTMENTS.getValue(resourceLocation);
         if (enchantment == null) {
             return enchantmentId;

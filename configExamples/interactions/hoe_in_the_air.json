@@ -49,13 +49,13 @@
 
   "pool": [
     {
-      "tag": "forge:seeds",
+      "tag": "c:seeds",
       "chance": 10,
       "min": 3,
       "max": 10
     },
     {
-      "tag": "forge:nuggets",
+      "tag": "c:nuggets",
       "chance": 1,
       "count": 1
     },
