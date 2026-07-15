@@ -1,5 +1,6 @@
 package com.drimoz.punchthemall.core.registry;
 
+import com.drimoz.punchthemall.PTAConfig;
 import com.drimoz.punchthemall.core.checker.BlockChecker;
 import com.drimoz.punchthemall.core.checker.FluidChecker;
 import com.drimoz.punchthemall.core.checker.ItemChecker;
@@ -40,50 +41,22 @@ import static com.drimoz.punchthemall.core.registry.RegistryConstants.*;
 public class InteractionCreator {
 
     public static PtaInteraction createInteraction(ResourceLocation id, JsonObject json) throws JsonSyntaxException {
+        InteractionJsonReader reader = new InteractionJsonReader(id, PTALoggers::error);
+
+        if (!reader.readBoolean(json, STRING_ENABLED, true)) {
+            if (PTAConfig.DEBUG.logLoadedInteractions.get()) {
+                PTALoggers.info("Skipping disabled PunchThemAll interaction " + id);
+            }
+            return null;
+        }
+
         if (!json.has(STRING_TYPE)) {
             errorMissing(id, STRING_TYPE);
             return null;
         }
 
-        PtaInteractionRecord hunger = null;
-        if (json.has(STRING_HUNGER) && json.get(STRING_HUNGER).isJsonObject()) {
-            JsonObject hungerJson = GsonHelper.getAsJsonObject(json, STRING_HUNGER);
-
-            if (hungerJson.has(STRING_HUNGER_CHANCE) && hungerJson.get(STRING_HUNGER_CHANCE).isJsonPrimitive()) {
-                double chance = GsonHelper.getAsDouble(hungerJson, STRING_HUNGER_CHANCE);
-
-                if (hungerJson.has(STRING_HUNGER_COUNT) && hungerJson.get(STRING_HUNGER_COUNT).isJsonPrimitive()) {
-                    int count = GsonHelper.getAsInt(hungerJson, STRING_HUNGER_COUNT);
-                    hunger = new PtaInteractionRecord(chance, count, count);
-                }
-                else if(hungerJson.has(STRING_HUNGER_MIN) && hungerJson.get(STRING_HUNGER_MIN).isJsonPrimitive() &&
-                        hungerJson.has(STRING_HUNGER_MAX) && hungerJson.get(STRING_HUNGER_MAX).isJsonPrimitive()) {
-                    int min = GsonHelper.getAsInt(hungerJson, STRING_HUNGER_MIN);
-                    int max = GsonHelper.getAsInt(hungerJson, STRING_HUNGER_MAX);
-                    hunger = new PtaInteractionRecord(chance, min, max);
-                }
-            }
-        }
-
-        PtaInteractionRecord damage = null;
-        if (json.has(STRING_DAMAGE) && json.get(STRING_DAMAGE).isJsonObject()) {
-            JsonObject damageJson = GsonHelper.getAsJsonObject(json, STRING_DAMAGE);
-
-            if (damageJson.has(STRING_DAMAGE_CHANCE) && damageJson.get(STRING_DAMAGE_CHANCE).isJsonPrimitive()) {
-                double chance = GsonHelper.getAsDouble(damageJson, STRING_DAMAGE_CHANCE);
-
-                if (damageJson.has(STRING_DAMAGE_COUNT) && damageJson.get(STRING_DAMAGE_COUNT).isJsonPrimitive()) {
-                    int count = GsonHelper.getAsInt(damageJson, STRING_DAMAGE_COUNT);
-                    damage = new PtaInteractionRecord(chance, count, count);
-                }
-                else if(damageJson.has(STRING_DAMAGE_MIN) && damageJson.get(STRING_DAMAGE_MIN).isJsonPrimitive() &&
-                        damageJson.has(STRING_DAMAGE_MAX) && damageJson.get(STRING_DAMAGE_MAX).isJsonPrimitive()) {
-                    int min = GsonHelper.getAsInt(damageJson, STRING_DAMAGE_MIN);
-                    int max = GsonHelper.getAsInt(damageJson, STRING_DAMAGE_MAX);
-                    damage = new PtaInteractionRecord(chance, min, max);
-                }
-            }
-        }
+        PtaInteractionRecord hunger = reader.readInteractionRecord(json, STRING_HUNGER).orElse(null);
+        PtaInteractionRecord damage = reader.readInteractionRecord(json, STRING_DAMAGE).orElse(null);
 
         // Type
         PtaTypeEnum type = PtaTypeEnum.fromString(GsonHelper.getAsString(json, STRING_TYPE));
@@ -102,14 +75,13 @@ public class InteractionCreator {
 
         // Biomes
         Set<String> biomeWhiteList = new HashSet<>(), biomeBlackList = new HashSet<>();
-        if (json.has(STRING_BIOME) && json.get(STRING_BIOME).isJsonObject()) {
+        if (reader.hasObject(json, STRING_BIOME)) {
             JsonObject biomeJson = GsonHelper.getAsJsonObject(json, STRING_BIOME);
+            reader.readStringArray(biomeJson, STRING_BIOME_WHITELIST, biomeWhiteList, STRING_BIOME_WHITELIST_FULL);
+            reader.readStringArray(biomeJson, STRING_BIOME_BLACKLIST, biomeBlackList, STRING_BIOME_BLACKLIST_FULL);
 
-            if (biomeJson.has(STRING_BIOME_WHITELIST) && biomeJson.get(STRING_BIOME_WHITELIST).isJsonArray()) {
-                biomeWhiteList.addAll(GsonHelper.getAsJsonArray(biomeJson, STRING_BIOME_WHITELIST).asList().stream().map(jsonElement -> jsonElement.getAsString().replace("\"", "")).toList());
-            }
-            else if (biomeJson.has(STRING_BIOME_BLACKLIST) && biomeJson.get(STRING_BIOME_BLACKLIST).isJsonArray()) {
-                biomeBlackList.addAll(GsonHelper.getAsJsonArray(biomeJson, STRING_BIOME_BLACKLIST).asList().stream().map(jsonElement -> jsonElement.getAsString().replace("\"", "")).toList());
+            if (!biomeWhiteList.isEmpty() && !biomeBlackList.isEmpty()) {
+                errorFormat(id, STRING_BIOME + " cannot define both whitelist and blacklist; whitelist will take precedence at runtime");
             }
         }
 
@@ -174,15 +146,15 @@ public class InteractionCreator {
 
     private static Set<Item> createHandItemSet(ResourceLocation id, JsonObject json) {
         Set<Item> itemSet = new HashSet<>();
+        InteractionJsonReader reader = new InteractionJsonReader(id, PTALoggers::error);
 
-        if (json.has(STRING_HAND_ITEM_TAG)) {
-            itemSet.addAll(ItemChecker.getItemsForTag(GsonHelper.getAsString(json, STRING_HAND_ITEM_TAG)));
-        }
-        else if (json.has(STRING_HAND_ITEM_ITEM)) {
-            itemSet.add(ItemChecker.getExistingItem(GsonHelper.getAsString(json, STRING_HAND_ITEM_ITEM)));
-        }
-        else {
-            errorMissing(id, STRING_HAND_ITEM_ITEM_FULL + " or " + STRING_HAND_ITEM_TAG_FULL);
+        addItemsFromJson(reader, json, itemSet, STRING_HAND_ITEM_ITEM, STRING_HAND_ITEM_ITEM_FULL);
+        addItemsFromJson(reader, json, itemSet, STRING_HAND_ITEM_ITEMS, STRING_HAND_ITEM_ITEMS_FULL);
+        addItemTagsFromJson(reader, json, itemSet, STRING_HAND_ITEM_TAG, STRING_HAND_ITEM_TAG_FULL);
+        addItemTagsFromJson(reader, json, itemSet, STRING_HAND_ITEM_TAGS, STRING_HAND_ITEM_TAGS_FULL);
+
+        if (!reader.hasAny(json, STRING_HAND_ITEM_ITEM, STRING_HAND_ITEM_ITEMS, STRING_HAND_ITEM_TAG, STRING_HAND_ITEM_TAGS)) {
+            errorMissing(id, STRING_HAND_ITEM_ITEM_FULL + " or " + STRING_HAND_ITEM_ITEMS_FULL + " or " + STRING_HAND_ITEM_TAG_FULL + " or " + STRING_HAND_ITEM_TAGS_FULL);
         }
 
         return itemSet;
@@ -197,7 +169,7 @@ public class InteractionCreator {
         if (json.has(STRING_HAND_ITEM_NBT_BLACKLIST)) {
             nbtBlackList = getNbtFromString(id, GsonHelper.getAsJsonObject(json, STRING_HAND_ITEM_NBT_BLACKLIST));
         }
-        else {
+        if (!json.has(STRING_HAND_ITEM_NBT_WHITELIST) && !json.has(STRING_HAND_ITEM_NBT_BLACKLIST)) {
             errorMissing(id, STRING_HAND_ITEM_NBT_WHITELIST_FULL + " or " + STRING_HAND_ITEM_NBT_BLACKLIST_FULL);
         }
 
@@ -217,26 +189,21 @@ public class InteractionCreator {
         Set<Fluid> fluidSet = new HashSet<>();
 
         // Block / Fluid Set
-        if (blockJson.has(STRING_BLOCK_BLOCK)) {
-            blockSet.add(BlockChecker.getExistingBlock(GsonHelper.getAsString(blockJson, STRING_BLOCK_BLOCK)));
+        InteractionJsonReader reader = new InteractionJsonReader(id, PTALoggers::error);
+        addBlocksFromJson(reader, blockJson, blockSet, STRING_BLOCK_BLOCK, STRING_BLOCK_BLOCK_FULL);
+        addBlocksFromJson(reader, blockJson, blockSet, STRING_BLOCK_BLOCKS, STRING_BLOCK_BLOCKS_FULL);
+        addFluidsFromJson(reader, blockJson, fluidSet, STRING_BLOCK_FLUID, STRING_BLOCK_FLUID_FULL);
+        addFluidsFromJson(reader, blockJson, fluidSet, STRING_BLOCK_FLUIDS, STRING_BLOCK_FLUIDS_FULL);
+        addBlockOrFluidTagsFromJson(reader, blockJson, blockSet, fluidSet, STRING_BLOCK_TAG, STRING_BLOCK_TAG_FULL);
+        addBlockOrFluidTagsFromJson(reader, blockJson, blockSet, fluidSet, STRING_BLOCK_TAGS, STRING_BLOCK_TAGS_FULL);
+
+        if (!reader.hasAny(blockJson, STRING_BLOCK_BLOCK, STRING_BLOCK_BLOCKS, STRING_BLOCK_FLUID, STRING_BLOCK_FLUIDS, STRING_BLOCK_TAG, STRING_BLOCK_TAGS)) {
+            errorMissing(id, STRING_BLOCK_BLOCK_FULL + " or " + STRING_BLOCK_BLOCKS_FULL + " or " + STRING_BLOCK_FLUID_FULL + " or " + STRING_BLOCK_FLUIDS_FULL + " or " + STRING_BLOCK_TAG_FULL + " or " + STRING_BLOCK_TAGS_FULL);
         }
-        else if (blockJson.has(STRING_BLOCK_FLUID)) {
-            fluidSet.add(FluidChecker.getExistingFluid(GsonHelper.getAsString(blockJson, STRING_BLOCK_FLUID)));
-        }
-        else if (blockJson.has(STRING_BLOCK_TAG)) {
-            String tag = GsonHelper.getAsString(blockJson, STRING_BLOCK_TAG);
-            if (BlockChecker.isBlockTagExisting(tag)) {
-                blockSet.addAll(BlockChecker.getBlocksForTag(tag));
-            }
-            else if (FluidChecker.isFluidTagExisting(tag)) {
-                fluidSet.addAll(FluidChecker.getFluidsForTag(tag));
-            }
-            else {
-                errorFormat(id, "Tag Invalid : " +  STRING_BLOCK_TAG_FULL);
-            }
-        }
-        else {
-            errorMissing(id, STRING_BLOCK_BLOCK_FULL + " or " + STRING_BLOCK_FLUID_FULL + " or " + STRING_BLOCK_TAG_FULL);
+
+        if (!blockSet.isEmpty() && !fluidSet.isEmpty()) {
+            errorFormat(id, STRING_BLOCK + " cannot target blocks and fluids in the same selector; block targets will be used");
+            fluidSet.clear();
         }
 
         // State Sets
@@ -266,10 +233,10 @@ public class InteractionCreator {
         if (json.has(STRING_BLOCK_STATE_WHITELIST)) {
             stateWhiteList = createStateSet(id, GsonHelper.getAsJsonObject(json, STRING_BLOCK_STATE_WHITELIST), entries);
         }
-        else if (json.has(STRING_BLOCK_STATE_BLACKLIST)) {
+        if (json.has(STRING_BLOCK_STATE_BLACKLIST)) {
             stateBlackList = createStateSet(id, GsonHelper.getAsJsonObject(json, STRING_BLOCK_STATE_BLACKLIST), entries);
         }
-        else {
+        if (!json.has(STRING_BLOCK_STATE_WHITELIST) && !json.has(STRING_BLOCK_STATE_BLACKLIST)) {
             errorMissing(id, STRING_BLOCK_STATE_WHITELIST_FULL + " or " + STRING_BLOCK_STATE_BLACKLIST_FULL);
         }
 
@@ -282,10 +249,10 @@ public class InteractionCreator {
         if (json.has(STRING_BLOCK_NBT_WHITELIST)) {
             nbtWhiteList = getNbtFromString(id, GsonHelper.getAsJsonObject(json, STRING_BLOCK_NBT_WHITELIST));
         }
-        else if (json.has(STRING_BLOCK_NBT_BLACKLIST)) {
+        if (json.has(STRING_BLOCK_NBT_BLACKLIST)) {
             nbtBlackList = getNbtFromString(id, GsonHelper.getAsJsonObject(json, STRING_BLOCK_NBT_BLACKLIST));
         }
-        else {
+        if (!json.has(STRING_BLOCK_NBT_WHITELIST) && !json.has(STRING_BLOCK_NBT_BLACKLIST)) {
             errorMissing(id, STRING_BLOCK_NBT_WHITELIST_FULL + " or " + STRING_BLOCK_NBT_BLACKLIST_FULL);
         }
 
@@ -351,7 +318,7 @@ public class InteractionCreator {
         // State
         Set<PtaStateRecord<?>> state = new HashSet<>();
         if ((block != null || fluid != null) && transformationJson.has(STRING_TRANSFORMATION_STATE)) {
-            state = createStateSet(id, GsonHelper.getAsJsonObject(transformationJson, STRING_BLOCK_STATE), Set.of(block == null ? fluid : block));
+            state = createStateSet(id, GsonHelper.getAsJsonObject(transformationJson, STRING_TRANSFORMATION_STATE), Set.of(block == null ? fluid : block));
         }
 
         // NBT
@@ -388,56 +355,144 @@ public class InteractionCreator {
     // Inner Work ( Pool )
 
     private static PtaPool createPool(ResourceLocation id, JsonObject json) {
+        InteractionJsonReader reader = new InteractionJsonReader(id, PTALoggers::error);
         Map<PtaDropRecord, Integer> pool = new HashMap<>();
 
-        if (!json.has(STRING_POOL) || !json.get(STRING_POOL).isJsonArray()) return PtaPool.create(pool);
+        if (!json.has(STRING_POOL)) {
+            return PtaPool.create(pool);
+        }
+        if (!reader.hasArray(json, STRING_POOL)) {
+            errorFormat(id, STRING_POOL + " must be an array");
+            return PtaPool.create(pool);
+        }
 
         JsonArray dropArray = GsonHelper.getAsJsonArray(json, STRING_POOL);
 
-        for (JsonElement arrayValue: dropArray) {
-            JsonObject dropJson = (JsonObject) arrayValue;
+        for (int index = 0; index < dropArray.size(); index++) {
+            JsonElement arrayValue = dropArray.get(index);
+            if (!arrayValue.isJsonObject()) {
+                errorFormat(id, STRING_POOL + "[" + index + "] must be an object");
+                continue;
+            }
+            JsonObject dropJson = arrayValue.getAsJsonObject();
+            String path = STRING_POOL + "[" + index + "]";
 
             // Chance
-            if (!dropJson.has(STRING_POOL_CHANCE) || !dropJson.get(STRING_POOL_CHANCE).isJsonPrimitive()) continue;
+            if (!reader.hasPrimitive(dropJson, STRING_POOL_CHANCE)) {
+                errorMissing(id, path + SEPARATOR + STRING_POOL_CHANCE);
+                continue;
+            }
             int chance = GsonHelper.getAsInt(dropJson, STRING_POOL_CHANCE);
-
-            // Min / Max
-            int min, max;
-            if (dropJson.has(STRING_POOL_COUNT) && dropJson.get(STRING_POOL_COUNT).isJsonPrimitive()) {
-                min = max = GsonHelper.getAsInt(dropJson, STRING_POOL_COUNT);
+            if (chance <= 0) {
+                errorFormat(id, path + SEPARATOR + STRING_POOL_CHANCE + " must be greater than 0");
+                continue;
             }
-            else {
-                if (!dropJson.has(STRING_POOL_MIN) || !dropJson.get(STRING_POOL_MIN).isJsonPrimitive()) continue;
-                min = GsonHelper.getAsInt(dropJson, STRING_POOL_MIN);
 
-                if (dropJson.has(STRING_POOL_MAX) && dropJson.get(STRING_POOL_MAX).isJsonPrimitive()) {
-                    max = GsonHelper.getAsInt(dropJson, STRING_POOL_MAX);
-                }
-                else {
-                    max = min;
-                }
-            }
+            Optional<InteractionJsonReader.Range> range = reader.readRange(dropJson, path, 0);
+            if (range.isEmpty()) continue;
 
             Set<Item> items = new HashSet<>();
-            if (dropJson.has(STRING_POOL_ITEM) && dropJson.get(STRING_POOL_ITEM).isJsonPrimitive()) {
-                items.add(ItemChecker.getExistingItem(GsonHelper.getAsString(dropJson, STRING_POOL_ITEM)));
-            }
-            else if (dropJson.has(STRING_POOL_TAG) && dropJson.get(STRING_POOL_TAG).isJsonPrimitive()) {
-                items.addAll(ItemChecker.getItemsForTag(GsonHelper.getAsString(dropJson, STRING_POOL_TAG)));
-            }
-            else {
-                errorMissing(id, STRING_POOL_ITEM_FULL + " or " + STRING_POOL_TAG_FULL);
+            addItemsFromJson(reader, dropJson, items, STRING_POOL_ITEM, path + SEPARATOR + STRING_POOL_ITEM);
+            addItemsFromJson(reader, dropJson, items, STRING_POOL_ITEMS, path + SEPARATOR + STRING_POOL_ITEMS);
+            addItemTagsFromJson(reader, dropJson, items, STRING_POOL_TAG, path + SEPARATOR + STRING_POOL_TAG);
+            addItemTagsFromJson(reader, dropJson, items, STRING_POOL_TAGS, path + SEPARATOR + STRING_POOL_TAGS);
+            if (!reader.hasAny(dropJson, STRING_POOL_ITEM, STRING_POOL_ITEMS, STRING_POOL_TAG, STRING_POOL_TAGS)) {
+                errorMissing(id, path + SEPARATOR + STRING_POOL_ITEM + " or " + path + SEPARATOR + STRING_POOL_ITEMS + " or " + path + SEPARATOR + STRING_POOL_TAG + " or " + path + SEPARATOR + STRING_POOL_TAGS);
             }
 
             CompoundTag nbt = null;
-            if (dropJson.has(STRING_POOL_NBT) && dropJson.get(STRING_POOL_NBT).isJsonObject() && !items.isEmpty()) {
+            if (reader.hasObject(dropJson, STRING_POOL_NBT) && !items.isEmpty()) {
                 nbt = getNbtFromString(id, GsonHelper.getAsJsonObject(dropJson, STRING_POOL_NBT));
             }
 
-            pool.put(new PtaDropRecord(items, min, max, nbt), chance);
+            pool.put(new PtaDropRecord(items, range.get().min(), range.get().max(), nbt), chance);
         }
 
         return PtaPool.create(pool);
+    }
+
+
+    // Inner Work ( Selectors )
+
+    private static void addItemsFromJson(InteractionJsonReader reader, JsonObject json, Set<Item> items, String key, String path) {
+        for (String itemName : reader.readStringList(json, key, path)) {
+            try {
+                Item item = ItemChecker.getExistingItem(itemName);
+                if (item == null) {
+                    PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown item " + itemName);
+                    continue;
+                }
+                items.add(item);
+            } catch (RuntimeException e) {
+                PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid item id " + itemName + " : " + e);
+            }
+        }
+    }
+
+    private static void addItemTagsFromJson(InteractionJsonReader reader, JsonObject json, Set<Item> items, String key, String path) {
+        for (String tagName : reader.readStringList(json, key, path)) {
+            try {
+                Set<Item> tagItems = ItemChecker.getItemsForTag(tagName);
+                if (tagItems.isEmpty()) {
+                    PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown or empty item tag " + tagName);
+                    continue;
+                }
+                items.addAll(tagItems);
+            } catch (RuntimeException e) {
+                PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid item tag id " + tagName + " : " + e);
+            }
+        }
+    }
+
+    private static void addBlocksFromJson(InteractionJsonReader reader, JsonObject json, Set<Block> blocks, String key, String path) {
+        for (String blockName : reader.readStringList(json, key, path)) {
+            try {
+                Block block = BlockChecker.getExistingBlock(blockName);
+                if (block == null) {
+                    PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown block " + blockName);
+                    continue;
+                }
+                blocks.add(block);
+            } catch (RuntimeException e) {
+                PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid block id " + blockName + " : " + e);
+            }
+        }
+    }
+
+    private static void addFluidsFromJson(InteractionJsonReader reader, JsonObject json, Set<Fluid> fluids, String key, String path) {
+        for (String fluidName : reader.readStringList(json, key, path)) {
+            try {
+                Fluid fluid = FluidChecker.getExistingFluid(fluidName);
+                if (fluid == null) {
+                    PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown fluid " + fluidName);
+                    continue;
+                }
+                fluids.add(fluid);
+            } catch (RuntimeException e) {
+                PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid fluid id " + fluidName + " : " + e);
+            }
+        }
+    }
+
+    private static void addBlockOrFluidTagsFromJson(InteractionJsonReader reader, JsonObject json, Set<Block> blocks, Set<Fluid> fluids, String key, String path) {
+        for (String tagName : reader.readStringList(json, key, path)) {
+            try {
+                boolean found = false;
+                if (BlockChecker.isBlockTagExisting(tagName)) {
+                    blocks.addAll(BlockChecker.getBlocksForTag(tagName));
+                    found = true;
+                }
+                if (FluidChecker.isFluidTagExisting(tagName)) {
+                    fluids.addAll(FluidChecker.getFluidsForTag(tagName));
+                    found = true;
+                }
+                if (!found) {
+                    PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown block/fluid tag " + tagName);
+                }
+            } catch (RuntimeException e) {
+                PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid block/fluid tag id " + tagName + " : " + e);
+            }
+        }
     }
 
     // Inner Work ( Util )
