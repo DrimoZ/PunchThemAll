@@ -31,7 +31,7 @@
   "transformation": {
         "chance": 0.7,
         "block": "exdeorum:dust",
-        "particles": "exdeorun:dust"
+        "particles": "exdeorum:dust"
     },
   
     "pool": [
