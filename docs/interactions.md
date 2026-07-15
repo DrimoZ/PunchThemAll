@@ -155,8 +155,8 @@ Hand item selectors support any combination of:
   "item": {
     "item": "minecraft:stick",
     "items": ["minecraft:bone", "minecraft:blaze_rod"],
-    "tag": "forge:tools/hammers",
-    "tags": ["forge:tools/wrenches"]
+    "tag": "c:tools/hammers",
+    "tags": ["c:tools/wrenches"]
   }
 }
 ```

@@ -9,6 +9,7 @@ import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.util.PTALoggers;
+import com.drimoz.punchthemall.core.util.NbtHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -33,12 +34,12 @@ import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForgeMod;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -389,8 +390,7 @@ public class PlayerInteractionHandler {
     private static void applyNBTs(Level level, BlockPos pos, CompoundTag customNBT) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity != null) {
-            blockEntity.load(customNBT);
-            blockEntity.setChanged();
+            NbtHelper.loadBlockEntity(blockEntity, level, customNBT);
         }
     }
 
@@ -406,7 +406,7 @@ public class PlayerInteractionHandler {
         float f5 = Mth.sin(-pitch * 0.017453292F);
         float f6 = f3 * f4;
         float f7 = f2 * f4;
-        double reach = player.getAttribute(ForgeMod.ENTITY_REACH.get()).getValue();
+        double reach = player.getAttribute(NeoForgeMod.ENTITY_REACH.get()).getValue();
         Vec3 targetPosition = eyePosition.add((double)f6 * reach, (double)f5 * reach, (double)f7 * reach);
         return world.clip(new ClipContext(eyePosition, targetPosition, ClipContext.Block.OUTLINE, fluidMode, player));
     }
@@ -416,7 +416,7 @@ public class PlayerInteractionHandler {
             Vec3 eyePosition = player.getEyePosition(1.0F);
             Vec3 lookVector = player.getLookAngle();
 
-            double reachDistance = player.getAttribute(ForgeMod.BLOCK_REACH.get()).getValue();
+            double reachDistance = player.getAttribute(NeoForgeMod.BLOCK_REACH.get()).getValue();
             Vec3 reachEnd = eyePosition.add(lookVector.x * reachDistance, lookVector.y * reachDistance, lookVector.z * reachDistance);
 
             BlockHitResult blockHitResult = level.clip(new ClipContext(eyePosition, reachEnd, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));

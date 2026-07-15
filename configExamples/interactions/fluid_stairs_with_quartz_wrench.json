@@ -4,7 +4,7 @@
   "hand": {
     "hand": "main_hand",
     "item": {
-      "tag": "forge:tools/wrench"
+      "tag": "c:tools/wrench"
     },
     "damageable": true
   },
@@ -31,7 +31,7 @@
 
   "pool": [
     {
-      "tag": "forge:gems",
+      "tag": "c:gems",
       "chance": 10,
       "min": 1,
       "max": 5

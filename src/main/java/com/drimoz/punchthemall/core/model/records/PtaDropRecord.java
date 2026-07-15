@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import com.drimoz.punchthemall.core.util.NbtHelper;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -29,7 +30,12 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
     // Interface
 
     public ItemStack getItemStack() {
-        return isEmpty() ? ItemStack.EMPTY : new ItemStack(pickRandomItem(), calculateCount(), nbt);
+        if (isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack stack = new ItemStack(pickRandomItem(), calculateCount());
+        NbtHelper.setCustomData(stack, nbt);
+        return stack;
     }
 
     public int calculateCount() {

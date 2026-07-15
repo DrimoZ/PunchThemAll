@@ -18,7 +18,7 @@ public class JEIPlugin implements IModPlugin {
 
     @Override
     public ResourceLocation getPluginUid() {
-        return new ResourceLocation(PunchThemAll.MOD_ID, "jei_plugin");
+        return ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "jei_plugin");
     }
 
     @Override
