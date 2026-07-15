@@ -8,6 +8,7 @@ import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
+import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -49,28 +50,41 @@ import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE
 
 public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
-    private static final Long COOLDOWN_INTERVAL = PTAConfig.interactionCooldown.get().longValue();
 
     @SubscribeEvent(priority = EventPriority.HIGH, receiveCanceled = true)
     public static void onPlayerInteract(PlayerInteractEvent event) {
         Player entity = event.getEntity();
-        if (entity instanceof FakePlayer && !PTAConfig.allowFakePlayers.get()) return;
-
-        if (!(entity instanceof FakePlayer) && isPlayerOnCooldown(entity.getUUID(), entity.tickCount)) return;
+        if (!PTAConfig.interactionsEnabled.get()) {
+            logSkipped("interactions are disabled globally");
+            return;
+        }
+        if (entity instanceof FakePlayer && !PTAConfig.allowFakePlayers.get()) {
+            logSkipped("fake players are disabled");
+            return;
+        }
+        if (isCooldownEnabledFor(entity) && isPlayerOnCooldown(entity.getUUID(), entity.tickCount)) return;
         if (event.getLevel().isClientSide()) return;
 
         if (event instanceof PlayerInteractEvent.LeftClickBlock leftClickBlockEvent) {
             if (!(entity instanceof FakePlayer) && leftClickBlockEvent.getAction() != PlayerInteractEvent.LeftClickBlock.Action.ABORT) return;
-            handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, true, leftClickBlockEvent);
+            if (isClickTypeEnabled(PtaTypeEnum.LEFT_CLICK)) {
+                handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, true, leftClickBlockEvent);
+            }
         }
         else if (event instanceof PlayerInteractEvent.LeftClickEmpty leftClickEmptyEvent) {
-            handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, leftClickEmptyEvent);
+            if (isClickTypeEnabled(PtaTypeEnum.LEFT_CLICK)) {
+                handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, leftClickEmptyEvent);
+            }
         }
         else if (event instanceof PlayerInteractEvent.RightClickBlock rightClickBlockEvent) {
-            handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, true, rightClickBlockEvent);
+            if (isClickTypeEnabled(PtaTypeEnum.RIGHT_CLICK)) {
+                handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, true, rightClickBlockEvent);
+            }
         }
         else if (event instanceof PlayerInteractEvent.RightClickItem rightClickItemEvent) {
-            handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, rightClickItemEvent);
+            if (isClickTypeEnabled(PtaTypeEnum.RIGHT_CLICK)) {
+                handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, rightClickItemEvent);
+            }
         }
     }
 
@@ -78,12 +92,11 @@ public class PlayerInteractionHandler {
         Player player = event.getEntity();
         Level level = event.getLevel();
         BlockPos blockPos = event.getPos();
-        Direction direction = getPlayerFacingDirection(player, level); // Perform ray tracing to get the direction
-
         BlockHitResult hitResult = rayTrace(level, player, ClipContext.Fluid.SOURCE_ONLY);
+        Direction direction = getInteractionDirection(player, level, hitResult);
 
         if (level.isClientSide()) return;
-        if (!(player instanceof FakePlayer) && isPlayerOnCooldown(player.getUUID(), player.tickCount)) return;
+        if (isCooldownEnabledFor(player) && isPlayerOnCooldown(player.getUUID(), player.tickCount)) return;
 
         boolean interactionProcessed = false;
         boolean blockTransformed = false;
@@ -93,7 +106,7 @@ public class PlayerInteractionHandler {
             BlockPos pos = hitResult.getBlockPos();
             FluidState fluidState = level.getFluidState(pos);
 
-            if (fluidState.getType() == Fluids.WATER || fluidState.isSource()) {
+            if (PTAConfig.INTERACTIONS.allowFluidInteractions.get() && (fluidState.getType() == Fluids.WATER || fluidState.isSource())) {
                 fluidInteraction = true;
             }
         }
@@ -107,18 +120,31 @@ public class PlayerInteractionHandler {
             interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
         }
 
+        int processedInteractions = 0;
+
         for (PtaInteraction interaction : interactions) {
+            if (processedInteractions >= PTAConfig.INTERACTIONS.maxMatchesPerClick.get()) {
+                break;
+            }
+
+            if (!isInteractionTargetEnabled(interaction)) {
+                logSkipped("target type is disabled for " + interaction.getId());
+                continue;
+            }
+
             if (interaction.getBlock().isAir()) {
                 if (processInteraction(player, level, player.blockPosition(), Direction.UP, interaction)) {
-                    if (!(player instanceof FakePlayer)) processPlayer(player, interaction);
+                    if (shouldProcessPlayerEffects(player)) processPlayer(player, interaction);
                     interactionProcessed = true;
+                    processedInteractions++;
                 }
             }
             else {
                 if (!blockTransformed && processInteraction(player, level, fluidInteraction ? hitResult.getBlockPos() : blockPos, direction, interaction)) {
                     interactionProcessed = true;
-                    if (!(player instanceof FakePlayer)) processPlayer(player, interaction);
-                    if (shouldBlockTransform(interaction.getTransformation())) {
+                    if (shouldProcessPlayerEffects(player)) processPlayer(player, interaction);
+                    processedInteractions++;
+                    if (PTAConfig.INTERACTIONS.allowTransformations.get() && shouldBlockTransform(interaction.getTransformation())) {
                         transformBlock(level, fluidInteraction ? hitResult.getBlockPos() : blockPos, interaction.getTransformation());
                         blockTransformed = true;
                     }
@@ -127,8 +153,10 @@ public class PlayerInteractionHandler {
         }
 
         if (interactionProcessed) {
-            event.setCanceled(true);
-            if (!(player instanceof FakePlayer)) setPlayerOnCooldown(player.getUUID(), player.tickCount);
+            if (PTAConfig.INTERACTIONS.cancelVanillaInteraction.get()) {
+                event.setCanceled(true);
+            }
+            if (isCooldownEnabledFor(player)) setPlayerOnCooldown(player.getUUID(), player.tickCount);
         }
     }
 
@@ -178,12 +206,12 @@ public class PlayerInteractionHandler {
 
         player.swing(hand);
 
-        if (interaction.hasHurtPlayer() && interaction.getHurtPlayer().shouldExecute()) {
+        if (PTAConfig.PLAYERS.allowPlayerDamage.get() && interaction.hasHurtPlayer() && interaction.getHurtPlayer().shouldExecute()) {
             // Hurt player for interaction.getHurtPlayer().getValue() in Minecraft ways
             player.hurt(player.damageSources().generic(), interaction.getHurtPlayer().getValue());
         }
 
-        if (interaction.hasConsumeFood() && interaction.getConsumeFood().shouldExecute()) {
+        if (PTAConfig.PLAYERS.allowFoodConsumption.get() && interaction.hasConsumeFood() && interaction.getConsumeFood().shouldExecute()) {
             // Consume food (saturation / food level of the player) interaction.getConsumeFood().getValue() in Minecraft Ways
             int totalFoodPointsToConsume = interaction.getConsumeFood().getValue();
 
@@ -236,13 +264,15 @@ public class PlayerInteractionHandler {
     }
 
     private static void dropItem(Player player, Level level, BlockPos pos, Direction face, ItemStack itemStack) {
-        if (!PTAConfig.dropInInventory.get() || !tryInsertIntoInventory(player, itemStack)) {
-            double x = pos.getX() + 0.5 + face.getStepX() * 0.75;
-            double y = pos.getY() + 0.5 + face.getStepY() * 0.75;
-            double z = pos.getZ() + 0.5 + face.getStepZ() * 0.75;
+        if (!shouldInsertDropsIntoInventory(player) || !tryInsertIntoInventory(player, itemStack)) {
+            double offset = PTAConfig.DROPS.dropOffset.get();
+            double velocity = PTAConfig.DROPS.dropVelocity.get();
+            double x = pos.getX() + 0.5 + face.getStepX() * offset;
+            double y = pos.getY() + 0.5 + face.getStepY() * offset;
+            double z = pos.getZ() + 0.5 + face.getStepZ() * offset;
 
             ItemEntity itemEntity = new ItemEntity(level, x, y, z, itemStack.copy());
-            itemEntity.setDeltaMovement(face.getStepX() * 0.1, face.getStepY() * 0.1, face.getStepZ() * 0.1);
+            itemEntity.setDeltaMovement(face.getStepX() * velocity, face.getStepY() * velocity, face.getStepZ() * velocity);
             level.addFreshEntity(itemEntity);
         }
     }
@@ -405,10 +435,64 @@ public class PlayerInteractionHandler {
     }
 
     private static boolean isPlayerOnCooldown(UUID UUID, long currentTick) {
-        return PLAYER_COOLDOWNS.getOrDefault(UUID, -1L) >= currentTick - COOLDOWN_INTERVAL;
+        int cooldownInterval = PTAConfig.INTERACTIONS.cooldownTicks.get();
+        if (cooldownInterval <= 0) {
+            return false;
+        }
+        return PLAYER_COOLDOWNS.getOrDefault(UUID, -1L) >= currentTick - cooldownInterval;
     }
 
     private static void setPlayerOnCooldown(UUID UUID, long currentTick) {
-        PLAYER_COOLDOWNS.put(UUID, currentTick);
+        if (PTAConfig.INTERACTIONS.cooldownTicks.get() > 0) {
+            PLAYER_COOLDOWNS.put(UUID, currentTick);
+        }
+    }
+
+    private static boolean isCooldownEnabledFor(Player player) {
+        return !(player instanceof FakePlayer) || PTAConfig.PLAYERS.applyCooldownToFakePlayers.get();
+    }
+
+    private static boolean shouldProcessPlayerEffects(Player player) {
+        return !(player instanceof FakePlayer) || PTAConfig.PLAYERS.applyPlayerEffectsToFakePlayers.get();
+    }
+
+    private static boolean shouldInsertDropsIntoInventory(Player player) {
+        if (player instanceof FakePlayer) {
+            return PTAConfig.DROPS.placeFakePlayerDropsInInventory.get();
+        }
+        return PTAConfig.DROPS.placeInInventory.get();
+    }
+
+    private static boolean isClickTypeEnabled(PtaTypeEnum type) {
+        boolean enabled = type.isLeftClick() ? PTAConfig.INTERACTIONS.allowLeftClick.get() : PTAConfig.INTERACTIONS.allowRightClick.get();
+        if (!enabled) {
+            logSkipped(type + " is disabled");
+        }
+        return enabled;
+    }
+
+    private static boolean isInteractionTargetEnabled(PtaInteraction interaction) {
+        if (interaction.getBlock().isAir()) {
+            return PTAConfig.INTERACTIONS.allowAirInteractions.get();
+        }
+        if (interaction.getBlock().isFluid()) {
+            return PTAConfig.INTERACTIONS.allowFluidInteractions.get();
+        }
+        return PTAConfig.INTERACTIONS.allowBlockInteractions.get();
+    }
+
+    private static void logSkipped(String reason) {
+        if (PTAConfig.DEBUG.logSkippedInteractions.get()) {
+            PTALoggers.info("Skipped PunchThemAll interaction: " + reason);
+        }
+    }
+
+    private static Direction getInteractionDirection(Player player, Level level, BlockHitResult hitResult) {
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            return hitResult.getDirection();
+        }
+
+        Direction direction = getPlayerFacingDirection(player, level);
+        return direction == null ? player.getDirection() : direction;
     }
 }
