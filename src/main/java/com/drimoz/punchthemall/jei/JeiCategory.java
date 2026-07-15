@@ -338,14 +338,13 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     private void drawTooltips(PtaInteraction interaction, double mouseX, double mouseY, GuiGraphics graphics) {
         if (isMouseOver(mouseX, mouseY, X_MOUSE_ICON + 1, Y_MOUSE_ICON + 1, 16, 16)) {
-            graphics.renderTooltip(
-                    Minecraft.getInstance().font,
-                    Component.translatable(
-                            interaction.getType().isLeftClick() ?
-                                    TranslationKeys.INTERACTION_CLICK_LEFT :
-                                    TranslationKeys.INTERACTION_CLICK_RIGHT),
-                    (int) mouseX,
-                    (int) mouseY);
+            List<Component> tooltipComponents = new ArrayList<>();
+            tooltipComponents.add(Component.translatable(
+                    interaction.getType().isLeftClick() ?
+                            TranslationKeys.INTERACTION_CLICK_LEFT :
+                            TranslationKeys.INTERACTION_CLICK_RIGHT));
+            tooltipComponents.add(Component.literal("§8" + interaction.getId()));
+            graphics.renderTooltip(Minecraft.getInstance().font, tooltipComponents, Optional.empty(), (int) mouseX, (int) mouseY);
         }
 
         if (isMouseOver(mouseX, mouseY, X_SNEAK_ICON + 1, Y_SNEAK_ICON + 1, 16, 16)) {
@@ -471,7 +470,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
             if (!blacklistStates.isEmpty()) {
                 tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
-                for (PtaStateRecord<?> state : whitelistStates) {
+                for (PtaStateRecord<?> state : blacklistStates) {
                     tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value()));
                 }
             }
@@ -559,12 +558,16 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     private String getEnchantmentName(String enchantmentId) {
         ResourceLocation resourceLocation = new ResourceLocation(enchantmentId);
-        return Component.translatable(ForgeRegistries.ENCHANTMENTS.getValue(resourceLocation).getDescriptionId()).getString();
+        var enchantment = ForgeRegistries.ENCHANTMENTS.getValue(resourceLocation);
+        if (enchantment == null) {
+            return enchantmentId;
+        }
+        return Component.translatable(enchantment.getDescriptionId()).getString();
     }
 
     private String toRomanNumeral(int number) {
         if (number < 1 || number > 3999) {
-            throw new IllegalArgumentException("Number out of range (must be 1-3999)");
+            return String.valueOf(number);
         }
         StringBuilder roman = new StringBuilder();
         int[] values = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
