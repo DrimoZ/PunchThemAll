@@ -16,7 +16,7 @@ public class TagHelper {
                 (compareTag instanceof CompoundTag && ((CompoundTag) compareTag).isEmpty())) return true;
 
         if (compareTag instanceof CompoundTag) {
-            Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
+            Set<String> compareKeys = ((CompoundTag) compareTag).keySet();
 
             // Si on a un format spécifique, on a un comportement spécifique
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
@@ -26,14 +26,14 @@ public class TagHelper {
                     if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return false;
 
                     assert listRangeTag.size() == 2 : "RangeTag too short";
-                    return ((IntTag)listRangeTag.get(0)).getAsInt() <= ((IntTag) itemTag).getAsInt() && ((IntTag) itemTag).getAsInt() <= ((IntTag)listRangeTag.get(1)).getAsInt();
+                    return ((IntTag)listRangeTag.get(0)).intValue() <= ((IntTag) itemTag).intValue() && ((IntTag) itemTag).intValue() <= ((IntTag)listRangeTag.get(1)).intValue();
                 }
                 if (itemTag instanceof ShortTag) {
                     // On vérifie que la valeur liée à RangeTag soit une list
                     if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return false;
 
                     assert listRangeTag.size() == 2 : "RangeTag too short";
-                    return ((ShortTag)listRangeTag.get(0)).getAsInt() <= ((ShortTag) itemTag).getAsInt() && ((ShortTag) itemTag).getAsInt() <= ((ShortTag)listRangeTag.get(1)).getAsInt();
+                    return ((ShortTag)listRangeTag.get(0)).intValue() <= ((ShortTag) itemTag).intValue() && ((ShortTag) itemTag).intValue() <= ((ShortTag)listRangeTag.get(1)).intValue();
                 }
                 else {
                     return false;
@@ -45,7 +45,7 @@ public class TagHelper {
             else {
                 if (!(itemTag instanceof CompoundTag)) return false;
 
-                Set<String> itemKeys = ((CompoundTag) itemTag).getAllKeys();
+                Set<String> itemKeys = ((CompoundTag) itemTag).keySet();
                 for (String compareKey : compareKeys) {
                     if (!itemKeys.contains(compareKey)) return false;
 
@@ -85,7 +85,7 @@ public class TagHelper {
                 (compareTag instanceof CompoundTag && ((CompoundTag) compareTag).isEmpty())) return true;
 
         if (compareTag instanceof CompoundTag) {
-            Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
+            Set<String> compareKeys = ((CompoundTag) compareTag).keySet();
 
             // Si on a un format spécifique, on a un comportement spécifique
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
@@ -96,14 +96,14 @@ public class TagHelper {
                 if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return true;
 
                 assert listRangeTag.size() == 2 : "RangeTag too short";
-                return ((IntTag) listRangeTag.get(0)).getAsInt() > ((IntTag) itemTag).getAsInt() &&
-                        ((IntTag) itemTag).getAsInt() > ((IntTag) listRangeTag.get(1)).getAsInt();
+                return ((IntTag) listRangeTag.get(0)).intValue() > ((IntTag) itemTag).intValue() &&
+                        ((IntTag) itemTag).intValue() > ((IntTag) listRangeTag.get(1)).intValue();
             }
             // Sinon pour chaque field de l'objet, on vérifie récursivement que l'item n'ai pas les memes
             else {
                 if (!(itemTag instanceof CompoundTag)) return true;
 
-                Set<String> itemKeys = ((CompoundTag) itemTag).getAllKeys();
+                Set<String> itemKeys = ((CompoundTag) itemTag).keySet();
                 for (String compareKey : compareKeys) {
                     if (itemKeys.contains(compareKey)) {
                         // Si containsRequiredTagsWithRangeBlacklist = true => Pas d'occurence => on check la clé suivante

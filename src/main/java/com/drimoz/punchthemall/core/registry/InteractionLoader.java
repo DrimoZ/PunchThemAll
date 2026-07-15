@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 public class InteractionLoader {
@@ -76,8 +77,47 @@ public class InteractionLoader {
                 .replace(file.getFileSystem().getSeparator(), "/")
                 .replaceAll("\\.json$", "");
         if (PTAConfig.LOADER.lowerCaseGeneratedIds.get()) {
-            relativeName = relativeName.toLowerCase();
+            relativeName = relativeName.toLowerCase(Locale.ROOT);
         }
+        relativeName = normalizeResourcePath(relativeName);
         return ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, relativeName);
+    }
+
+    private static String normalizeResourcePath(String relativeName) {
+        StringBuilder normalizedName = new StringBuilder(relativeName.length());
+        boolean lastWasSlash = false;
+
+        for (int index = 0; index < relativeName.length(); index++) {
+            char character = relativeName.charAt(index);
+            boolean validCharacter = character >= 'a' && character <= 'z'
+                    || character >= '0' && character <= '9'
+                    || character == '_'
+                    || character == '-'
+                    || character == '.';
+
+            if (character == '/') {
+                if (!lastWasSlash && !normalizedName.isEmpty()) {
+                    normalizedName.append(character);
+                    lastWasSlash = true;
+                }
+            }
+            else if (validCharacter) {
+                normalizedName.append(character);
+                lastWasSlash = false;
+            }
+            else {
+                normalizedName.append('_');
+                lastWasSlash = false;
+            }
+        }
+
+        while (!normalizedName.isEmpty() && normalizedName.charAt(normalizedName.length() - 1) == '/') {
+            normalizedName.deleteCharAt(normalizedName.length() - 1);
+        }
+
+        if (normalizedName.isEmpty()) {
+            return "interaction";
+        }
+        return normalizedName.toString();
     }
 }

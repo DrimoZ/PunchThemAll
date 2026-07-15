@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -34,7 +35,6 @@ import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.NeoForgeMod;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -406,7 +406,7 @@ public class PlayerInteractionHandler {
         float f5 = Mth.sin(-pitch * 0.017453292F);
         float f6 = f3 * f4;
         float f7 = f2 * f4;
-        double reach = player.getAttribute(NeoForgeMod.ENTITY_REACH.get()).getValue();
+        double reach = player.getAttributeValue(Attributes.BLOCK_INTERACTION_RANGE);
         Vec3 targetPosition = eyePosition.add((double)f6 * reach, (double)f5 * reach, (double)f7 * reach);
         return world.clip(new ClipContext(eyePosition, targetPosition, ClipContext.Block.OUTLINE, fluidMode, player));
     }
@@ -416,7 +416,7 @@ public class PlayerInteractionHandler {
             Vec3 eyePosition = player.getEyePosition(1.0F);
             Vec3 lookVector = player.getLookAngle();
 
-            double reachDistance = player.getAttribute(NeoForgeMod.BLOCK_REACH.get()).getValue();
+            double reachDistance = player.getAttributeValue(Attributes.BLOCK_INTERACTION_RANGE);
             Vec3 reachEnd = eyePosition.add(lookVector.x * reachDistance, lookVector.y * reachDistance, lookVector.z * reachDistance);
 
             BlockHitResult blockHitResult = level.clip(new ClipContext(eyePosition, reachEnd, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));

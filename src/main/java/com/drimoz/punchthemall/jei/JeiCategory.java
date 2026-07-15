@@ -20,7 +20,7 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NumericTag;
@@ -30,7 +30,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -123,7 +122,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     @Override
-    public void draw(PtaInteraction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor graphics, double mouseX, double mouseY) {
+    public void draw(PtaInteraction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphics graphics, double mouseX, double mouseY) {
         drawIcons(interaction, graphics);
         drawSlots(interaction, graphics);
         drawTooltips(interaction, mouseX, mouseY, graphics);
@@ -291,7 +290,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     // Inner Work ( Draw )
 
-    private void drawIcons(PtaInteraction interaction, GuiGraphicsExtractor graphics) {
+    private void drawIcons(PtaInteraction interaction, GuiGraphics graphics) {
         IDrawable mouseIcon = interaction.getType().isLeftClick() ? MOUSE_LEFT_CLICK : MOUSE_RIGHT_CLICK;
         mouseIcon.draw(graphics, X_MOUSE_ICON, Y_MOUSE_ICON);
 
@@ -323,7 +322,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         ARROW.draw(graphics, X_ARROW, Y_ARROW);
     }
 
-    private void drawSlots(PtaInteraction interaction, GuiGraphicsExtractor graphics) {
+    private void drawSlots(PtaInteraction interaction, GuiGraphics graphics) {
         SLOT.draw(graphics, X_HAND_ITEM, Y_HAND_ITEM);
         SLOT.draw(graphics, X_BLOCK, Y_BLOCK);
 
@@ -336,7 +335,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
-    private void drawTooltips(PtaInteraction interaction, double mouseX, double mouseY, GuiGraphicsExtractor graphics) {
+    private void drawTooltips(PtaInteraction interaction, double mouseX, double mouseY, GuiGraphics graphics) {
         if (isMouseOver(mouseX, mouseY, X_MOUSE_ICON + 1, Y_MOUSE_ICON + 1, 16, 16)) {
             List<Component> tooltipComponents = new ArrayList<>();
             tooltipComponents.add(Component.translatable(
@@ -483,14 +482,14 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
             if (!whitelistNbt.isEmpty()) {
                 tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_WHITELIST).getString() + " :"));
-                for (String key : whitelistNbt.getAllKeys()) {
+                for (String key : whitelistNbt.keySet()) {
                     formatNbtDisplay(tooltip, key,  whitelistNbt.get(key));
                 }
             }
 
             if (!blacklistNbt.isEmpty()) {
                 tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
-                for (String key : blacklistNbt.getAllKeys()) {
+                for (String key : blacklistNbt.keySet()) {
                     formatNbtDisplay(tooltip, key,  blacklistNbt.get(key));
                 }
             }
@@ -500,18 +499,18 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     private void formatNbtDisplay(ITooltipBuilder tooltip, String key, Tag value) {
         if (key.equals("Enchantments") && value instanceof ListTag listTag) {
             formatEnchantments(tooltip, listTag);
-        } else if (value instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
-            ListTag rangeTag = compoundTag.getList("RangeTag", Tag.TAG_INT);
+        } else if (value instanceof CompoundTag compoundTag && compoundTag.containsKey("RangeTag")) {
+            ListTag rangeTag = compoundTag.getListOrEmpty("RangeTag");
             if (rangeTag.size() == 2) {
-                int min = rangeTag.getInt(0);
-                int max = rangeTag.getInt(1);
+                int min = rangeTag.getIntOr(0, 0);
+                int max = rangeTag.getIntOr(1, 0);
                 tooltip.add(Component.literal("§8  - " + key + " : §5" + min + " - " + max));
             }
         } else if (value instanceof ListTag listTag) {
             StringBuilder listText = new StringBuilder("§8  - " + key + " : §5[");
 
             for (Tag listElement : listTag) {
-                listText.append(listElement.getAsString()).append(", ");
+                listText.append(listElement.asString().orElse(listElement.toString())).append(", ");
             }
 
             if (listText.length() > 5) {
@@ -530,7 +529,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
         for (Tag enchantmentTag : enchantments) {
             if (enchantmentTag instanceof CompoundTag enchantmentCompound) {
-                String id = enchantmentCompound.getString("id");
+                String id = enchantmentCompound.getString("id").orElse("");
                 Tag levelTag = enchantmentCompound.get("lvl");
                 String enchantmentName = getEnchantmentName(id);
                 tooltip.add(Component.literal("§8    - §d" + enchantmentName + " §5 " + formatEnchantmentLevel(levelTag)));
@@ -539,15 +538,15 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     private String formatEnchantmentLevel(Tag levelTag) {
-        if (levelTag instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
-            ListTag rangeTag = compoundTag.getList("RangeTag", Tag.TAG_SHORT);
+        if (levelTag instanceof CompoundTag compoundTag && compoundTag.containsKey("RangeTag")) {
+            ListTag rangeTag = compoundTag.getListOrEmpty("RangeTag");
             if (rangeTag.size() == 2) {
-                int min = rangeTag.getShort(0);
-                int max = rangeTag.getShort(1);
+                int min = ((NumericTag) rangeTag.get(0)).intValue();
+                int max = ((NumericTag) rangeTag.get(1)).intValue();
                 return toRomanNumeral(min) + " - " + toRomanNumeral(max);
             }
         } else if (levelTag instanceof NumericTag numericTag) {
-            int level = numericTag.getAsInt();
+            int level = numericTag.intValue();
             if (level == 1) {
                 return "";
             }
@@ -558,11 +557,14 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     private String getEnchantmentName(String enchantmentId) {
         ResourceLocation resourceLocation = ResourceLocation.parse(enchantmentId);
-        var enchantment = ForgeRegistries.ENCHANTMENTS.getValue(resourceLocation);
-        if (enchantment == null) {
+        String translationKey = "enchantment." + resourceLocation.getNamespace() + "." + resourceLocation.getPath();
+        Component translatedName = Component.translatable(translationKey);
+
+        String resolvedName = translatedName.getString();
+        if (translationKey.equals(resolvedName)) {
             return enchantmentId;
         }
-        return Component.translatable(enchantment.getDescriptionId()).getString();
+        return resolvedName;
     }
 
     private String toRomanNumeral(int number) {

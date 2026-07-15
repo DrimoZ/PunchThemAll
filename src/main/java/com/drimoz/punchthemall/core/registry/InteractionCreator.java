@@ -20,6 +20,7 @@ import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -31,7 +32,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.neoforged.neoforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.*;
 
@@ -331,7 +332,7 @@ public class InteractionCreator {
         if (transformationJson.has(STRING_TRANSFORMATION_SOUND)) {
 
             String soundName = GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_SOUND);
-            sound = ForgeRegistries.SOUND_EVENTS.getValue(ResourceLocation.parse(soundName));
+            sound = BuiltInRegistries.SOUND_EVENT.getValue(ResourceLocation.parse(soundName));
         }
 
         // Particles
@@ -522,7 +523,7 @@ public class InteractionCreator {
             String regex = "\"(-?\\d+\\.?\\d*)([dsl]?)\"";
             String cleanedNbtString = nbtString.replaceAll(regex, "$1$2");
 
-            return TagParser.parseTag(cleanedNbtString);
+            return TagParser.create(NbtOps.INSTANCE).parseCompoundFully(cleanedNbtString);
         } catch (CommandSyntaxException e) {
             PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error during parsing NBTs" + e);
             return null;

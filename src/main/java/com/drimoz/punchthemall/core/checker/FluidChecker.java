@@ -1,12 +1,11 @@
 package com.drimoz.punchthemall.core.checker;
 
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.registries.ForgeRegistries;
-import net.neoforged.neoforge.registries.tags.ITagManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -15,13 +14,13 @@ import java.util.stream.Collectors;
 public class FluidChecker {
 
     public static boolean doesFluidExist(String fluidName) {
-        ResourceLocation blockResourceLocation = ResourceLocation.parse(fluidName);
-        return ForgeRegistries.FLUIDS.containsKey(blockResourceLocation);
+        ResourceLocation fluidResourceLocation = ResourceLocation.parse(fluidName);
+        return BuiltInRegistries.FLUID.containsKey(fluidResourceLocation);
     }
 
     public static Fluid getExistingFluid(String fluidName) {
-        ResourceLocation blockResourceLocation = ResourceLocation.parse(fluidName);
-        return ForgeRegistries.FLUIDS.getValue(blockResourceLocation);
+        ResourceLocation fluidResourceLocation = ResourceLocation.parse(fluidName);
+        return BuiltInRegistries.FLUID.getValue(fluidResourceLocation);
     }
 
     public static Fluid getFirstFluidForTag(String fluidTag) {
@@ -30,21 +29,17 @@ public class FluidChecker {
 
     public static Set<Fluid> getFluidsForTag(String fluidTag) {
         ResourceLocation tagId = ResourceLocation.parse(fluidTag);
-        TagKey<Fluid> tagKey = TagKey.create(ForgeRegistries.FLUIDS.getRegistryKey(), tagId);
-        ITagManager<Fluid> fluidTagManager = ForgeRegistries.FLUIDS.tags();
+        TagKey<Fluid> tagKey = TagKey.create(Registries.FLUID, tagId);
 
-        if (fluidTagManager == null) {
-            return new HashSet<>();
-        }
-
-        return fluidTagManager.getTag(tagKey).stream().collect(Collectors.toCollection(HashSet::new));
+        return BuiltInRegistries.FLUID.getTag(tagKey)
+                .map(tag -> tag.stream().map(Holder::value).collect(Collectors.toCollection(HashSet::new)))
+                .orElseGet(HashSet::new);
     }
 
     public static boolean isFluidTagExisting(String fluidTag) {
         ResourceLocation tagId = ResourceLocation.parse(fluidTag);
-        TagKey<Fluid> tagKey = TagKey.create(ForgeRegistries.FLUIDS.getRegistryKey(), tagId);
-        ITagManager<Fluid> fluidTagManager = ForgeRegistries.FLUIDS.tags();
+        TagKey<Fluid> tagKey = TagKey.create(Registries.FLUID, tagId);
 
-        return fluidTagManager != null && fluidTagManager.getTagNames().anyMatch(fluidTagKey -> fluidTagKey.location().equals(tagKey.location()));
+        return BuiltInRegistries.FLUID.getTag(tagKey).isPresent();
     }
 }

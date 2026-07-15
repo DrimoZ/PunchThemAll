@@ -1,10 +1,11 @@
 package com.drimoz.punchthemall.core.checker;
 
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-import net.neoforged.neoforge.registries.ForgeRegistries;
-import net.neoforged.neoforge.registries.tags.ITagManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,12 +15,12 @@ public class ItemChecker {
 
     public static boolean doesItemExist(String itemName) {
         ResourceLocation itemResourceLocation = ResourceLocation.parse(itemName);
-        return ForgeRegistries.ITEMS.containsKey(itemResourceLocation);
+        return BuiltInRegistries.ITEM.containsKey(itemResourceLocation);
     }
 
     public static Item getExistingItem(String itemName) {
         ResourceLocation itemResourceLocation = ResourceLocation.parse(itemName);
-        return ForgeRegistries.ITEMS.getValue(itemResourceLocation);
+        return BuiltInRegistries.ITEM.getValue(itemResourceLocation);
     }
 
     public static Item getFirstItemFromTag(String itemTag) {
@@ -28,14 +29,11 @@ public class ItemChecker {
 
     public static Set<Item> getItemsForTag(String itemTag) {
         ResourceLocation tagId = ResourceLocation.parse(itemTag);
-        TagKey<Item> tagKey = TagKey.create(ForgeRegistries.ITEMS.getRegistryKey(), tagId);
-        ITagManager<Item> itemTagManager = ForgeRegistries.ITEMS.tags();
+        TagKey<Item> tagKey = TagKey.create(Registries.ITEM, tagId);
 
-        if (itemTagManager == null) {
-            return new HashSet<>();
-        }
-
-        return itemTagManager.getTag(tagKey).stream().collect(Collectors.toCollection(HashSet::new));
+        return BuiltInRegistries.ITEM.getTag(tagKey)
+                .map(tag -> tag.stream().map(Holder::value).collect(Collectors.toCollection(HashSet::new)))
+                .orElseGet(HashSet::new);
     }
 
 }
