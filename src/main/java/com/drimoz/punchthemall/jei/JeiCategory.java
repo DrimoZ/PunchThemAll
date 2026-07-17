@@ -30,7 +30,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 
 import java.util.*;
 
@@ -557,12 +558,15 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     }
 
     private String getEnchantmentName(String enchantmentId) {
-        ResourceLocation resourceLocation = new ResourceLocation(enchantmentId);
-        var enchantment = ForgeRegistries.ENCHANTMENTS.getValue(resourceLocation);
-        if (enchantment == null) {
+        ResourceLocation resourceLocation = ResourceLocation.parse(enchantmentId);
+        if (Minecraft.getInstance().level == null) {
             return enchantmentId;
         }
-        return Component.translatable(enchantment.getDescriptionId()).getString();
+        return Minecraft.getInstance().level.registryAccess()
+                .registryOrThrow(Registries.ENCHANTMENT)
+                .getHolder(ResourceKey.create(Registries.ENCHANTMENT, resourceLocation))
+                .map(enchantment -> enchantment.value().description().getString())
+                .orElse(enchantmentId);
     }
 
     private String toRomanNumeral(int number) {

@@ -1,12 +1,12 @@
 PunchThemAll
 ============
 
-PunchThemAll is a Minecraft Forge 1.20.1 mod that lets modpack authors create
+PunchThemAll is a NeoForge 1.21.1 mod that lets modpack authors create
 JSON-defined interactions: click a block, fluid, or the air with an optional
 hand item and receive configurable drops, transformations, damage, hunger costs,
 biome restrictions, block-state checks, and NBT checks.
 
-The mod is designed for modpacks: interactions live in the normal Forge config
+The mod is designed for modpacks: interactions live in the normal NeoForge config
 folder and can be reloaded, while global behavior is controlled by the common
 TOML config.
 
@@ -28,7 +28,7 @@ Main features
 Configuration quick start
 -------------------------
 
-Forge writes the common config to:
+NeoForge writes the common config to:
 
 `config/punchthemall/pta-common.toml`
 
@@ -64,7 +64,7 @@ Example files are provided in `configExamples/interactions`. See
 Development setup
 -----------------
 
-This project follows the Minecraft Forge MDK workflow for Forge 1.20.1.
+This project follows the NeoForge/NeoGradle workflow for NeoForge 1.21.1.
 
 Common commands:
 
@@ -78,6 +78,6 @@ If dependencies are missing, run `./gradlew --refresh-dependencies`.
 Additional resources
 --------------------
 
-* Forge documentation: https://docs.minecraftforge.net/en/1.20.1/gettingstarted/
-* Forge forums: https://forums.minecraftforge.net/
-* Forge Discord: https://discord.minecraftforge.net/
+* NeoForge documentation: https://docs.neoforged.net/docs/1.21.1/gettingstarted/
+* NeoForge website: https://neoforged.net/
+* NeoForge Discord: https://discord.neoforged.net/

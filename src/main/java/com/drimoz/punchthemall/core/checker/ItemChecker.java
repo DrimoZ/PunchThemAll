@@ -1,10 +1,10 @@
 package com.drimoz.punchthemall.core.checker;
 
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.tags.ITagManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -13,13 +13,13 @@ import java.util.stream.Collectors;
 public class ItemChecker {
 
     public static boolean doesItemExist(String itemName) {
-        ResourceLocation itemResourceLocation = new ResourceLocation(itemName);
-        return ForgeRegistries.ITEMS.containsKey(itemResourceLocation);
+        ResourceLocation itemResourceLocation = ResourceLocation.parse(itemName);
+        return BuiltInRegistries.ITEM.containsKey(itemResourceLocation);
     }
 
     public static Item getExistingItem(String itemName) {
-        ResourceLocation itemResourceLocation = new ResourceLocation(itemName);
-        return ForgeRegistries.ITEMS.getValue(itemResourceLocation);
+        ResourceLocation itemResourceLocation = ResourceLocation.parse(itemName);
+        return BuiltInRegistries.ITEM.get(itemResourceLocation);
     }
 
     public static Item getFirstItemFromTag(String itemTag) {
@@ -27,15 +27,11 @@ public class ItemChecker {
     }
 
     public static Set<Item> getItemsForTag(String itemTag) {
-        ResourceLocation tagId = new ResourceLocation(itemTag);
-        TagKey<Item> tagKey = TagKey.create(ForgeRegistries.ITEMS.getRegistryKey(), tagId);
-        ITagManager<Item> itemTagManager = ForgeRegistries.ITEMS.tags();
-
-        if (itemTagManager == null) {
-            return new HashSet<>();
-        }
-
-        return itemTagManager.getTag(tagKey).stream().collect(Collectors.toCollection(HashSet::new));
+        ResourceLocation tagId = ResourceLocation.parse(itemTag);
+        TagKey<Item> tagKey = TagKey.create(Registries.ITEM, tagId);
+        return BuiltInRegistries.ITEM.stream()
+                .filter(item -> item.builtInRegistryHolder().is(tagKey))
+                .collect(Collectors.toCollection(HashSet::new));
     }
 
 }

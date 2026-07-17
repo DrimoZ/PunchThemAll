@@ -4,9 +4,9 @@ import com.drimoz.punchthemall.PunchThemAll;
 import net.minecraft.resources.ResourceLocation;
 
 public class JeiConstants {
-        public static final ResourceLocation JEI_TEXTURE = new ResourceLocation(PunchThemAll.MOD_ID, "textures/gui/jei.png");
-        public static final ResourceLocation JEI_ICON_TEXTURE = new ResourceLocation(PunchThemAll.MOD_ID, "textures/gui/punch.png");
-        public static final ResourceLocation UID = new ResourceLocation(PunchThemAll.MOD_ID, "interactions");
+        public static final ResourceLocation JEI_TEXTURE = ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "textures/gui/jei.png");
+        public static final ResourceLocation JEI_ICON_TEXTURE = ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "textures/gui/punch.png");
+        public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "interactions");
 
         public static final int WIDTH = 162;
         public static final int HEIGHT_START = 44;

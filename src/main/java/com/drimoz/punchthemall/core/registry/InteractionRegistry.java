@@ -8,7 +8,9 @@ import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -19,7 +21,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.common.util.FakePlayer;
+import net.neoforged.neoforge.common.util.FakePlayer;
 
 import java.util.*;
 
@@ -165,7 +167,7 @@ public class InteractionRegistry {
         BlockEntity worldBlockEntity = level.getBlockEntity(pos);
         if (worldBlockEntity == null) return false;
 
-        CompoundTag worldBlockEntityTag = worldBlockEntity.serializeNBT();
+        CompoundTag worldBlockEntityTag = worldBlockEntity.saveWithFullMetadata(level.registryAccess());
 
         boolean passesWhiteList = true, passesBlackList = true;
         if (interaction.getBlock().hasNbtWhiteList())
@@ -234,11 +236,16 @@ public class InteractionRegistry {
     }
 
     private boolean matchesNBTWhitelist(ItemStack itemStack, CompoundTag nbtWhitelist) {
-        return TagHelper.containsRequiredTagsWithRange(itemStack.getTag(), nbtWhitelist);
+        return TagHelper.containsRequiredTagsWithRange(getItemStackCustomData(itemStack), nbtWhitelist);
     }
 
     private boolean matchesNBTBlacklist(ItemStack itemStack, CompoundTag nbtBlacklist) {
-        return TagHelper.containsRequiredTagsWithRangeBlacklist(itemStack.getTag(), nbtBlacklist);
+        return TagHelper.containsRequiredTagsWithRangeBlacklist(getItemStackCustomData(itemStack), nbtBlacklist);
+    }
+
+    private CompoundTag getItemStackCustomData(ItemStack itemStack) {
+        CustomData customData = itemStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+        return customData.copyTag();
     }
 
     public int getJEIRowCount() {
