@@ -30,5 +30,21 @@
   "gui.pta.category.damage.heart": "Hearts",
   "gui.pta.category.hunger.title": "Player may lose food",
   "gui.pta.category.hunger.chance": "Chance",
-  "gui.pta.category.hunger.hunger": "Hunger"
+  "gui.pta.category.hunger.hunger": "Hunger",
+  "gui.pta.category.output.guaranteed": "Guaranteed",
+  "gui.pta.category.text.predicates": "NBT Predicates",
+  "gui.pta.category.rewards.title": "Rewards",
+  "gui.pta.category.rewards.rolls": "Rolls",
+  "gui.pta.category.rewards.fortune": "Fortune bonus",
+  "gui.pta.category.effects.title": "Player effects",
+  "gui.pta.category.conditions.title": "Conditions",
+  "gui.pta.category.conditions.time": "Time",
+  "gui.pta.category.conditions.weather": "Weather",
+  "gui.pta.category.conditions.y": "Y range",
+  "gui.pta.category.conditions.light": "Light",
+  "gui.pta.category.conditions.sneak": "Requires sneaking",
+  "gui.pta.category.conditions.food": "Min food",
+  "gui.pta.category.conditions.xp": "Min XP levels",
+  "gui.pta.category.feedback.sound": "Plays a sound",
+  "gui.pta.category.feedback.particles": "Shows particles"
 }

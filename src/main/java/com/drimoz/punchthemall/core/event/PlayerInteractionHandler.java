@@ -1,6 +1,8 @@
 package com.drimoz.punchthemall.core.event;
 
 import com.drimoz.punchthemall.PTAConfig;
+import com.drimoz.punchthemall.core.model.classes.PtaEffect;
+import com.drimoz.punchthemall.core.model.classes.PtaExtras;
 import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
@@ -139,17 +141,20 @@ public class PlayerInteractionHandler {
             if (interaction.getBlock().isAir()) {
                 if (processInteraction(player, level, player.blockPosition(), Direction.UP, interaction)) {
                     if (shouldProcessPlayerEffects(player)) processPlayer(player, interaction);
+                    playInteractionFeedback(level, player.blockPosition(), interaction);
                     interactionProcessed = true;
                     processedInteractions++;
                 }
             }
             else {
-                if (!blockTransformed && processInteraction(player, level, fluidInteraction ? hitResult.getBlockPos() : blockPos, direction, interaction)) {
+                BlockPos targetPos = fluidInteraction ? hitResult.getBlockPos() : blockPos;
+                if (!blockTransformed && processInteraction(player, level, targetPos, direction, interaction)) {
                     interactionProcessed = true;
                     if (shouldProcessPlayerEffects(player)) processPlayer(player, interaction);
+                    playInteractionFeedback(level, targetPos, interaction);
                     processedInteractions++;
                     if (PTAConfig.INTERACTIONS.allowTransformations.get() && shouldBlockTransform(interaction.getTransformation())) {
-                        transformBlock(level, fluidInteraction ? hitResult.getBlockPos() : blockPos, interaction.getTransformation());
+                        transformBlock(level, targetPos, interaction.getTransformation());
                         blockTransformed = true;
                     }
                 }
@@ -176,7 +181,7 @@ public class PlayerInteractionHandler {
 
         if (hand.isEmpty()) {
             if (playerMainHandItem.isEmpty()) {
-                dropItem(player, level, pos, face, interaction.getPool().getRandomItemStack());
+                dropRewards(player, level, pos, face, interaction, ItemStack.EMPTY);
                 return true;
             }
             return false;
@@ -240,6 +245,14 @@ public class PlayerInteractionHandler {
             // Update food level
             foodData.setFoodLevel(newFoodLevel);
         }
+
+        if (interaction.getExtras().hasEffects()) {
+            for (PtaEffect effect : interaction.getExtras().effects()) {
+                if (effect.shouldApply()) {
+                    player.addEffect(effect.toInstance());
+                }
+            }
+        }
     }
 
     private static boolean tryDropItem(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
@@ -251,10 +264,26 @@ public class PlayerInteractionHandler {
                 useItemDurability(handItem, player);
             }
 
-            dropItem(player, level, pos, face, interaction.getPool().getRandomItemStack());
+            dropRewards(player, level, pos, face, interaction, handItem);
             return true;
         }
         return false;
+    }
+
+    private static void dropRewards(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
+        for (ItemStack stack : interaction.getRewards().roll(player.getRandom(), handItem)) {
+            dropItem(player, level, pos, face, stack);
+        }
+    }
+
+    private static void playInteractionFeedback(Level level, BlockPos pos, PtaInteraction interaction) {
+        PtaExtras extras = interaction.getExtras();
+        if (extras.hasParticles() && level instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(extras.particles(), pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 15, 0.4, 0.4, 0.4, 0.5);
+        }
+        if (extras.hasSound()) {
+            level.playSound(null, pos, extras.sound(), SoundSource.PLAYERS, 1.0F, 1.0F);
+        }
     }
 
     private static void useItemDurability(ItemStack itemStack, Player player) {

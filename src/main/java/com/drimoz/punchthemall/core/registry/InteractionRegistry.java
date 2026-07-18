@@ -3,6 +3,7 @@ package com.drimoz.punchthemall.core.registry;
 import com.drimoz.punchthemall.core.model.classes.PtaBlock;
 import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.model.classes.PtaNbtPredicate;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
@@ -30,6 +31,10 @@ public class InteractionRegistry {
     private static final InteractionRegistry INSTANCE = new InteractionRegistry();
     private final Map<ResourceLocation, PtaInteraction> interactions = new HashMap<>();
 
+    // Raw JSON source per interaction id, captured at load time. Used to synchronise the registry
+    // to clients (S2C) so JEI shows the server's interactions on dedicated servers.
+    private final Map<ResourceLocation, String> sources = new HashMap<>();
+
     // Runtime indexes: candidates keyed by resolved click type and concrete target.
     // Rebuilt lazily after any mutation so a click filters only the small matching bucket
     // instead of scanning every interaction.
@@ -50,6 +55,7 @@ public class InteractionRegistry {
 
     public void clearInteractions() {
         this.interactions.clear();
+        this.sources.clear();
         this.indexDirty = true;
     }
 
@@ -58,8 +64,20 @@ public class InteractionRegistry {
     }
 
     public void addInteraction(PtaInteraction interaction) {
+        addInteraction(interaction, null);
+    }
+
+    public void addInteraction(PtaInteraction interaction, String rawJson) {
         interactions.put(interaction.getId(), interaction);
+        if (rawJson != null) {
+            sources.put(interaction.getId(), rawJson);
+        }
         this.indexDirty = true;
+    }
+
+    /** Raw JSON keyed by interaction id, for S2C synchronisation. */
+    public Map<ResourceLocation, String> getSources() {
+        return sources;
     }
 
     public PtaInteraction getInteractionById(ResourceLocation id) {
@@ -160,6 +178,7 @@ public class InteractionRegistry {
 
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&
+                interaction.getConditions().matches(level, player, pos) &&
                 passesAirOrBlockFilter(interaction, clickOnBlock) &&
                 passesBlockStateFilter(interaction, clickOnBlock, pos, level) &&
                 passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level) &&
@@ -228,7 +247,8 @@ public class InteractionRegistry {
     }
 
     private boolean passesBlockEntityNBTFilter(PtaInteraction interaction, boolean clickOnBlock, BlockPos pos, Level level) {
-        if (!clickOnBlock || (!interaction.getBlock().hasNbtBlackList() && !interaction.getBlock().hasNbtWhiteList())) {
+        PtaBlock ptaBlock = interaction.getBlock();
+        if (!clickOnBlock || (!ptaBlock.hasNbtBlackList() && !ptaBlock.hasNbtWhiteList() && !ptaBlock.hasNbtPredicates())) {
             return true;
         }
 
@@ -238,13 +258,15 @@ public class InteractionRegistry {
         CompoundTag worldBlockEntityTag = worldBlockEntity.serializeNBT();
 
         boolean passesWhiteList = true, passesBlackList = true;
-        if (interaction.getBlock().hasNbtWhiteList())
-            passesWhiteList = TagHelper.containsRequiredTagsWithRange(worldBlockEntityTag, interaction.getBlock().getNbtWhiteList());
+        if (ptaBlock.hasNbtWhiteList())
+            passesWhiteList = TagHelper.containsRequiredTagsWithRange(worldBlockEntityTag, ptaBlock.getNbtWhiteList());
 
-        if (interaction.getBlock().hasNbtBlackList())
-            passesBlackList = TagHelper.containsRequiredTagsWithRangeBlacklist(worldBlockEntityTag, interaction.getBlock().getNbtBlackList());
+        if (ptaBlock.hasNbtBlackList())
+            passesBlackList = TagHelper.containsRequiredTagsWithRangeBlacklist(worldBlockEntityTag, ptaBlock.getNbtBlackList());
 
-        return passesWhiteList && passesBlackList;
+        boolean passesPredicates = !ptaBlock.hasNbtPredicates() || matchesPredicates(worldBlockEntityTag, ptaBlock.getNbtPredicates());
+
+        return passesWhiteList && passesBlackList && passesPredicates;
     }
 
     private boolean passesHandItemFilter(PtaInteraction interaction, Player player) {
@@ -281,6 +303,11 @@ public class InteractionRegistry {
                 matchesOffHand = matchesOffHand && matchesNBTBlacklist(offHandItem, hand.getNbtBlackList());
             }
 
+            if (hand.hasNbtPredicates()) {
+                matchesMainHand = matchesMainHand && matchesPredicates(mainHandItem.getTag(), hand.getNbtPredicates());
+                matchesOffHand = matchesOffHand && matchesPredicates(offHandItem.getTag(), hand.getNbtPredicates());
+            }
+
             return switch (hand.getHand()) {
                 case ANY_HAND -> (matchesMainHand || matchesOffHand);
                 case MAIN_HAND -> matchesMainHand;
@@ -311,14 +338,24 @@ public class InteractionRegistry {
         return TagHelper.containsRequiredTagsWithRangeBlacklist(itemStack.getTag(), nbtBlacklist);
     }
 
+    // All typed nbt_predicates must hold against the given tag (missing tag -> use an empty compound).
+    private boolean matchesPredicates(CompoundTag tag, List<PtaNbtPredicate> predicates) {
+        CompoundTag effective = tag == null ? new CompoundTag() : tag;
+        for (PtaNbtPredicate predicate : predicates) {
+            if (!predicate.matches(effective)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public int getJEIRowCount() {
-        int maxPool = 0;
+        int maxRows = 0;
 
         for (PtaInteraction interaction : interactions.values()) {
-            if (maxPool < interaction.getPool().getTotalPoolSize())
-                maxPool = interaction.getPool().getTotalPoolSize();
+            maxRows = Math.max(maxRows, interaction.getRewards().getJeiRowCount());
         }
 
-        return (int) Math.ceil(maxPool / 9.0);
+        return maxRows;
     }
 }

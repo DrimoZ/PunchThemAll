@@ -1,8 +1,13 @@
 package com.drimoz.punchthemall.jei;
 
 import com.drimoz.punchthemall.core.model.classes.PtaBlock;
+import com.drimoz.punchthemall.core.model.classes.PtaConditions;
+import com.drimoz.punchthemall.core.model.classes.PtaEffect;
+import com.drimoz.punchthemall.core.model.classes.PtaExtras;
 import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.model.classes.PtaNbtPredicate;
+import com.drimoz.punchthemall.core.model.classes.PtaRewards;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
@@ -155,6 +160,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                                 new HashSet<>(0), new HashSet<>(0),
                                 interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList()
                         );
+                        addPredicateTooltip(tooltip, interaction.getHand().getNbtPredicates());
                     }
             );
         }
@@ -182,18 +188,22 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             blockSlot = setupInputSlot(builder, interaction.getBlock().getBlockStacks(), 1 + X_BLOCK, 1 + Y_BLOCK);
 
             blockSlot.addRichTooltipCallback(
-                    (recipeSlotView, tooltip) ->
+                    (recipeSlotView, tooltip) -> {
                             addStateAndNbtTooltip(tooltip,
                                     interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
-                                    interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList()));
+                                    interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList());
+                            addPredicateTooltip(tooltip, interaction.getBlock().getNbtPredicates());
+                    });
         } else if (interaction.getBlock().isFluid()) {
             blockSlot = setupFluidInputSlot(builder, interaction.getBlock().getFluid(), new CompoundTag(), 1 + X_BLOCK, 1 + Y_BLOCK);
 
             blockSlot.addRichTooltipCallback(
-                    (recipeSlotView, tooltip) ->
+                    (recipeSlotView, tooltip) -> {
                             addStateAndNbtTooltip(tooltip,
                                     interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
-                                    interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList()));
+                                    interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList());
+                            addPredicateTooltip(tooltip, interaction.getBlock().getNbtPredicates());
+                    });
         }
 
         if (!interaction.getBlock().isAir() && interaction.getTransformation().hasTransformation()) {
@@ -211,6 +221,28 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                 slotNumber++;
             }
         }
+
+        // Guaranteed drops render as extra output slots after the weighted pool.
+        for (PtaDropRecord record : interaction.getRewards().getGuaranteed()) {
+            if (!record.isEmpty()) {
+                setupGuaranteedSlot(builder, record, slotNumber);
+                slotNumber++;
+            }
+        }
+    }
+
+    private void setupGuaranteedSlot(IRecipeLayoutBuilder builder, PtaDropRecord record, int slotNumber) {
+        IRecipeSlotBuilder slot = setupOutputSlot(builder, record.items().stream().map(ItemStack::new).toList(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
+
+        slot.addRichTooltipCallback((slotView, tooltip) -> {
+            tooltip.add(Component.literal("§2" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_GUARANTEED).getString()));
+            if (record.min() == record.max()) {
+                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() + " : §5" + record.min()));
+            } else {
+                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min()));
+                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max()));
+            }
+        });
     }
 
     private void setupTransformationSlot(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
@@ -331,7 +363,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             SLOT.draw(graphics, X_TRANSFORMATION, Y_TRANSFORMATION);
         }
 
-        for (int i = 0; i < interaction.getPool().getJEIRowCount(); i++) {
+        for (int i = 0; i < interaction.getRewards().getJeiRowCount(); i++) {
             SLOT_ROW.draw(graphics, 0, HEIGHT_START + i * 18);
         }
     }
@@ -428,6 +460,95 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
             graphics.renderTooltip(Minecraft.getInstance().font, tooltipComponents,Optional.empty(), (int) mouseX, (int) mouseY);
         }
+
+        if (hasArrowInfo(interaction) && isMouseOver(mouseX, mouseY, X_ARROW + 1, Y_ARROW + 1, 16, 16)) {
+            graphics.renderTooltip(Minecraft.getInstance().font, buildArrowTooltip(interaction), Optional.empty(), (int) mouseX, (int) mouseY);
+        }
+    }
+
+    // Inner Work ( Arrow summary: schema v2 extras )
+
+    private boolean hasArrowInfo(PtaInteraction interaction) {
+        PtaRewards rewards = interaction.getRewards();
+        PtaExtras extras = interaction.getExtras();
+        return rewards.getRolls() != 1 || rewards.hasFortune()
+                || extras.hasEffects() || extras.hasSound() || extras.hasParticles()
+                || !interaction.getConditions().isEmpty();
+    }
+
+    private List<Component> buildArrowTooltip(PtaInteraction interaction) {
+        List<Component> lines = new ArrayList<>();
+        PtaRewards rewards = interaction.getRewards();
+        PtaExtras extras = interaction.getExtras();
+
+        if (rewards.getRolls() != 1 || rewards.hasFortune()) {
+            lines.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_REWARDS_TITLE).getString() + " :"));
+            if (rewards.getRolls() != 1) {
+                lines.add(Component.literal("§8 - " + Component.translatable(TranslationKeys.INTERACTION_REWARDS_ROLLS).getString() + " : §5" + rewards.getRolls()));
+            }
+            if (rewards.hasFortune()) {
+                lines.add(Component.literal("§8 - " + Component.translatable(TranslationKeys.INTERACTION_REWARDS_FORTUNE).getString() + " : §5x" + rewards.getFortuneFactor()));
+            }
+        }
+
+        if (extras.hasEffects()) {
+            lines.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_EFFECTS_TITLE).getString() + " :"));
+            for (PtaEffect effect : extras.effects()) {
+                String name = Component.translatable(effect.effect().getDescriptionId()).getString();
+                lines.add(Component.literal("§8 - §d" + name + " §5" + (effect.amplifier() + 1) + " §7(" + (int) (effect.chance() * 100) + "%)"));
+            }
+        }
+
+        appendConditionsTooltip(lines, interaction.getConditions());
+
+        if (extras.hasSound()) {
+            lines.add(Component.literal("§8 - " + Component.translatable(TranslationKeys.INTERACTION_FEEDBACK_SOUND).getString()));
+        }
+        if (extras.hasParticles()) {
+            lines.add(Component.literal("§8 - " + Component.translatable(TranslationKeys.INTERACTION_FEEDBACK_PARTICLES).getString()));
+        }
+
+        return lines;
+    }
+
+    private void appendConditionsTooltip(List<Component> lines, PtaConditions conditions) {
+        if (conditions.isEmpty()) return;
+
+        lines.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_CONDITIONS_TITLE).getString() + " :"));
+        if (conditions.time() != PtaConditions.Time.ANY) {
+            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_TIME, conditions.time().name().toLowerCase()));
+        }
+        if (!conditions.weather().isEmpty()) {
+            StringBuilder weather = new StringBuilder();
+            for (PtaConditions.Weather w : conditions.weather()) {
+                if (weather.length() > 0) weather.append(", ");
+                weather.append(w.name().toLowerCase());
+            }
+            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_WEATHER, weather.toString()));
+        }
+        if (conditions.yMin() != null || conditions.yMax() != null) {
+            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_Y, valueOrStar(conditions.yMin()) + " - " + valueOrStar(conditions.yMax())));
+        }
+        if (conditions.lightMin() != null || conditions.lightMax() != null) {
+            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_LIGHT, valueOrStar(conditions.lightMin()) + " - " + valueOrStar(conditions.lightMax())));
+        }
+        if (conditions.requiresSneaking() != null) {
+            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_SNEAK, String.valueOf(conditions.requiresSneaking())));
+        }
+        if (conditions.minFood() > 0) {
+            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_FOOD, String.valueOf(conditions.minFood())));
+        }
+        if (conditions.minXpLevels() > 0) {
+            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_XP, String.valueOf(conditions.minXpLevels())));
+        }
+    }
+
+    private Component condLine(String key, String value) {
+        return Component.literal("§8 - " + Component.translatable(key).getString() + " : §5" + value);
+    }
+
+    private String valueOrStar(Integer value) {
+        return value == null ? "*" : String.valueOf(value);
     }
 
     // Inner Work ( Util )
@@ -493,6 +614,25 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                 for (String key : blacklistNbt.getAllKeys()) {
                     formatNbtDisplay(tooltip, key,  blacklistNbt.get(key));
                 }
+            }
+        }
+    }
+
+    private void addPredicateTooltip(ITooltipBuilder tooltip, List<PtaNbtPredicate> predicates) {
+        if (predicates.isEmpty()) return;
+
+        tooltip.add(Component.literal(""));
+        tooltip.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_TEXT_PREDICATES).getString() + " :"));
+        for (PtaNbtPredicate predicate : predicates) {
+            StringBuilder line = new StringBuilder("§8  - " + predicate.path());
+            if (predicate.intMin().isPresent() || predicate.intMax().isPresent()) {
+                String min = predicate.intMin().map(String::valueOf).orElse("*");
+                String max = predicate.intMax().map(String::valueOf).orElse("*");
+                line.append(" : §5[").append(min).append(" - ").append(max).append("]");
+            }
+            tooltip.add(Component.literal(line.toString()));
+            if (!predicate.where().isEmpty()) {
+                tooltip.add(Component.literal("§8      where §5" + predicate.where()));
             }
         }
     }

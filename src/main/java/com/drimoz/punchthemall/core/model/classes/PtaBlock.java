@@ -26,6 +26,7 @@ public class PtaBlock {
     private final Set<PtaStateRecord<?>> stateBlackList;
     private final CompoundTag nbtWhiteList;
     private final CompoundTag nbtBlackList;
+    private final List<PtaNbtPredicate> nbtPredicates;
 
     // Calculated Properties
 
@@ -57,6 +58,10 @@ public class PtaBlock {
         return !nbtBlackList.isEmpty();
     }
 
+    public boolean hasNbtPredicates() {
+        return !nbtPredicates.isEmpty();
+    }
+
     // Getters
 
     public Set<Block> getBlockSet() {
@@ -83,24 +88,37 @@ public class PtaBlock {
         return nbtBlackList;
     }
 
+    public List<PtaNbtPredicate> getNbtPredicates() {
+        return nbtPredicates;
+    }
+
     // Life cycle
 
     public static PtaBlock createBlock (Set<Block> blockSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList) {
-        return new PtaBlock(blockSet, null, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList);
+        return new PtaBlock(blockSet, null, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, List.of());
+    }
+
+    public static PtaBlock createBlock (Set<Block> blockSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates) {
+        return new PtaBlock(blockSet, null, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, nbtPredicates);
     }
 
     public static PtaBlock createFluid (Set<Fluid> fluidSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList) {
-        return new PtaBlock(null, fluidSet, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList);
+        return new PtaBlock(null, fluidSet, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, List.of());
+    }
+
+    public static PtaBlock createFluid (Set<Fluid> fluidSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates) {
+        return new PtaBlock(null, fluidSet, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, nbtPredicates);
     }
 
     public static PtaBlock createAir () {
-        return new PtaBlock(null, null,null,null,null,null);
+        return new PtaBlock(null, null,null,null,null,null, List.of());
     }
 
     protected PtaBlock(
             Set<Block> blockSet, Set<Fluid> fluidSet,
             Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList,
-            CompoundTag nbtWhiteList, CompoundTag nbtBlackList
+            CompoundTag nbtWhiteList, CompoundTag nbtBlackList,
+            List<PtaNbtPredicate> nbtPredicates
     ) {
         if (blockSet != null && !blockSet.isEmpty() && fluidSet != null && !fluidSet.isEmpty())
             throw new IllegalArgumentException("Block must be either a Fluid or a Block.");
@@ -113,6 +131,7 @@ public class PtaBlock {
             this.stateBlackList = new HashSet<>();
             this.nbtWhiteList = new CompoundTag();
             this.nbtBlackList = new CompoundTag();
+            this.nbtPredicates = List.of();
         }
 
         // Fluid or Block
@@ -123,6 +142,7 @@ public class PtaBlock {
             this.stateBlackList = stateBlackList == null ? new HashSet<>() : stateBlackList;
             this.nbtWhiteList = nbtWhiteList == null ? new CompoundTag() : nbtWhiteList;
             this.nbtBlackList = nbtBlackList == null ? new CompoundTag() : nbtBlackList;
+            this.nbtPredicates = nbtPredicates == null ? List.of() : nbtPredicates;
         }
     }
 

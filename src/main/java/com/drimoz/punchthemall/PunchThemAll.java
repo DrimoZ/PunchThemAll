@@ -2,6 +2,8 @@ package com.drimoz.punchthemall;
 
 import com.drimoz.punchthemall.core.event.DataReloadListener;
 import com.drimoz.punchthemall.core.event.PlayerInteractionHandler;
+import com.drimoz.punchthemall.core.network.PtaNetwork;
+import com.drimoz.punchthemall.core.network.PtaSyncEvents;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
@@ -33,12 +35,14 @@ public class PunchThemAll
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, PTAConfig.COMMON_CONFIG,  FILE_DESTINATION + "/" + MOD_ID + "-common.toml");
 
         MinecraftForge.EVENT_BUS.register(PlayerInteractionHandler.class);
+        MinecraftForge.EVENT_BUS.register(new PtaSyncEvents());
         MinecraftForge.EVENT_BUS.addListener(this::addReloadListener);
         MinecraftForge.EVENT_BUS.register(this);
         PTALoggers.infoModCompleted();
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
+        event.enqueueWork(PtaNetwork::register);
         PTALoggers.infoRegisteredModule("Common Setup Event");
     }
 

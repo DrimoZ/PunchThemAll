@@ -46,4 +46,22 @@ public class TranslationKeys {
     public static final String INTERACTION_HUNGER_TITLE = "gui." + PunchThemAll.MOD_ID + ".category.hunger.title";
     public static final String INTERACTION_HUNGER_CHANCE = "gui." + PunchThemAll.MOD_ID + ".category.hunger.chance";
     public static final String INTERACTION_HUNGER_HUNGER = "gui." + PunchThemAll.MOD_ID + ".category.hunger.hunger";
+
+    // Schema v2 extensions
+    public static final String INTERACTION_OUTPUT_GUARANTEED = "gui." + PunchThemAll.MOD_ID + ".category.output.guaranteed";
+    public static final String INTERACTION_TEXT_PREDICATES = "gui." + PunchThemAll.MOD_ID + ".category.text.predicates";
+    public static final String INTERACTION_REWARDS_TITLE = "gui." + PunchThemAll.MOD_ID + ".category.rewards.title";
+    public static final String INTERACTION_REWARDS_ROLLS = "gui." + PunchThemAll.MOD_ID + ".category.rewards.rolls";
+    public static final String INTERACTION_REWARDS_FORTUNE = "gui." + PunchThemAll.MOD_ID + ".category.rewards.fortune";
+    public static final String INTERACTION_EFFECTS_TITLE = "gui." + PunchThemAll.MOD_ID + ".category.effects.title";
+    public static final String INTERACTION_CONDITIONS_TITLE = "gui." + PunchThemAll.MOD_ID + ".category.conditions.title";
+    public static final String INTERACTION_CONDITIONS_TIME = "gui." + PunchThemAll.MOD_ID + ".category.conditions.time";
+    public static final String INTERACTION_CONDITIONS_WEATHER = "gui." + PunchThemAll.MOD_ID + ".category.conditions.weather";
+    public static final String INTERACTION_CONDITIONS_Y = "gui." + PunchThemAll.MOD_ID + ".category.conditions.y";
+    public static final String INTERACTION_CONDITIONS_LIGHT = "gui." + PunchThemAll.MOD_ID + ".category.conditions.light";
+    public static final String INTERACTION_CONDITIONS_SNEAK = "gui." + PunchThemAll.MOD_ID + ".category.conditions.sneak";
+    public static final String INTERACTION_CONDITIONS_FOOD = "gui." + PunchThemAll.MOD_ID + ".category.conditions.food";
+    public static final String INTERACTION_CONDITIONS_XP = "gui." + PunchThemAll.MOD_ID + ".category.conditions.xp";
+    public static final String INTERACTION_FEEDBACK_SOUND = "gui." + PunchThemAll.MOD_ID + ".category.feedback.sound";
+    public static final String INTERACTION_FEEDBACK_PARTICLES = "gui." + PunchThemAll.MOD_ID + ".category.feedback.particles";
 }

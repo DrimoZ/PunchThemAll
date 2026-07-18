@@ -19,6 +19,10 @@ public class PTALoggers {
         LOGGER.error(PunchThemAll.MOD_NAME + " - {}", message);
     }
 
+    public static void warn(String message) {
+        LOGGER.warn(PunchThemAll.MOD_NAME + " - {}", message);
+    }
+
     public static void info(String message) {
         LOGGER.info(PunchThemAll.MOD_NAME + " - {}", message);
     }

@@ -21,10 +21,12 @@ public class PtaInteraction {
     private final PtaHand hand;
     private final PtaBlock block;
     private final PtaTransformation transformation;
-    private final PtaPool pool;
+    private final PtaRewards rewards;
 
     private final Set<String> biomeWhitelist;
     private final Set<String> biomeBlackList;
+
+    private final PtaExtras extras;
 
     // Calculated Properties
 
@@ -75,7 +77,11 @@ public class PtaInteraction {
     }
 
     public PtaPool getPool() {
-        return pool;
+        return rewards.getPool();
+    }
+
+    public PtaRewards getRewards() {
+        return rewards;
     }
 
     public Set<String> getBiomeWhitelist() {
@@ -86,17 +92,26 @@ public class PtaInteraction {
         return biomeBlackList;
     }
 
+    public PtaExtras getExtras() {
+        return extras;
+    }
+
+    public PtaConditions getConditions() {
+        return extras.conditions();
+    }
+
     // Life Cycle
 
     public PtaInteraction(
             ResourceLocation id, PtaTypeEnum type,
             PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
-            PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaPool pool,
-            Set<String> biomeWhitelist, Set<String> biomeBlackList
+            PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaRewards rewards,
+            Set<String> biomeWhitelist, Set<String> biomeBlackList,
+            PtaExtras extras
     ) {
         if (id == null) throw new IllegalArgumentException("Missing id for Interaction");
         if (type == null) throw new IllegalArgumentException("Missing type for Interaction");
-        if (pool == null) throw new IllegalArgumentException("Missing pool for Interaction");
+        if (rewards == null) throw new IllegalArgumentException("Missing rewards for Interaction");
 
         this.id = id;
         this.type = type;
@@ -105,9 +120,10 @@ public class PtaInteraction {
         this.hand = hand == null ? PtaHand.createEmpty(PtaHandEnum.ANY_HAND) : hand;
         this.block = block == null ? PtaBlock.createAir() : block;
         this.transformation = transformation == null || this.block.isAir() ? PtaTransformation.createAir(0, null, null) : transformation;
-        this.pool = pool;
+        this.rewards = rewards;
         this.biomeWhitelist = biomeWhitelist == null ? new HashSet<>() : biomeWhitelist;
         this.biomeBlackList = biomeBlackList == null ? new HashSet<>() : biomeBlackList;
+        this.extras = extras == null ? PtaExtras.EMPTY : extras;
     }
 
     // Interface
@@ -125,7 +141,7 @@ public class PtaInteraction {
                 ", \n\thand=" + hand +
                 ", \n\tblock=" + block +
                 ", \n\ttransformation=" + transformation +
-                ", \n\tpool=" + pool +
+                ", \n\trewards=" + rewards +
                 ", \n\tbiomeWhitelist=" + biomeWhitelist +
                 ", \n\thunger=" + consumeFood +
                 ", \n\tdamage=" + hurtPlayer +

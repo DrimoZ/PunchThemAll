@@ -136,9 +136,17 @@ public class PTAConfig {
         public final ForgeConfigSpec.BooleanValue recursiveDiscovery;
         public final ForgeConfigSpec.BooleanValue failFast;
         public final ForgeConfigSpec.BooleanValue lowerCaseGeneratedIds;
+        public final ForgeConfigSpec.BooleanValue loadFromDatapacks;
 
         private LoaderConfig(ForgeConfigSpec.Builder builder) {
             builder.push("Loader");
+            loadFromDatapacks = builder
+                    .comment(
+                            "Also load interactions from datapacks at data/<namespace>/pta/interaction/*.json, on top of config files.",
+                            "Datapack files are read on /reload and are synchronised to clients by vanilla; they support schema_version 1 and 2.",
+                            "A datapack interaction overrides a config interaction sharing the same id."
+                    )
+                    .define("load_from_datapacks", false);
             recursiveDiscovery = builder
                     .comment("Discover interaction JSON files recursively inside config/punchthemall/interactions.", "Disable to load only files directly in the interactions folder.")
                     .define("recursive_discovery", true);

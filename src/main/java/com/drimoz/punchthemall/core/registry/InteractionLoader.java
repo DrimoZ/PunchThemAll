@@ -47,12 +47,14 @@ public class InteractionLoader {
         InputStreamReader reader = null;
         ResourceLocation id = null;
         PtaInteraction interaction = null;
+        String rawJson = null;
 
         try {
             reader = new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8);
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+            rawJson = json.toString();
             id = createInteractionId(interactionsDir, file);
-            interaction = InteractionCreator.createInteraction(id, json);
+            interaction = InteractionParser.fromJson(id, json);
         } catch (Exception e) {
             String message = "An error occurred while creating interaction with id " + id + " from " + file + " : " + e;
             PTALoggers.error(message);
@@ -64,7 +66,7 @@ public class InteractionLoader {
         }
 
         if (interaction != null) {
-            InteractionRegistry.getInstance().addInteraction(interaction);
+            InteractionRegistry.getInstance().addInteraction(interaction, rawJson);
             if (PTAConfig.DEBUG.logLoadedInteractions.get()) {
                 PTALoggers.info("Loaded PunchThemAll interaction " + interaction.getId());
             }

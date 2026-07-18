@@ -24,6 +24,7 @@ public class PtaHand {
     private final Set<Item> itemSet;
     private final CompoundTag nbtWhiteList;
     private final CompoundTag nbtBlackList;
+    private final List<PtaNbtPredicate> nbtPredicates;
     private final double chance;
     private final boolean damageable;
     private final boolean consumable;
@@ -54,6 +55,10 @@ public class PtaHand {
         return !isEmpty() && !nbtBlackList.isEmpty();
     }
 
+    public boolean hasNbtPredicates() {
+        return !isEmpty() && !nbtPredicates.isEmpty();
+    }
+
     // Getters
 
     public PtaHandEnum getHand() {
@@ -72,6 +77,10 @@ public class PtaHand {
         return nbtBlackList;
     }
 
+    public List<PtaNbtPredicate> getNbtPredicates() {
+        return nbtPredicates;
+    }
+
     public double getChance() {
         return isEmpty() ? 0 : chance;
     }
@@ -87,18 +96,22 @@ public class PtaHand {
     // Life Cycle
 
     public static PtaHand create(PtaHandEnum hand, Set<Item> itemSet, CompoundTag nbtWhiteList, CompoundTag nbtBlackList) {
-        return new PtaHand(hand, itemSet, nbtWhiteList, nbtBlackList, 0, false, false);
+        return new PtaHand(hand, itemSet, nbtWhiteList, nbtBlackList, List.of(), 0, false, false);
     }
 
     public static PtaHand create(PtaHandEnum hand, Set<Item> itemSet, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, double chance, boolean damageable, boolean consumed) {
-        return new PtaHand(hand, itemSet, nbtWhiteList, nbtBlackList, chance, damageable, consumed);
+        return new PtaHand(hand, itemSet, nbtWhiteList, nbtBlackList, List.of(), chance, damageable, consumed);
+    }
+
+    public static PtaHand create(PtaHandEnum hand, Set<Item> itemSet, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates, double chance, boolean damageable, boolean consumed) {
+        return new PtaHand(hand, itemSet, nbtWhiteList, nbtBlackList, nbtPredicates, chance, damageable, consumed);
     }
 
     public static PtaHand createEmpty(PtaHandEnum hand) {
-        return new PtaHand(hand, null, null, null, 0, false, false);
+        return new PtaHand(hand, null, null, null, List.of(), 0, false, false);
     }
 
-    protected PtaHand(PtaHandEnum hand, Set<Item> itemSet,  CompoundTag nbtWhiteList, CompoundTag nbtBlackList, double chance, boolean damageable, boolean consumable) {
+    protected PtaHand(PtaHandEnum hand, Set<Item> itemSet,  CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates, double chance, boolean damageable, boolean consumable) {
         this.hand = hand;
         this.chance = chance < 0 ? 0 : chance > 1 ? 1 : chance;
         this.damageable = damageable;
@@ -108,11 +121,13 @@ public class PtaHand {
             this.itemSet = itemSet != null ? itemSet : new HashSet<>();
             this.nbtWhiteList = new CompoundTag();
             this.nbtBlackList = new CompoundTag();
+            this.nbtPredicates = List.of();
         }
         else {
             this.itemSet = itemSet;
             this.nbtWhiteList = nbtWhiteList == null ? new CompoundTag() : nbtWhiteList;
             this.nbtBlackList = nbtBlackList == null ? new CompoundTag() : nbtBlackList;
+            this.nbtPredicates = nbtPredicates == null ? List.of() : nbtPredicates;
         }
     }
 

@@ -85,7 +85,7 @@ public class InteractionCreator {
             }
         }
 
-        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, pool, biomeWhiteList, biomeBlackList);
+        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, PtaRewards.of(pool), biomeWhiteList, biomeBlackList, PtaExtras.EMPTY);
     }
 
     // Inner Work ( Global )
