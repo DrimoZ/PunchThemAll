@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "target": { "kind": "block", "match": "minecraft:stone" },
+  "rewards": {
+    "rolls": 3,
+    "guaranteed": [
+      { "match": "minecraft:cobblestone", "count": 1 }
+    ],
+    "weighted": [
+      { "match": "minecraft:coal", "weight": 15, "count": 1 },
+      { "match": "minecraft:raw_iron", "weight": 5, "count": 1 },
+      { "match": "minecraft:air", "weight": 80 }
+    ]
+  }
+}

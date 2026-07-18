@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": {
+    "hand": "main",
+    "match": "#minecraft:pickaxes",
+    "consume": { "mode": "durability" }
+  },
+  "target": { "kind": "block", "match": "minecraft:deepslate" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:cobbled_deepslate", "weight": 70, "count": 1 },
+      { "match": "minecraft:amethyst_shard", "weight": 30, "count": 1 }
+    ],
+    "fortune": { "enchant": "minecraft:fortune", "factor": 1.0 }
+  }
+}

@@ -113,9 +113,21 @@ world_drop_velocity = 0.10
 
 | Key | Default | Description |
 | --- | ---: | --- |
+| `load_from_datapacks` | `false` | Also loads interactions from datapacks at `data/<namespace>/pta/interaction/*.json`, on top of the config folder. Datapack files are read on `/reload`, are synchronised to clients by vanilla, and a datapack interaction overrides a config interaction that shares the same id. Both schema versions are supported. |
 | `recursive_discovery` | `true` | Loads `*.json` interaction files recursively inside `config/punchthemall/interactions`. Disable to load only files directly inside that folder. |
 | `fail_fast` | `false` | Stops loading remaining interactions after the first invalid JSON file. Enable while developing packs; disable for released packs. |
 | `lowercase_generated_ids` | `true` | Lowercases IDs generated from file paths. Minecraft resource locations require lowercase paths, so this should normally stay enabled. |
+
+### Config folder vs. datapacks
+
+By default, interactions live in `config/punchthemall/interactions` — easy to edit and hot-reload,
+and the intended workflow for most packs. The config source is **always** loaded.
+
+Enabling `load_from_datapacks` adds a **second** source: `data/<namespace>/pta/interaction/*.json`
+inside any loaded datapack. This is useful when you want interactions to travel with a datapack,
+benefit from vanilla's automatic client synchronisation, or be overridable by other datapacks.
+The two sources are layered — config first, datapacks on top — so a datapack file replaces a config
+file with the same id.
 
 When recursive discovery is enabled, a file at:
 

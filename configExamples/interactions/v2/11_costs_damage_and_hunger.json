@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:flint" },
+  "target": { "kind": "block", "match": "minecraft:stone" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:flint", "weight": 50, "count": 1 },
+      { "match": "minecraft:air", "weight": 50 }
+    ]
+  },
+  "costs": {
+    "damage": { "chance": 1.0, "amount": 1 },
+    "hunger": { "chance": 0.5, "amount": { "min": 2, "max": 4 } }
+  }
+}

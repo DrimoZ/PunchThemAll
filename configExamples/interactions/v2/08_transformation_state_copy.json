@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "target": { "kind": "block", "match": "minecraft:chest" },
+  "transformation": {
+    "chance": 0.2,
+    "into": { "kind": "block", "id": "minecraft:trapped_chest", "state": { "facing": "copy_state_value" } },
+    "sound": "minecraft:block.chest.locked",
+    "particles": "minecraft:oak_planks"
+  },
+  "rewards": {
+    "weighted": [
+      { "match": "#minecraft:planks", "weight": 25, "count": { "min": 1, "max": 3 } },
+      { "match": "minecraft:air", "weight": 75 }
+    ]
+  }
+}

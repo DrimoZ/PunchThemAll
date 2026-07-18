@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": { "hand": "main", "match": "#minecraft:pickaxes", "consume": { "mode": "durability" } },
+  "target": { "kind": "block", "match": "minecraft:deepslate" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:raw_gold", "weight": 20, "count": 1 },
+      { "match": "minecraft:cobbled_deepslate", "weight": 80, "count": 1 }
+    ]
+  },
+  "conditions": {
+    "y_range": [-64, 8],
+    "light": { "max": 7 },
+    "player_state": { "min_food": 6, "min_xp_levels": 1 }
+  }
+}

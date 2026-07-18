@@ -66,6 +66,20 @@ common config. The most important gates are:
 Enable `PunchThemAll.Debug.log_skipped_interactions` when debugging why a loaded
 interaction does not run.
 
+## Multiplayer
+
+On a dedicated server, gameplay always uses the **server's** interactions. To keep the client's JEI
+list correct, the server sends its interaction registry to each client when they join and again
+after every `/reload`. This means:
+
+* players see the server's interactions in JEI even if their local config differs;
+* editing files on the server and running `/reload` updates every connected client;
+* in single-player and on a LAN host, the client and server already share the same data, so no sync
+  is needed.
+
+Interactions loaded from **datapacks** (`load_from_datapacks = true`) are additionally synchronised
+by vanilla's normal datapack handling.
+
 ## JEI category
 
 PunchThemAll registers a JEI interaction category. The category is intended to be
@@ -79,11 +93,15 @@ The JEI display includes:
 * target block, fluid, or air marker;
 * transformation output when present;
 * weighted result pool rows;
+* **guaranteed drops** (schema v2) shown as extra output slots with a "Guaranteed" tooltip;
 * output chance and count ranges;
 * biome whitelist/blacklist tooltip;
 * player damage and hunger cost tooltips;
 * block-state whitelist/blacklist details;
-* NBT whitelist/blacklist details;
+* NBT whitelist/blacklist details, and **typed `nbt_predicates`** (schema v2) on the hand/target tooltip;
+* a **summary tooltip on the arrow** (schema v2) listing rolls, Fortune bonus, player effects,
+  conditions (time/weather/Y/light/sneaking/food/XP) and whether the interaction plays a
+  sound/particles;
 * interaction ID in the click tooltip.
 
 The interaction ID shown in JEI is useful when a user reports a recipe issue: it
@@ -114,7 +132,7 @@ to make generated IDs stable across operating systems.
 The interaction reader validates common reusable shapes before creating runtime
 objects. This keeps the format extensible while giving pack authors clearer logs.
 Top-level metadata can be added without changing gameplay; `enabled: false` skips
-a file without deleting it, and `schema_version` is reserved for future migrations:
+a file without deleting it, and `schema_version` selects the parser:
 
 
 ```json
@@ -124,6 +142,14 @@ a file without deleting it, and `schema_version` is reserved for future migratio
   "type": "shift_left_click"
 }
 ```
+
+> **Two formats.** Files with `schema_version: 2` use the modern, strictly-valid-JSON format
+> (unified `match` selectors, SNBT-string NBT, `rewards`, `costs`, `conditions`, `effects`, typed
+> `nbt_predicates`, advanced rewards, …). Files without `schema_version` (or `1`) use the original
+> format described on this page — still supported, but **deprecated** (a warning is logged on load).
+> The full v2 reference lives in [interaction-format.md](interaction-format.md), and ready-to-copy
+> v2 examples are in [`configExamples/interactions`](../configExamples/interactions) (the `*_v2.json`
+> files and the `v2/` folder).
 
 * `hunger`, `damage`, and pool entries all use the same count range pattern:
   either `count` or `min`/`max`.

@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "type": "left_click",
+  "target": { "kind": "block", "match": "minecraft:dirt" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:coarse_dirt", "weight": 1 }
+    ]
+  }
+}
