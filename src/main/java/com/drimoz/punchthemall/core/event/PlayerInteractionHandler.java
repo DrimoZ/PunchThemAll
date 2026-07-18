@@ -54,15 +54,15 @@ public class PlayerInteractionHandler {
     @SubscribeEvent(priority = EventPriority.HIGH, receiveCanceled = true)
     public static void onPlayerInteract(PlayerInteractEvent event) {
         Player entity = event.getEntity();
-        if (!PTAConfig.interactionsEnabled.get()) {
+        if (!PTAConfig.INTERACTIONS.enabled.get()) {
             logSkipped("interactions are disabled globally");
             return;
         }
-        if (entity instanceof FakePlayer && !PTAConfig.allowFakePlayers.get()) {
+        if (entity instanceof FakePlayer && !PTAConfig.PLAYERS.allowFakePlayers.get()) {
             logSkipped("fake players are disabled");
             return;
         }
-        if (isCooldownEnabledFor(entity) && isPlayerOnCooldown(entity.getUUID(), entity.tickCount)) return;
+        if (isCooldownEnabledFor(entity) && isPlayerOnCooldown(entity.getUUID(), entity.level().getGameTime())) return;
         if (event.getLevel().isClientSide()) return;
 
         if (event instanceof PlayerInteractEvent.LeftClickBlock leftClickBlockEvent) {
@@ -77,11 +77,15 @@ public class PlayerInteractionHandler {
             }
         }
         else if (event instanceof PlayerInteractEvent.RightClickBlock rightClickBlockEvent) {
+            // Right-click events fire once per hand (main then off); only process the main-hand
+            // event to avoid double handling. The main/off/any selection is still applied by PtaHand.
+            if (rightClickBlockEvent.getHand() != InteractionHand.MAIN_HAND) return;
             if (isClickTypeEnabled(PtaTypeEnum.RIGHT_CLICK)) {
                 handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, true, rightClickBlockEvent);
             }
         }
         else if (event instanceof PlayerInteractEvent.RightClickItem rightClickItemEvent) {
+            if (rightClickItemEvent.getHand() != InteractionHand.MAIN_HAND) return;
             if (isClickTypeEnabled(PtaTypeEnum.RIGHT_CLICK)) {
                 handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, rightClickItemEvent);
             }
@@ -96,7 +100,7 @@ public class PlayerInteractionHandler {
         Direction direction = getInteractionDirection(player, level, hitResult);
 
         if (level.isClientSide()) return;
-        if (isCooldownEnabledFor(player) && isPlayerOnCooldown(player.getUUID(), player.tickCount)) return;
+        if (isCooldownEnabledFor(player) && isPlayerOnCooldown(player.getUUID(), level.getGameTime())) return;
 
         boolean interactionProcessed = false;
         boolean blockTransformed = false;
@@ -156,7 +160,7 @@ public class PlayerInteractionHandler {
             if (PTAConfig.INTERACTIONS.cancelVanillaInteraction.get()) {
                 event.setCanceled(true);
             }
-            if (isCooldownEnabledFor(player)) setPlayerOnCooldown(player.getUUID(), player.tickCount);
+            if (isCooldownEnabledFor(player)) setPlayerOnCooldown(player.getUUID(), level.getGameTime());
         }
     }
 
@@ -396,6 +400,15 @@ public class PlayerInteractionHandler {
 
     // Raytracing
 
+    // Default vanilla block reach (4.5). Used as a fallback when the entity has no reach attribute
+    // (e.g. some fake players / non-standard entities), which would otherwise throw a NPE.
+    private static final double DEFAULT_BLOCK_REACH = 4.5D;
+
+    private static double getBlockReach(Player player) {
+        var attribute = player.getAttribute(ForgeMod.BLOCK_REACH.get());
+        return attribute != null ? attribute.getValue() : DEFAULT_BLOCK_REACH;
+    }
+
     private static BlockHitResult rayTrace(Level world, Player player, ClipContext.Fluid fluidMode) {
         float pitch = player.getXRot();
         float yaw = player.getYRot();
@@ -406,7 +419,7 @@ public class PlayerInteractionHandler {
         float f5 = Mth.sin(-pitch * 0.017453292F);
         float f6 = f3 * f4;
         float f7 = f2 * f4;
-        double reach = player.getAttribute(ForgeMod.ENTITY_REACH.get()).getValue();
+        double reach = getBlockReach(player);
         Vec3 targetPosition = eyePosition.add((double)f6 * reach, (double)f5 * reach, (double)f7 * reach);
         return world.clip(new ClipContext(eyePosition, targetPosition, ClipContext.Block.OUTLINE, fluidMode, player));
     }
@@ -416,7 +429,7 @@ public class PlayerInteractionHandler {
             Vec3 eyePosition = player.getEyePosition(1.0F);
             Vec3 lookVector = player.getLookAngle();
 
-            double reachDistance = player.getAttribute(ForgeMod.BLOCK_REACH.get()).getValue();
+            double reachDistance = getBlockReach(player);
             Vec3 reachEnd = eyePosition.add(lookVector.x * reachDistance, lookVector.y * reachDistance, lookVector.z * reachDistance);
 
             BlockHitResult blockHitResult = level.clip(new ClipContext(eyePosition, reachEnd, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));

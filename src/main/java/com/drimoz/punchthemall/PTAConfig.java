@@ -13,13 +13,6 @@ public class PTAConfig {
     public static final LoaderConfig LOADER;
     public static final DebugConfig DEBUG;
 
-    public static final ForgeConfigSpec.BooleanValue interactionsEnabled;
-    public static final ForgeConfigSpec.BooleanValue allowFakePlayers;
-    public static final ForgeConfigSpec.BooleanValue applyCooldownToFakePlayers;
-    public static final ForgeConfigSpec.BooleanValue dropInInventory;
-    public static final ForgeConfigSpec.BooleanValue cancelVanillaInteraction;
-    public static final ForgeConfigSpec.IntValue interactionCooldown;
-
     static {
         BUILDER.comment(
                 "PunchThemAll common configuration.",
@@ -35,13 +28,6 @@ public class PTAConfig {
         DEBUG = new DebugConfig(BUILDER);
 
         BUILDER.pop();
-
-        interactionsEnabled = INTERACTIONS.enabled;
-        allowFakePlayers = PLAYERS.allowFakePlayers;
-        applyCooldownToFakePlayers = PLAYERS.applyCooldownToFakePlayers;
-        dropInInventory = DROPS.placeInInventory;
-        cancelVanillaInteraction = INTERACTIONS.cancelVanillaInteraction;
-        interactionCooldown = INTERACTIONS.cooldownTicks;
 
         COMMON_CONFIG = BUILDER.build();
     }

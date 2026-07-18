@@ -3,6 +3,7 @@ package com.drimoz.punchthemall.core.util;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.ShortTag;
 
 import java.util.Set;
@@ -89,15 +90,22 @@ public class TagHelper {
 
             // Si on a un format spécifique, on a un comportement spécifique
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
-                // si on a un 'RangeTag' dans le compare, on veut un nombre (entier?)
-                if (!(itemTag instanceof IntTag)) return true;
+                // Un RangeTag en blacklist interdit les valeurs DANS [min, max] ; tout le reste passe.
+                // On accepte les entiers et les shorts (ex. niveaux d'enchantement).
+                int value;
+                if (itemTag instanceof IntTag intTag) value = intTag.getAsInt();
+                else if (itemTag instanceof ShortTag shortTag) value = shortTag.getAsInt();
+                else return true;
 
-                // On vérifie que la valeur liée à RangeTag soit une list
-                if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return true;
+                // On vérifie que la valeur liée à RangeTag soit une list de deux bornes
+                if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)
+                        || listRangeTag.size() != 2
+                        || !(listRangeTag.get(0) instanceof NumericTag minTag)
+                        || !(listRangeTag.get(1) instanceof NumericTag maxTag)) {
+                    return true;
+                }
 
-                assert listRangeTag.size() == 2 : "RangeTag too short";
-                return ((IntTag) listRangeTag.get(0)).getAsInt() > ((IntTag) itemTag).getAsInt() &&
-                        ((IntTag) itemTag).getAsInt() > ((IntTag) listRangeTag.get(1)).getAsInt();
+                return value < minTag.getAsInt() || value > maxTag.getAsInt();
             }
             // Sinon pour chaque field de l'objet, on vérifie récursivement que l'item n'ai pas les memes
             else {

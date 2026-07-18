@@ -53,7 +53,9 @@ public class PtaPool {
 
         int cumulativeChance = 0;
 
-        for (Map.Entry<PtaDropRecord, Integer> drop : shuffledPool().entrySet()) {
+        // Weighted pick: iteration order is irrelevant to the distribution (it accumulates every
+        // weight), so we iterate the pool directly instead of copying/shuffling it on each roll.
+        for (Map.Entry<PtaDropRecord, Integer> drop : dropPool.entrySet()) {
             cumulativeChance += drop.getValue();
 
             if (chance <= cumulativeChance) {
@@ -77,17 +79,4 @@ public class PtaPool {
                 '}';
     }
 
-    // Inner Work
-
-    protected Map<PtaDropRecord, Integer> shuffledPool() {
-        List<Map.Entry<PtaDropRecord, Integer>> entries = new ArrayList<>(this.dropPool.entrySet());
-        Collections.shuffle(entries);
-
-        Map<PtaDropRecord, Integer> shuffledMap = new HashMap<>();
-        for (Map.Entry<PtaDropRecord, Integer> entry : entries) {
-            shuffledMap.put(entry.getKey(), entry.getValue());
-        }
-
-        return shuffledMap;
-    }
 }

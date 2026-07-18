@@ -30,6 +30,14 @@ public class InteractionRegistry {
     private static final InteractionRegistry INSTANCE = new InteractionRegistry();
     private final Map<ResourceLocation, PtaInteraction> interactions = new HashMap<>();
 
+    // Runtime indexes: candidates keyed by resolved click type and concrete target.
+    // Rebuilt lazily after any mutation so a click filters only the small matching bucket
+    // instead of scanning every interaction.
+    private final Map<PtaTypeEnum, Map<Block, List<PtaInteraction>>> blockIndex = new EnumMap<>(PtaTypeEnum.class);
+    private final Map<PtaTypeEnum, Map<Fluid, List<PtaInteraction>>> fluidIndex = new EnumMap<>(PtaTypeEnum.class);
+    private final Map<PtaTypeEnum, List<PtaInteraction>> airIndex = new EnumMap<>(PtaTypeEnum.class);
+    private boolean indexDirty = true;
+
     // Life cycle
 
     private InteractionRegistry() {}
@@ -42,6 +50,7 @@ public class InteractionRegistry {
 
     public void clearInteractions() {
         this.interactions.clear();
+        this.indexDirty = true;
     }
 
     public Map<ResourceLocation, PtaInteraction> getInteractions() {
@@ -50,6 +59,7 @@ public class InteractionRegistry {
 
     public void addInteraction(PtaInteraction interaction) {
         interactions.put(interaction.getId(), interaction);
+        this.indexDirty = true;
     }
 
     public PtaInteraction getInteractionById(ResourceLocation id) {
@@ -61,7 +71,9 @@ public class InteractionRegistry {
 
         PtaTypeEnum eventType = PtaTypeEnum.getTypeFromEvent(interactionType, player.isShiftKeyDown());
 
-        for (PtaInteraction interaction : interactions.values()) {
+        // Prefilter to the small bucket of candidates matching this click type and concrete target.
+        // The full per-interaction filters still run below, so semantics are unchanged.
+        for (PtaInteraction interaction : getCandidates(eventType, clickOnBlock, pos, level)) {
             if (!passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level)) {
                 continue;
             }
@@ -69,6 +81,63 @@ public class InteractionRegistry {
         }
 
         return filteredInteractions;
+    }
+
+    private Collection<PtaInteraction> getCandidates(PtaTypeEnum eventType, boolean clickOnBlock, BlockPos pos, Level level) {
+        rebuildIndexIfNeeded();
+
+        if (!clickOnBlock) {
+            return airIndex.getOrDefault(eventType, List.of());
+        }
+
+        Block block = level.getBlockState(pos).getBlock();
+        Fluid fluid = level.getFluidState(pos).getType();
+
+        List<PtaInteraction> byBlock = blockIndex.getOrDefault(eventType, Map.of()).get(block);
+        List<PtaInteraction> byFluid = fluidIndex.getOrDefault(eventType, Map.of()).get(fluid);
+
+        if (byFluid == null || byFluid.isEmpty()) {
+            return byBlock == null ? List.of() : byBlock;
+        }
+        if (byBlock == null || byBlock.isEmpty()) {
+            return byFluid;
+        }
+
+        // A waterlogged block can match both a block and a fluid interaction; merge without duplicates.
+        Set<PtaInteraction> merged = new LinkedHashSet<>(byBlock);
+        merged.addAll(byFluid);
+        return merged;
+    }
+
+    private void rebuildIndexIfNeeded() {
+        if (!indexDirty) return;
+
+        blockIndex.clear();
+        fluidIndex.clear();
+        airIndex.clear();
+
+        for (PtaInteraction interaction : interactions.values()) {
+            PtaTypeEnum type = interaction.getType();
+            PtaBlock ptaBlock = interaction.getBlock();
+
+            if (ptaBlock.isAir()) {
+                airIndex.computeIfAbsent(type, t -> new ArrayList<>()).add(interaction);
+            }
+            else if (ptaBlock.isBlock()) {
+                Map<Block, List<PtaInteraction>> byBlock = blockIndex.computeIfAbsent(type, t -> new HashMap<>());
+                for (Block block : ptaBlock.getBlockSet()) {
+                    byBlock.computeIfAbsent(block, b -> new ArrayList<>()).add(interaction);
+                }
+            }
+            else {
+                Map<Fluid, List<PtaInteraction>> byFluid = fluidIndex.computeIfAbsent(type, t -> new HashMap<>());
+                for (Fluid fluid : ptaBlock.getFluidSet()) {
+                    byFluid.computeIfAbsent(fluid, f -> new ArrayList<>()).add(interaction);
+                }
+            }
+        }
+
+        indexDirty = false;
     }
 
 
@@ -103,16 +172,17 @@ public class InteractionRegistry {
 
     private boolean passesBiomeAndDimensionFilter(PtaInteraction interaction, Level level, BlockPos pos) {
         String playerDimensionId = level.dimension().location().toString();
-        String playerBiomeId = level.getBiome(pos).unwrapKey().get().location().toString();
+        // Guard against unregistered biome holders (custom worldgen): treat as "no biome id".
+        String playerBiomeId = level.getBiome(pos).unwrapKey().map(key -> key.location().toString()).orElse("");
 
-        // Check whitelist
+        // Check whitelist: only allow when the current dimension or biome is listed.
         if (interaction.hasBiomeWhiteList()) {
             return interaction.getBiomeWhitelist().contains(playerDimensionId) || interaction.getBiomeWhitelist().contains(playerBiomeId);
         }
 
-        // Check blacklist
+        // Check blacklist: forbid when the current dimension or biome is listed.
         if (interaction.hasBiomeBlackList()) {
-            return interaction.getBiomeBlackList().contains(playerDimensionId) || interaction.getBiomeBlackList().contains(playerBiomeId);
+            return !(interaction.getBiomeBlackList().contains(playerDimensionId) || interaction.getBiomeBlackList().contains(playerBiomeId));
         }
 
         return true;

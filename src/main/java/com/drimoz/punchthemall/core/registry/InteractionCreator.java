@@ -173,8 +173,6 @@ public class InteractionCreator {
             errorMissing(id, STRING_HAND_ITEM_NBT_WHITELIST_FULL + " or " + STRING_HAND_ITEM_NBT_BLACKLIST_FULL);
         }
 
-        assert nbtBlackList != null;
-        assert nbtWhiteList != null;
         return Map.entry(nbtWhiteList, nbtBlackList);
     }
 
@@ -256,8 +254,6 @@ public class InteractionCreator {
             errorMissing(id, STRING_BLOCK_NBT_WHITELIST_FULL + " or " + STRING_BLOCK_NBT_BLACKLIST_FULL);
         }
 
-        assert nbtBlackList != null;
-        assert nbtWhiteList != null;
         return Map.entry(nbtWhiteList, nbtBlackList);
     }
 
@@ -308,11 +304,23 @@ public class InteractionCreator {
         Block block = null;
         Fluid fluid = null;
         if (transformationJson.has(STRING_TRANSFORMATION_BLOCK)) {
-            block = BlockChecker.getExistingBlock(GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_BLOCK));
-            if (block.equals(Blocks.AIR)) block = null;
+            String blockName = GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_BLOCK);
+            if (BlockChecker.doesBlockExist(blockName)) {
+                block = BlockChecker.getExistingBlock(blockName);
+                if (block.equals(Blocks.AIR)) block = null;
+            }
+            else {
+                errorFormat(id, STRING_TRANSFORMATION_BLOCK + " - Unknown block " + blockName);
+            }
         }
         else if (transformationJson.has(STRING_TRANSFORMATION_FLUID)) {
-            fluid = FluidChecker.getExistingFluid(GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_FLUID));
+            String fluidName = GsonHelper.getAsString(transformationJson, STRING_TRANSFORMATION_FLUID);
+            if (FluidChecker.doesFluidExist(fluidName)) {
+                fluid = FluidChecker.getExistingFluid(fluidName);
+            }
+            else {
+                errorFormat(id, STRING_TRANSFORMATION_FLUID + " - Unknown fluid " + fluidName);
+            }
         }
 
         // State
@@ -417,12 +425,11 @@ public class InteractionCreator {
     private static void addItemsFromJson(InteractionJsonReader reader, JsonObject json, Set<Item> items, String key, String path) {
         for (String itemName : reader.readStringList(json, key, path)) {
             try {
-                Item item = ItemChecker.getExistingItem(itemName);
-                if (item == null) {
+                if (!ItemChecker.doesItemExist(itemName)) {
                     PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown item " + itemName);
                     continue;
                 }
-                items.add(item);
+                items.add(ItemChecker.getExistingItem(itemName));
             } catch (RuntimeException e) {
                 PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid item id " + itemName + " : " + e);
             }
@@ -447,12 +454,11 @@ public class InteractionCreator {
     private static void addBlocksFromJson(InteractionJsonReader reader, JsonObject json, Set<Block> blocks, String key, String path) {
         for (String blockName : reader.readStringList(json, key, path)) {
             try {
-                Block block = BlockChecker.getExistingBlock(blockName);
-                if (block == null) {
+                if (!BlockChecker.doesBlockExist(blockName)) {
                     PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown block " + blockName);
                     continue;
                 }
-                blocks.add(block);
+                blocks.add(BlockChecker.getExistingBlock(blockName));
             } catch (RuntimeException e) {
                 PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid block id " + blockName + " : " + e);
             }
@@ -462,12 +468,11 @@ public class InteractionCreator {
     private static void addFluidsFromJson(InteractionJsonReader reader, JsonObject json, Set<Fluid> fluids, String key, String path) {
         for (String fluidName : reader.readStringList(json, key, path)) {
             try {
-                Fluid fluid = FluidChecker.getExistingFluid(fluidName);
-                if (fluid == null) {
+                if (!FluidChecker.doesFluidExist(fluidName)) {
                     PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Unknown fluid " + fluidName);
                     continue;
                 }
-                fluids.add(fluid);
+                fluids.add(FluidChecker.getExistingFluid(fluidName));
             } catch (RuntimeException e) {
                 PTALoggers.error(INCORRECT_FORMAT + " - " + path + " - Invalid fluid id " + fluidName + " : " + e);
             }
@@ -525,7 +530,7 @@ public class InteractionCreator {
             return TagParser.parseTag(cleanedNbtString);
         } catch (CommandSyntaxException e) {
             PTALoggers.error("Incorrect Json format for " + id.getPath() + " - Error during parsing NBTs" + e);
-            return null;
+            return new CompoundTag();
         }
     }
 
