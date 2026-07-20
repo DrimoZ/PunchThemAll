@@ -49,7 +49,7 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
 ## Install
 
 1. Install NeoForge for 1.21.1 and (optionally) JEI or EMI.
-2. Drop `pta-2.1.0.jar` into your `mods` folder.
+2. Drop `pta-1.21.1-2.1.0.jar` into your `mods` folder.
 3. Provide interactions with a datapack (below).
 
 ## Quick start

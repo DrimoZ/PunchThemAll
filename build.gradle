@@ -9,7 +9,9 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = mod_id
+    // pta-1.21.1-2.1.0.jar — the Minecraft version belongs in the file name, since the same mod
+    // version can ship for several of them.
+    archivesName = "${mod_id}-${minecraft_version}"
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
