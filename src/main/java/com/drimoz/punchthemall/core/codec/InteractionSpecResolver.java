@@ -131,11 +131,13 @@ public final class InteractionSpecResolver {
             boolean isTag = !entry.isEmpty() && entry.charAt(0) == TAG_PREFIX;
             String name = isTag ? entry.substring(1) : entry;
             switch (kind) {
-                case "block" -> addBlock(id, blockSet, name, isTag, "target.match");
-                case "fluid" -> addFluid(id, fluidSet, name, isTag, "target.match");
+                case "block" -> addBlock(id, blockSet, name, isTag, "target.match", true);
+                case "fluid" -> addFluid(id, fluidSet, name, isTag, "target.match", true);
                 case "any" -> {
-                    boolean found = addBlock(id, blockSet, name, isTag, "target.match");
-                    found |= addFluid(id, fluidSet, name, isTag, "target.match");
+                    // Trying both sides is the point of "any", so neither lookup reports on its
+                    // own — only failing at both is an error worth showing.
+                    boolean found = addBlock(id, blockSet, name, isTag, "target.match", false);
+                    found |= addFluid(id, fluidSet, name, isTag, "target.match", false);
                     if (!found) error(id, "target.match - Unknown block/fluid " + entry);
                 }
                 default -> error(id, "target.kind - Unknown kind " + spec.kind());
@@ -397,7 +399,7 @@ public final class InteractionSpecResolver {
         return items;
     }
 
-    private static boolean addBlock(ResourceLocation id, Set<Block> blocks, String name, boolean isTag, String path) {
+    private static boolean addBlock(ResourceLocation id, Set<Block> blocks, String name, boolean isTag, String path, boolean reportMissing) {
         try {
             if (isTag) {
                 if (!BlockChecker.isBlockTagExisting(name)) return false;
@@ -409,7 +411,7 @@ public final class InteractionSpecResolver {
                 blocks.add(BlockChecker.getExistingBlock(name));
                 return true;
             }
-            error(id, path + " - Unknown block " + name);
+            if (reportMissing) error(id, path + " - Unknown block " + name);
             return false;
         } catch (RuntimeException e) {
             error(id, path + " - Invalid block entry " + name + " : " + e);
@@ -417,7 +419,7 @@ public final class InteractionSpecResolver {
         }
     }
 
-    private static boolean addFluid(ResourceLocation id, Set<Fluid> fluids, String name, boolean isTag, String path) {
+    private static boolean addFluid(ResourceLocation id, Set<Fluid> fluids, String name, boolean isTag, String path, boolean reportMissing) {
         try {
             if (isTag) {
                 if (!FluidChecker.isFluidTagExisting(name)) return false;
@@ -429,7 +431,7 @@ public final class InteractionSpecResolver {
                 fluids.add(FluidChecker.getExistingFluid(name));
                 return true;
             }
-            error(id, path + " - Unknown fluid " + name);
+            if (reportMissing) error(id, path + " - Unknown fluid " + name);
             return false;
         } catch (RuntimeException e) {
             error(id, path + " - Invalid fluid entry " + name + " : " + e);
