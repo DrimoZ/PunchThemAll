@@ -10,10 +10,11 @@ cost the player health or hunger, grant potion effects, play sounds and particle
 biome, dimension, time, weather, altitude, light, or player state — and it all shows up in **JEI** and
 **EMI**.
 
-> **New in 2.1.0 (NeoForge 1.21.1):** ported to NeoForge/Java 21; interactions are now a **datapack
-> registry** (synced to clients by vanilla, so JEI/EMI are correct on dedicated servers with zero
-> setup); native **EMI** support alongside JEI; item data matched through a version-stable view.
-> The JSON format is unchanged from `schema_version: 2`. See the [changelog](CHANGELOG.md).
+> **New in 2.1.0 (NeoForge 1.21.1):** ported to NeoForge/Java 21; interactions move from the config
+> folder into **datapacks**, so they reload with `/reload` and the server syncs them to clients;
+> native **EMI** support alongside JEI; item conditions now read as plain sentences in both viewers;
+> `left_click` on **air** finally works. The JSON format is unchanged from `schema_version: 2`.
+> See the [changelog](CHANGELOG.md).
 
 ---
 
@@ -30,7 +31,9 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
   light level, sneaking, food, and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, plus interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
-- 📖 **JEI & EMI integration** — players browse every interaction, its inputs, drops, and conditions.
+- 📖 **JEI & EMI integration** — players browse every interaction, its inputs, drops and conditions,
+  with item requirements written as plain sentences ("The item must have: Efficiency I - V") rather
+  than raw tag structure.
 - 🖥️ **Server-friendly** — interactions live in datapacks and the server syncs them to clients, so
   JEI/EMI are correct on dedicated servers with no extra setup.
 - 🤖 **Automation-aware** — fake players / machines are supported with dedicated config gates.
@@ -96,11 +99,13 @@ search the **Interaction** category to see it.
 | [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
 | [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
+| [example catalogue](examples/punchthemall-examples/README.md) | **40 runnable examples**, one per feature, each with what it shows and how to trigger it. |
+| [docs/backlog.md](docs/backlog.md) | Ideas, deferred work, and what is knowingly untested. |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 
 ## Building from source
 
-Standard NeoForge / ModDevGradle workflow (Java 21).
+Standard NeoForge / ModDevGradle workflow (Java 21). There is no CI; builds are run locally.
 
 ```bash
 ./gradlew build            # build the mod jar (into build/libs)

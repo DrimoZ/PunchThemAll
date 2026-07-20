@@ -13,7 +13,8 @@ dimension, time, weather, altitude, light or player state. Everything shows up i
 
 ## Highlights
 
-- 🖱️ **Any click is a trigger** — left/right, sneaking or not, on block, fluid or air.
+- 🖱️ **Any click is a trigger** — left/right, sneaking or not, on block, fluid or air. Including a left
+  click on nothing, which no earlier version could serve.
 - 🎒 **Hand-aware** — require an item or tag in the main/off/any hand, match its NBT, and choose how
   it is spent (durability, shrink, or nothing).
 - 🎁 **Rich rewards** — a weighted loot pool plus always-given `guaranteed` drops, multiple `rolls`,
@@ -24,7 +25,9 @@ dimension, time, weather, altitude, light or player state. Everything shows up i
   sneaking, food and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, and interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
-- 📖 **JEI & EMI integration** — players can browse every interaction, its inputs, drops and conditions.
+- 📖 **JEI & EMI integration** — players can browse every interaction, its inputs, drops and
+  conditions. Item requirements are written as plain sentences ("The item must have: Efficiency
+  I - V"), not raw NBT.
 - 🖥️ **Server-friendly** — interactions live in datapacks and the server syncs them to clients, so
   JEI/EMI are correct on dedicated servers with zero setup. Datapacks also override and can be gated
   with `neoforge:conditions`.
@@ -93,7 +96,7 @@ cobblestone, a chance at iron nuggets (doubled per Fortune level), a Haste buff 
 - **Config options:** [configuration.md](configuration.md)
 - **Editor schema:** [interaction.schema.json](interaction.schema.json)
 - **Changelog:** [CHANGELOG.md](../CHANGELOG.md)
-- **Copy-paste example datapack:** [`examples/punchthemall-examples`](../examples/punchthemall-examples)
+- **Copy-paste example datapack:** [`examples/punchthemall-examples`](../examples/punchthemall-examples) — 40 interactions covering every field, [catalogued here](../examples/punchthemall-examples/README.md)
 
 ## Compatibility
 
