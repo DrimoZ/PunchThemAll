@@ -10,6 +10,7 @@ Start here, then dig in as needed.
 | [configuration.md](configuration.md) | Tune the **`pta-common.toml`** config (cooldowns, gates, drops, debug). |
 | [interaction.schema.json](interaction.schema.json) | Wire up **editor autocomplete/validation** for interaction files. |
 | [curseforge.md](curseforge.md) | A short **project overview** (used for the CurseForge page). |
+| [backlog.md](backlog.md) | Ideas and nice-to-haves, parked for later. Add freely, pick when there is room. |
 
 Related:
 
