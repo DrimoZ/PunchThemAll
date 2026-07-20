@@ -5,7 +5,7 @@ adds one feature at a time, so by the end you can write almost anything. Every s
 copy-paste-ready.
 
 > Prefer to read the exhaustive field list instead? See [interaction-format.md](interaction-format.md).
-> Prefer to copy finished files? See [`configExamples/interactions/v2`](../configExamples/interactions/v2).
+> Prefer to copy finished files? See the [example datapack](../examples/punchthemall-examples).
 
 **Contents**
 
@@ -27,22 +27,39 @@ copy-paste-ready.
 
 ## 1. Setup
 
-1. Install Forge 1.20.1, [JEI](https://www.curseforge.com/minecraft/mc-mods/jei), and PunchThemAll.
-2. Launch the game once. This creates the folder:
+Interactions are **datapack** data — the datapack registry `pta:interaction`. So you author them in a
+datapack, not a config folder.
+
+1. Install NeoForge 1.21.1, a recipe viewer ([JEI](https://www.curseforge.com/minecraft/mc-mods/jei)
+   or [EMI](https://modrinth.com/mod/emi)), and PunchThemAll.
+2. Make a datapack. In a world's `datapacks/` folder, create:
 
    ```text
-   config/punchthemall/interactions/
+   datapacks/mypack/
+     pack.mcmeta
+     data/mypack/pta/interaction/
    ```
 
-3. Put `.json` files in that folder (subfolders are fine). Each file is one interaction.
-4. After editing files, run **`/reload`** in-game to apply changes. No restart needed.
-5. Open **JEI** and look at the **Interaction** category to see what loaded.
+   `pack.mcmeta`:
+   ```json
+   { "pack": { "pack_format": 48, "description": "My interactions" } }
+   ```
 
-> **Always start a v2 file with `"schema_version": 2`.** It gives you strict JSON validation and the
-> clearest error messages, and unlocks every feature in this guide.
+3. Put `.json` files in `data/mypack/pta/interaction/` (subfolders are fine). Each file is one
+   interaction; its id is `mypack:<path>` (e.g. `flint.json` → `mypack:flint`).
+4. After editing files, run **`/reload`** in-game to apply changes. No restart needed.
+5. Open **JEI/EMI** and look at the **Interaction** category to see what loaded.
+
+> Not sure how a datapack is laid out? Copy the ready-made
+> [example datapack](../examples/punchthemall-examples) and edit it.
+>
+> On a server the registry is synchronised to clients by vanilla, so JEI/EMI just work — no extra step.
+
+> **Always start a file with `"schema_version": 2`.** It gives strict JSON validation and the clearest
+> error messages. (This version of the mod only accepts `schema_version: 2`.)
 
 If a file fails to load, the game log shows a line beginning with
-`PunchThemAll - Incorrect Json format - <file> - <reason>`. Keep the log open while authoring.
+`PunchThemAll - Incorrect Json format - <id> - <reason>`. Keep the log open while authoring.
 
 ---
 
@@ -50,7 +67,7 @@ If a file fails to load, the game log shows a line beginning with
 
 The smallest useful interaction: **left-click dirt to get coarse dirt.**
 
-`config/punchthemall/interactions/coarse_dirt.json`
+`data/mypack/pta/interaction/coarse_dirt.json`
 
 ```json
 {
@@ -332,16 +349,18 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 
 ## 11. Organising a pack
 
-- **Folders become ids.** `interactions/create/crushing/gravel.json` → `pta:create/crushing/gravel`.
-  Keep filenames lowercase with underscores.
-- **One interaction per file.** It keeps ids meaningful and JEI readable.
+- **Everything is a datapack.** Interactions live at `data/<namespace>/pta/interaction/**/*.json`.
+  Ship them in your modpack's datapack, or as a standalone datapack players drop into `datapacks/`.
+- **Folders become ids.** `data/mypack/pta/interaction/create/crushing/gravel.json` →
+  `mypack:create/crushing/gravel`. Keep filenames lowercase with underscores.
+- **One interaction per file.** It keeps ids meaningful and the JEI/EMI list readable.
 - **Toggle without deleting.** Add `"enabled": false` to a file to skip it.
-- **Ship in a datapack (optional).** Set `Loader.load_from_datapacks = true` in
-  `config/punchthemall/pta-common.toml`, then place files at
-  `data/<namespace>/pta/interaction/*.json`. Datapack files override config files with the same id
-  and are synchronised to clients automatically.
+- **Override & gate.** Datapacks override each other by pack order (later packs win for the same id),
+  and you can add `neoforge:conditions` to a file to load it only when, say, another mod is present.
+- **Dedicated servers just work.** The `pta:interaction` registry is synchronised to clients by
+  vanilla, so JEI/EMI show the server's interactions with no extra setup.
 - **Global tuning** (cooldowns, click/target gates, fake players, drop physics) lives in
-  `pta-common.toml` — see [configuration.md](configuration.md).
+  `config/punchthemall/pta-common.toml` — see [configuration.md](configuration.md).
 
 ---
 
@@ -353,7 +372,7 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 {
   "schema_version": 2,
   "type": "shift_left_click",
-  "hand": { "hand": "main", "match": "#forge:tools/hammers", "consume": { "mode": "durability" } },
+  "hand": { "hand": "main", "match": "#c:tools", "consume": { "mode": "durability" } },
   "target": { "kind": "block", "match": "minecraft:cobblestone" },
   "transformation": { "chance": 1.0, "into": { "kind": "block", "id": "minecraft:gravel" }, "particles": "minecraft:gravel" },
   "rewards": { "weighted": [ { "match": "minecraft:air", "weight": 1 } ] }
@@ -402,15 +421,16 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 }
 ```
 
-More single-feature examples: [`configExamples/interactions/v2`](../configExamples/interactions/v2).
+More single-feature examples: the [example datapack](../examples/punchthemall-examples).
 
 ---
 
 ## 13. Troubleshooting
 
 **The file doesn't load.**
-Check the log for `Incorrect Json format - <file> - <reason>`. Common causes: invalid JSON (a
-trailing comma, a missing quote), an unknown item/block id, or an unknown tag. Fix and `/reload`.
+Check the log for `Incorrect Json format - <id> - <reason>`. Common causes: invalid JSON (a trailing
+comma, a missing quote), an unknown item/block id, or an unknown tag. Make sure the file is inside a
+**datapack** at `data/<namespace>/pta/interaction/` and that the datapack is enabled, then `/reload`.
 
 **It loads but never triggers.**
 - Turn on `Debug.log_skipped_interactions` in `pta-common.toml` to see why a click is skipped.
@@ -424,13 +444,12 @@ trailing comma, a missing quote), an unknown item/block id, or an unknown tag. F
 The tag is probably absent (e.g. `Damage` on a fresh tool). Loosen the predicate or match a tag that
 actually exists on the item.
 
-**JEI shows nothing / wrong recipes on a dedicated server.**
-The server syncs its interactions to clients on join and on `/reload`. Reconnect or `/reload` on the
-server. On singleplayer this is automatic.
+**JEI/EMI shows nothing on a dedicated server.**
+The `pta:interaction` registry is a datapack registry, so vanilla synchronises it to clients on join
+and on `/reload`. Reconnect or `/reload` on the server. In single-player this is automatic.
 
-**I see a "legacy format" deprecation warning.**
-That file has no `schema_version` (or `1`). It still works, but consider migrating to
-`schema_version: 2` — see the migration table in [interaction-format.md](interaction-format.md).
+**My file is rejected with "schema_version … is not supported".**
+This version only accepts `schema_version: 2`. Set `"schema_version": 2` at the top of the file.
 
 ---
 
@@ -438,5 +457,5 @@ That file has no `schema_version` (or `1`). It still works, but consider migrati
 
 - **Full field reference:** [interaction-format.md](interaction-format.md)
 - **Config keys & presets:** [configuration.md](configuration.md)
-- **Loading, IDs, JEI, multiplayer:** [interactions.md](interactions.md)
-- **Copy-paste examples:** [`configExamples/interactions/v2`](../configExamples/interactions/v2)
+- **Datapacks, IDs, JEI/EMI, multiplayer:** [interactions.md](interactions.md)
+- **Copy-paste example datapack:** [../examples/punchthemall-examples](../examples/punchthemall-examples)

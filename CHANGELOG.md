@@ -8,6 +8,44 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [1.21.1-2.1.0] — NeoForge
+
+The **NeoForge 1.21.1** release. The JSON you write is unchanged (`schema_version: 2`), but *where*
+you put it changed: interactions are now **datapack** data.
+
+### ⚠️ Migrating from 1.20.1 (2.0.x)
+- **Interactions move to a datapack.** Copy your files from `config/punchthemall/interactions/` into
+  `data/<namespace>/pta/interaction/` inside a datapack. Ids come from the path
+  (`data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`).
+- **Only `schema_version: 2` is accepted.** The legacy (schema 1) format is gone — convert first,
+  using the mapping table in [docs/interaction-format.md](docs/interaction-format.md).
+- **The `Loader` config section is gone** (`recursive_discovery`, `lowercase_generated_ids`,
+  `load_from_datapacks`). All other config sections are unchanged.
+
+### Added
+- **Datapack registry `pta:interaction`.** Interactions are proper datapack data: they load with
+  `/reload`, can be **overridden by pack order**, support `neoforge:conditions`, and are
+  **synchronised to clients by vanilla** — so JEI/EMI are correct on dedicated servers with no custom
+  networking at all.
+- **Native EMI support**, alongside JEI (now JEI 19).
+- **Biome `#tags`** in `conditions.biomes`, in addition to exact biome/dimension ids.
+- **JSON schema** (`docs/interaction.schema.json`) for editor autocomplete and validation.
+- **Example datapack** at `examples/punchthemall-examples` (20 ready-to-use interactions).
+
+### Changed
+- Ported to **NeoForge 21.1.x / Java 21** (ModDevGradle).
+- **Item data now uses Data Components** internally (1.20.5+ removed item NBT). PTA matches items
+  against a **version-stable view** (`Damage`, `Enchantments:[{id,lvl}]`, `custom`), so your
+  `nbt`/`nbt_predicates` expressions keep working unchanged across mod versions.
+- The custom client-sync packet was **removed** — vanilla datapack synchronisation replaces it.
+
+### Fixed
+- Weighted drop selection no longer has an off-by-one bias (it slightly over-weighted the first entry
+  and under-weighted the last — noticeable with `weight: 1` fillers).
+- Random rolls now use the world's random source consistently, instead of a global RNG.
+
+---
+
 ## [1.20.1-2.0.0]
 
 A large, **fully backward-compatible** update. Every existing interaction file keeps working; the

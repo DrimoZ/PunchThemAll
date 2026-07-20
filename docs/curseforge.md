@@ -2,11 +2,12 @@
 
 **Turn any click into a recipe.** PunchThemAll lets pack makers define what happens when a player
 left/right-clicks (with or without sneaking) on a block, a fluid or the air — optionally with a
-specific item in hand. No Java, no KubeJS: just JSON files you drop in `config/punchthemall/interactions`.
+specific item in hand. No Java, no KubeJS: just JSON files in a **datapack**
+(`data/<namespace>/pta/interaction/`).
 
 Every interaction can produce weighted or guaranteed drops, transform the clicked block/fluid, cost
 the player health or hunger, grant potion effects, play sounds and particles, and be gated by biome,
-dimension, time, weather, altitude, light or player state. Everything shows up in **JEI**.
+dimension, time, weather, altitude, light or player state. Everything shows up in **JEI** and **EMI**.
 
 ---
 
@@ -23,9 +24,10 @@ dimension, time, weather, altitude, light or player state. Everything shows up i
   sneaking, food and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, and interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
-- 📖 **Full JEI integration** — players can browse every interaction, its inputs, drops and conditions.
-- 🖥️ **Server-friendly** — the interaction registry is synchronised to clients, so JEI is correct on
-  dedicated servers. Interactions can live in the config folder *and* (optionally) in datapacks.
+- 📖 **JEI & EMI integration** — players can browse every interaction, its inputs, drops and conditions.
+- 🖥️ **Server-friendly** — interactions are a datapack registry synchronised to clients by vanilla, so
+  JEI/EMI are correct on dedicated servers with zero setup. Datapacks also override and can be gated
+  with `neoforge:conditions`.
 
 ---
 
@@ -87,13 +89,14 @@ cobblestone, a chance at iron nuggets (doubled per Fortune level), a Haste buff 
 
 - **Getting started (step-by-step):** [getting-started.md](getting-started.md)
 - **Full JSON reference:** [interaction-format.md](interaction-format.md)
-- **Loading, reloading & JEI:** [interactions.md](interactions.md)
+- **Datapacks, loading & JEI/EMI:** [interactions.md](interactions.md)
 - **Config options:** [configuration.md](configuration.md)
+- **Editor schema:** [interaction.schema.json](interaction.schema.json)
 - **Changelog:** [CHANGELOG.md](../CHANGELOG.md)
-- **Copy-paste examples:** [`configExamples/interactions`](../configExamples/interactions)
+- **Copy-paste example datapack:** [`examples/punchthemall-examples`](../examples/punchthemall-examples)
 
 ## Compatibility
 
-- Minecraft **1.20.1**, Forge **47.x**.
-- **JEI** required for the recipe browser.
-- Optional integrations tested against Create, AE2, Ex Deorum, Thermal and Click Machine.
+- Minecraft **1.21.1**, NeoForge **21.1.x**.
+- **JEI** or **EMI** (optional) for the recipe browser — both are supported natively.
+- Pairs well with resource/tech mods (Create, AE2, Ex Deorum, Thermal, Click Machine, …).

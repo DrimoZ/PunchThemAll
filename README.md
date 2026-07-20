@@ -1,17 +1,19 @@
 # PunchThemAll
 
-**Turn any click into a recipe.** PunchThemAll is a Minecraft **Forge 1.20.1** mod that lets modpack
+**Turn any click into a recipe.** PunchThemAll is a Minecraft **NeoForge 1.21.1** mod that lets modpack
 authors define what happens when a player left/right-clicks (with or without sneaking) on a block, a
-fluid, or the air — optionally with a specific item in hand. Everything is plain **JSON** dropped in
-the config folder. No Java, no scripting.
+fluid, or the air — optionally with a specific item in hand. Everything is plain **JSON** shipped in a
+**datapack**. No Java, no scripting.
 
 Each interaction can produce weighted **and** guaranteed drops, transform the clicked block/fluid,
 cost the player health or hunger, grant potion effects, play sounds and particles, and be gated by
-biome, dimension, time, weather, altitude, light, or player state — and it all shows up in **JEI**.
+biome, dimension, time, weather, altitude, light, or player state — and it all shows up in **JEI** and
+**EMI**.
 
-> **New in 2.0.0:** a cleaner `schema_version: 2` format, advanced rewards, conditions, effects,
-> typed NBT predicates, optional datapack loading, and correct JEI on dedicated servers.
-> See the [changelog](CHANGELOG.md).
+> **New in 2.1.0 (NeoForge 1.21.1):** ported to NeoForge/Java 21; interactions are now a **datapack
+> registry** (synced to clients by vanilla, so JEI/EMI are correct on dedicated servers with zero
+> setup); native **EMI** support alongside JEI; item data matched through a version-stable view.
+> The JSON format is unchanged from `schema_version: 2`. See the [changelog](CHANGELOG.md).
 
 ---
 
@@ -24,33 +26,36 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
   a Fortune/Looting-style bonus.
 - 🔄 **Transformations** — swap the clicked block/fluid for another, copy block-state values, with
   sounds and particles.
-- 🌦️ **Conditions** — gate by biome/dimension, time of day, weather, Y range, light level, sneaking,
-  food, and XP.
+- 🌦️ **Conditions** — gate by biome/dimension (ids **or** `#tags`), time of day, weather, Y range,
+  light level, sneaking, food, and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, plus interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
-- 📖 **JEI integration** — players browse every interaction, its inputs, drops, and conditions.
-- 🖥️ **Server-friendly** — the registry is synced to clients, so JEI is correct on dedicated servers.
-  Interactions can live in the config folder **and** (optionally) in datapacks.
+- 📖 **JEI & EMI integration** — players browse every interaction, its inputs, drops, and conditions.
+- 🖥️ **Server-friendly** — interactions are a datapack registry synchronised to clients by vanilla, so
+  JEI/EMI are correct on dedicated servers with no extra setup.
 - 🤖 **Automation-aware** — fake players / machines are supported with dedicated config gates.
-- ♻️ **Backward compatible** — old interaction files keep working; new features are opt-in.
 
 ## Requirements
 
 | | |
 | --- | --- |
-| Minecraft | 1.20.1 |
-| Forge | 47.x (built against 47.3.6) |
-| [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) | required (recipe browser) |
+| Minecraft | 1.21.1 |
+| NeoForge | 21.1.x (built against 21.1.241) |
+| Recipe viewer | [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) **or** [EMI](https://modrinth.com/mod/emi) (optional, for the recipe browser) |
 
 ## Install
 
-1. Install Minecraft Forge for 1.20.1 and [JEI](https://www.curseforge.com/minecraft/mc-mods/jei).
-2. Drop `PunchThemAll-1.20.1-2.0.0.jar` into your `mods` folder.
-3. Launch once to generate `config/punchthemall/`, then add interaction files (below).
+1. Install NeoForge for 1.21.1 and (optionally) JEI or EMI.
+2. Drop `pta-2.1.0.jar` into your `mods` folder.
+3. Provide interactions with a datapack (below).
 
 ## Quick start
 
-Create `config/punchthemall/interactions/flint_from_gravel.json`:
+Interactions live in a **datapack**, under `data/<namespace>/pta/interaction/`. The quickest way is to
+use the ready-made [example datapack](examples/punchthemall-examples): copy the
+`punchthemall-examples` folder into a world's `datapacks/` folder and enable it.
+
+To author your own, create `data/mypack/pta/interaction/flint_from_gravel.json` inside a datapack:
 
 ```json
 {
@@ -67,51 +72,48 @@ Create `config/punchthemall/interactions/flint_from_gravel.json`:
 }
 ```
 
-Then run `/reload` in-game (or reload the world). Sneak-left-click gravel with a shovel and you'll
-sometimes get flint. Open JEI and search the **Interaction** category to see it.
-
-More ready-to-copy files live in [`configExamples/interactions`](configExamples/interactions),
-including a folder of focused v2 examples in
-[`configExamples/interactions/v2`](configExamples/interactions/v2).
+Run `/reload`. Sneak-left-click gravel with a shovel and you'll sometimes get flint. Open JEI/EMI and
+search the **Interaction** category to see it.
 
 ## How it works
 
-- Interaction files go in `config/punchthemall/interactions/**/*.json`. The relative path becomes
-  the interaction id (e.g. `early_game/flint.json` → `pta:early_game/flint`).
-- Edit files and run `/reload` to apply changes live.
-- Global behaviour (cooldowns, click/target gates, fake players, drop physics, loader options) is
-  controlled by `config/punchthemall/pta-common.toml`.
-- Optionally, set `Loader.load_from_datapacks = true` to also load
-  `data/<namespace>/pta/interaction/*.json` from datapacks.
+- Interactions are the datapack registry `pta:interaction`: files go in
+  `data/<namespace>/pta/interaction/**/*.json`. The path becomes the id
+  (e.g. `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`).
+- Because it's a datapack registry, vanilla **synchronises it to clients** — so gameplay and JEI/EMI
+  match on dedicated servers with no custom networking.
+- Edit files and run `/reload` to apply changes live. Datapacks override each other by pack order, and
+  you can gate a file with `neoforge:conditions` (e.g. only if another mod is present).
+- Global behaviour (cooldowns, click/target gates, fake players, drop physics) is controlled by
+  `config/punchthemall/pta-common.toml`.
 
 ## Documentation
 
 | Doc | What's inside |
 | --- | --- |
 | [docs/getting-started.md](docs/getting-started.md) | **Start here.** A step-by-step guide that builds an interaction from scratch, with a cookbook and troubleshooting. |
-| [docs/interaction-format.md](docs/interaction-format.md) | **Full JSON reference** for the `schema_version: 2` format, with a legacy→v2 migration table. |
-| [docs/interactions.md](docs/interactions.md) | Loading, reloading, IDs, multiplayer, and the JEI category. |
+| [docs/interaction-format.md](docs/interaction-format.md) | **Full JSON reference** for the `schema_version: 2` format. |
+| [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
-| [docs/curseforge.md](docs/curseforge.md) | Short project overview (used for the CurseForge page). |
+| [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 
 ## Building from source
 
-This project follows the standard Forge MDK workflow (Java 17).
+Standard NeoForge / ModDevGradle workflow (Java 21).
 
 ```bash
 ./gradlew build            # build the mod jar (into build/libs)
-./gradlew compileJava      # compile sources only
-./gradlew genIntellijRuns  # generate IntelliJ run configs
+./gradlew runClient        # launch the client to test
+./gradlew runServer        # launch a dedicated server
 ./gradlew --refresh-dependencies   # if dependencies fail to resolve
 ```
 
 ## Compatibility
 
-Optional integrations are tested against Create, AE2, Ex Deorum, Thermal, and Click Machine. Because
-interactions can require specific items/tags and target specific blocks/fluids, PunchThemAll pairs
-well with resource and tech mods.
+Works with any resource/tech mod, since interactions can require specific items/tags and target
+specific blocks/fluids. JEI and EMI are both supported natively.
 
 ## License & credits
 
-Authored by **DrimoZ**. See [LICENSE](LICENSE) for licensing terms.
+Authored by **DrimoZ**. Free and open source under the [MIT License](LICENSE).

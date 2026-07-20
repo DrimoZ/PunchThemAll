@@ -1,26 +1,25 @@
 # PunchThemAll — Interaction format
 
-Interactions are JSON files. Two schema versions are supported:
+Interactions are JSON files loaded from **datapacks**, and this version accepts **only
+`schema_version: 2`** — the strictly-valid-JSON format documented below, parsed by a
+Mojang-serialization `Codec` (shape errors are reported with a path and reason). Files declaring an
+older `schema_version` are rejected with a clear error.
 
-- **`schema_version: 2`** — the current, strictly-valid-JSON format documented below. Parsed by a
-  Mojang-serialization `Codec`, so shape errors are reported with a path and reason.
-- **legacy (no `schema_version`, or `1`)** — the original lenient format. Still loads, but is
-  **deprecated** and logs a warning on load. See the `*.json` samples without a `_v2` suffix in
-  `configExamples/interactions`.
-
-A legacy file and its v2 translation behave identically in-game. The v2 format additionally unlocks
-features that legacy files cannot express (guaranteed drops, multiple rolls, Fortune, potion effects,
-extended conditions, interaction sound/particles, typed NBT predicates), and gives far clearer error
-messages. New to the mod? Read [getting-started.md](getting-started.md) first.
+New to the mod? Read [getting-started.md](getting-started.md) first, and use the
+[JSON schema](interaction.schema.json) for editor autocomplete/validation.
 
 ## Where files live
 
-- `config/punchthemall/interactions/**/*.json` — always loaded (editable by pack makers, hot-reload
-  with `/reload`).
-- `data/<namespace>/pta/interaction/**/*.json` — loaded **only** when
-  `Loader.load_from_datapacks = true` in `punchthemall/pta-common.toml`. Layered on top of config;
-  a datapack interaction overrides a config one with the same id, and datapack files are
-  synchronised to clients by vanilla.
+Interactions are the datapack registry `pta:interaction`:
+
+- `data/<namespace>/pta/interaction/**/*.json` — one interaction per file, inside any loaded
+  datapack. The path is the id: `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`.
+- Because it's a datapack registry, vanilla **synchronises it to clients** — gameplay and JEI/EMI
+  match on dedicated servers with no custom networking.
+- Datapacks override each other by pack order, and you can gate a file with `neoforge:conditions`.
+
+There is no config-folder loading; the mod ships no interactions by default. See the ready-made
+[example datapack](../examples/punchthemall-examples).
 
 ## Selectors (`match`)
 
@@ -29,7 +28,7 @@ means a tag; otherwise it is a registry id.
 
 ```json
 "match": "minecraft:stick"
-"match": ["minecraft:stick", "#forge:tools/hammers"]
+"match": ["minecraft:stick", "#c:tools"]
 ```
 
 ## Full shape (all sections optional except `type`)
@@ -176,16 +175,23 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 - **Transformations happen at most once per click**, after a successful drop, subject to `chance`
   and the `allow_transformations` config gate.
 - **`particles`** takes a **block id** (block-break particles), not a particle-type id.
-- **Biomes/dimensions are matched by exact id** (e.g. `minecraft:desert`, `minecraft:overworld`).
-  Biome **tags** are not supported here yet.
+- **Biomes/dimensions** in `conditions.biomes` match by exact id (e.g. `minecraft:desert`,
+  `minecraft:overworld`) **or** by biome **`#tag`** (e.g. `#minecraft:is_forest`).
+- **Item NBT is matched against a version-stable view** (`Damage`, `Enchantments:[{id,lvl}]`,
+  `custom`), so the same `path` / `nbt` expressions work across mod versions even though 1.21 stores
+  item data as data components.
 - **`effects` can be harmful.** They are whatever you declare (e.g. `minecraft:poison`), applied to
   the player on success.
 - **Global config can still block an interaction** even if the file is valid — see
   [configuration.md](configuration.md). Turn on `Debug.log_skipped_interactions` to find out why.
-- **Multiplayer:** gameplay uses the server's interactions; the JEI list is synchronised from the
-  server, so a dedicated server is authoritative. See [interactions.md](interactions.md).
+- **Multiplayer:** the `pta:interaction` registry is a datapack registry synchronised to clients by
+  vanilla, so a dedicated server is authoritative and JEI/EMI match it. See
+  [interactions.md](interactions.md).
 
-## Legacy → v2 quick reference
+## Migrating from the legacy (Forge 1.20.1) format
+
+This NeoForge version only loads `schema_version: 2`. If you have files from the old lenient format
+(the Forge 1.20.1 branch), convert them with this mapping:
 
 | legacy | v2 |
 | --- | --- |
@@ -199,4 +205,6 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 | `consumable: true` | `consume.mode = "shrink"` |
 | pseudo-JSON NBT object | SNBT string |
 | `copy_state_value` | `copy_state_value` (unchanged) |
-```
+
+…and move the files from `config/punchthemall/interactions/` into a datapack at
+`data/<namespace>/pta/interaction/`.
