@@ -1,6 +1,30 @@
 # Porting plan — PunchThemAll → NeoForge 1.21.1
 
-Status: **planning only (no code yet).** Target branch: `neoforge_1.21.1`.
+Status: **done and verified in game** (1.21.1-2.1.0, branch `neoforge_1.21.1`). Kept as a record of
+the reasoning, not as a live task list — everything below has been carried out, or moved to
+[../backlog.md](../backlog.md) with a reason.
+
+Where the plan turned out to be wrong, the correction is inline (see §4d) rather than a rewrite, so
+the mistake stays visible.
+
+**Audited against the code, section by section. Not carried out, and why:**
+
+| Plan item | Outcome |
+| --- | --- |
+| §4b finer `TriState` cancelling | Backlog — `setCanceled(true)` is enough until a pack asks for more |
+| §4b null guard on the reach attribute | Dropped — `BLOCK_INTERACTION_RANGE` is vanilla and always present |
+| §4b document fake-player limits | Backlog — the detection is still heuristic, the docs still oversell it |
+| §5 drops carrying components / enchantments | Backlog — `ItemView.applyTo` covers `Damage` and `custom_data` only |
+| §5 `components."ns:id"` escape hatch | Backlog — niche, and deliberately version-specific |
+| §5 back-port `ItemView` to 1.20.1 | Dropped — no development left on that branch |
+| §12 source hint (config vs datapack) | Dropped — datapacks are the only source since 2.1.0 |
+| §13 `chance` vs `weight` naming | Backlog — internal, and it touches the display code |
+| §13 renames (`PtaBlock`/`PtaInteractionRecord`) | Backlog — wide, low-value diff |
+| §13 SPDX headers | Backlog |
+| §14.2 test suite | Dropped — heavy scaffolding for the return; revisit if a regression escapes twice |
+
+Everything else in §1–§15 is implemented, including the two items the plan left open as questions:
+`left_click` on `air` (§4b, §13) now works via a client payload, and §14.1's JSON schema shipped.
 
 ## 0. Goals & scope
 

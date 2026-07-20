@@ -21,6 +21,11 @@ was considered and rejected is useful.
 - **`not` in predicates.** `nbt_predicates` can only require; excluding still means falling back to
   the SNBT blacklist. A negation flag would let a pack drop the SNBT form entirely.
 - **Per-interaction cooldown.** Currently one global cooldown in the config.
+- **Drops carrying real item data.** A drop's authored NBT only reaches `Damage` and `custom_data`
+  today (`ItemView.applyTo`). An enchanted or component-bearing drop needs a `DataComponentPatch`
+  built from the SNBT, and enchantments additionally need level-time registry access.
+- **Component escape hatch.** Expose exotic 1.21 components as `components."minecraft:xxx"` for power
+  users, alongside the version-stable view. Niche, and deliberately version-specific.
 - **Weighted pool "nothing" entry.** `minecraft:air` as a filler works but reads like a trick; an
   explicit `{ "empty": true, "weight": n }` would say what it means.
 
@@ -50,6 +55,18 @@ was considered and rejected is useful.
   uses the second name in both cases. Deliberately deferred: a wide, low-value diff.
 - **Fake-player detection.** `instanceof FakePlayer` misses mods that use their own `ServerPlayer`
   subclass, and many machines never post interact events at all. A tag or config list could widen it.
+  Either way the *limits* deserve a paragraph in the user docs: the config keys promise more than the
+  detection can deliver, and packs will hit that.
+- **Finer vanilla-interaction cancelling.** `cancel_vanilla_interaction` calls `setCanceled(true)`,
+  which is all-or-nothing. NeoForge 1.21 also offers `setUseBlock`/`setUseItem` (`TriState`) on the
+  block events, so a pack could suppress the block use but still let the item act. Worth exposing
+  only if someone actually asks.
+- **`chance` vs `weight` naming.** `PtaPool.getItemStackForChance` takes a *weight* roll, and the
+  pool mixes both words for the same thing. Internal only; renaming touches the JEI display code.
+- **Payload protocol discipline.** `PtaNetwork.PROTOCOL_VERSION` is `"1"` and now covers two
+  payloads. Nothing is published yet, so it has never mattered — but after the first release any
+  payload change must bump it, or a mismatched client and server will believe they agree and fail at
+  decode time.
 - **Cooldown map keyed by UUID.** Fake players often reuse one UUID per machine type, so
   `apply_cooldown_to_fake_players` can bleed cooldowns between unrelated machines.
 
@@ -77,3 +94,12 @@ was considered and rejected is useful.
   anyway. Revisit if the logic layer grows or a regression escapes twice.
 - **REI plugin.** EMI and JEI cover the field; REI pulls in Architectury for a NeoForge-only mod.
 - **NEI.** Dead since 1.12 — listed only so nobody re-proposes it.
+- **"Source hint" in the viewers** (show whether an interaction came from the config folder or a
+  datapack). Moot since 2.1.0: datapacks are the only source.
+- **Null guard on the reach attribute.** The 1.20.1 code guarded `ForgeMod.BLOCK_REACH` because a
+  Forge-added attribute could be absent. `Attributes.BLOCK_INTERACTION_RANGE` is vanilla and sits in
+  `Player.createAttributes()`, so every player — fake players included, they are `ServerPlayer` —
+  has it. No guard needed.
+- **Back-porting `ItemView` to the 1.20.1 branch.** The plan wanted both branches behind one
+  contract. There is no 1.20.1 development left, and on that branch the view is ~identity over
+  `getTag()`, so it would buy symmetry and nothing else.
