@@ -31,13 +31,18 @@ you put it changed: interactions are now **datapack** data.
 - **Biome `#tags`** in `conditions.biomes`, in addition to exact biome/dimension ids.
 - **JSON schema** (`docs/interaction.schema.json`) for editor autocomplete and validation.
 - **Example datapack** at `examples/punchthemall-examples` (20 ready-to-use interactions).
+- **`left_click` on `air` now works.** It never could before, on either loader: the event behind it
+  is client-only, so the server never saw the swing. The client now reports it, and only when a pack
+  actually defines such an interaction.
 
 ### Changed
 - Ported to **NeoForge 21.1.x / Java 21** (ModDevGradle).
 - **Item data now uses Data Components** internally (1.20.5+ removed item NBT). PTA matches items
   against a **version-stable view** (`Damage`, `Enchantments:[{id,lvl}]`, `custom`), so your
   `nbt`/`nbt_predicates` expressions keep working unchanged across mod versions.
-- The custom client-sync packet was **removed** — vanilla datapack synchronisation replaces it.
+- Interactions are synced by a small server-to-client payload sent on join and after each `/reload`.
+  (A datapack *registry* would sync for free, but `/reload` cannot re-read one — see
+  [docs/porting/neoforge-1.21.1-plan.md](docs/porting/neoforge-1.21.1-plan.md).)
 
 ### Fixed
 - Weighted drop selection no longer has an off-by-one bias (it slightly over-weighted the first entry

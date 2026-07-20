@@ -68,11 +68,19 @@ public class PlayerInteractionHandler {
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGH, receiveCanceled = true)
-    public static void onLeftClickEmpty(PlayerInteractEvent.LeftClickEmpty event) {
-        if (!passesCommonChecks(event)) return;
+    /**
+     * Server-side entry point for a left click on nothing, driven by {@code LeftClickEmptyPayload}.
+     *
+     * <p>{@code LeftClickEmpty} is posted by {@code Minecraft.startAttack} and never leaves the
+     * client, so unlike every other click type this one cannot be observed server-side — hence the
+     * payload. Nothing from the client is trusted beyond "this player swung at nothing": the hand,
+     * position and every gate are re-derived here.</p>
+     */
+    public static void onLeftClickEmptyFromClient(Player player) {
+        if (!passesCommonChecks(player, player.level())) return;
+        if (alreadyHandledThisTick(player)) return;
         if (isClickTypeEnabled(PtaTypeEnum.LEFT_CLICK)) {
-            handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, event);
+            handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, player, player.level(), player.blockPosition(), null);
         }
     }
 
@@ -109,7 +117,10 @@ public class PlayerInteractionHandler {
     }
 
     private static boolean passesCommonChecks(PlayerInteractEvent event) {
-        Player entity = event.getEntity();
+        return passesCommonChecks(event.getEntity(), event.getLevel());
+    }
+
+    private static boolean passesCommonChecks(Player entity, Level level) {
         if (!PTAConfig.INTERACTIONS.enabled.get()) {
             logSkipped("interactions are disabled globally");
             return false;
@@ -119,13 +130,17 @@ public class PlayerInteractionHandler {
             return false;
         }
         if (isCooldownEnabledFor(entity) && isPlayerOnCooldown(entity.getUUID(), entity.level().getGameTime())) return false;
-        return !event.getLevel().isClientSide();
+        return !level.isClientSide();
     }
 
     private static void handlePlayerInteract(PtaTypeEnum type, boolean clickOnBlock, PlayerInteractEvent event) {
-        Player player = event.getEntity();
-        Level level = event.getLevel();
-        BlockPos blockPos = event.getPos();
+        handlePlayerInteract(type, clickOnBlock, event.getEntity(), event.getLevel(), event.getPos(),
+                event instanceof ICancellableEvent cancellable ? cancellable : null);
+    }
+
+    // `cancellable` is null when there is no event to cancel — the left-click-empty payload path.
+    private static void handlePlayerInteract(PtaTypeEnum type, boolean clickOnBlock, Player player, Level level,
+                                             BlockPos blockPos, ICancellableEvent cancellable) {
         BlockHitResult hitResult = rayTrace(level, player, ClipContext.Fluid.SOURCE_ONLY);
         Direction direction = getInteractionDirection(player, level, hitResult);
 
@@ -191,7 +206,7 @@ public class PlayerInteractionHandler {
 
         if (interactionProcessed) {
             // In NeoForge only the concrete interact events are cancellable (via ICancellableEvent).
-            if (PTAConfig.INTERACTIONS.cancelVanillaInteraction.get() && event instanceof ICancellableEvent cancellable) {
+            if (PTAConfig.INTERACTIONS.cancelVanillaInteraction.get() && cancellable != null) {
                 cancellable.setCanceled(true);
             }
             if (isCooldownEnabledFor(player)) setPlayerOnCooldown(player.getUUID(), level.getGameTime());

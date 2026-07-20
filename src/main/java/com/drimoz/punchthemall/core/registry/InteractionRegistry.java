@@ -113,6 +113,17 @@ public class InteractionRegistry {
         return filteredInteractions;
     }
 
+    /**
+     * Whether any air interaction answers a left click. The client uses this to decide if a
+     * left-click-on-nothing is worth telling the server about, so packs without such an interaction
+     * cost nothing per swing.
+     */
+    public boolean hasLeftClickAirInteraction() {
+        rebuildIndexIfNeeded();
+        return !airIndex.getOrDefault(PtaTypeEnum.LEFT_CLICK, List.of()).isEmpty()
+                || !airIndex.getOrDefault(PtaTypeEnum.SHIFT_LEFT_CLICK, List.of()).isEmpty();
+    }
+
     private Collection<PtaInteraction> getCandidates(PtaTypeEnum eventType, boolean clickOnBlock, BlockPos pos, Level level) {
         rebuildIndexIfNeeded();
 

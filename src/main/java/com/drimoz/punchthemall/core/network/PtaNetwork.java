@@ -2,6 +2,7 @@ package com.drimoz.punchthemall.core.network;
 
 import com.drimoz.punchthemall.PunchThemAll;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
+import com.drimoz.punchthemall.core.event.PlayerInteractionHandler;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -9,7 +10,8 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
- * Registers PTA's single payload. Bumping {@code PROTOCOL_VERSION} makes clients on an older
+ * Registers PTA's payloads: interactions out to clients, and the left-click-on-nothing signal
+ * back in. Bumping {@code PROTOCOL_VERSION} makes clients on an older
  * protocol fail the handshake rather than silently mis-parse the spec stream.
  */
 @EventBusSubscriber(modid = PunchThemAll.MOD_ID)
@@ -19,11 +21,21 @@ public class PtaNetwork {
 
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar(PROTOCOL_VERSION).playToClient(
-                SyncInteractionsPayload.TYPE,
-                SyncInteractionsPayload.STREAM_CODEC,
-                PtaNetwork::handleOnClient
-        );
+        event.registrar(PROTOCOL_VERSION)
+                .playToClient(
+                        SyncInteractionsPayload.TYPE,
+                        SyncInteractionsPayload.STREAM_CODEC,
+                        PtaNetwork::handleOnClient
+                )
+                .playToServer(
+                        LeftClickEmptyPayload.TYPE,
+                        LeftClickEmptyPayload.STREAM_CODEC,
+                        PtaNetwork::handleLeftClickEmpty
+                );
+    }
+
+    private static void handleLeftClickEmpty(LeftClickEmptyPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> PlayerInteractionHandler.onLeftClickEmptyFromClient(context.player()));
     }
 
     private static void handleOnClient(SyncInteractionsPayload payload, IPayloadContext context) {
