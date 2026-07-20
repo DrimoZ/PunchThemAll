@@ -80,8 +80,11 @@ public class InteractionReloadListener extends SimpleJsonResourceReloadListener 
             parsed.get().ifPresent(spec -> specs.put(id, spec));
         }
 
+        // Only the specs are produced here. Resolving them into the runtime model looks tags up in
+        // BuiltInRegistries, and reload listeners run before tags are bound — resolving now would
+        // silently give every #tag an empty item/block set. PtaServerEvents finishes the job on
+        // TagsUpdatedEvent instead.
         loaded = Map.copyOf(specs);
-        InteractionRegistry.getInstance().rebuildFrom(loaded, registries);
 
         if (PTAConfig.DEBUG.logLoadedInteractions.get()) {
             PTALoggers.info("Read " + files.size() + " interaction file(s) from datapacks");

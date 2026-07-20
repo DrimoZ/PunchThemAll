@@ -58,15 +58,24 @@ public class JEIPlugin implements IModPlugin {
     private static synchronized void applyRegistryToRuntime() {
         if (runtime == null) return;
 
-        if (!SHOWN.isEmpty()) {
-            runtime.getRecipeManager().hideRecipes(INTERACTION_RECIPE_TYPE, new ArrayList<>(SHOWN));
-            SHOWN.clear();
+        List<PtaInteraction> current = new ArrayList<>(InteractionRegistry.getInstance().getInteractions().values());
+
+        // Diff rather than hide-everything-then-re-add. JEI remembers a hidden recipe permanently and
+        // refuses to add it back ("Recipe not added because it is hidden"), so the blunt version wiped
+        // the category the moment anything refreshed twice — which it does on every world join, where
+        // onRuntimeAvailable and RecipesUpdatedEvent both land.
+        List<PtaInteraction> stale = SHOWN.stream().filter(shown -> !current.contains(shown)).toList();
+        List<PtaInteraction> added = current.stream().filter(recipe -> !SHOWN.contains(recipe)).toList();
+        if (stale.isEmpty() && added.isEmpty()) return;
+
+        if (!stale.isEmpty()) {
+            runtime.getRecipeManager().hideRecipes(INTERACTION_RECIPE_TYPE, stale);
+        }
+        if (!added.isEmpty()) {
+            runtime.getRecipeManager().addRecipes(INTERACTION_RECIPE_TYPE, added);
         }
 
-        List<PtaInteraction> current = new ArrayList<>(InteractionRegistry.getInstance().getInteractions().values());
-        if (!current.isEmpty()) {
-            runtime.getRecipeManager().addRecipes(INTERACTION_RECIPE_TYPE, current);
-            SHOWN.addAll(current);
-        }
+        SHOWN.clear();
+        SHOWN.addAll(current);
     }
 }
