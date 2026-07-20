@@ -19,8 +19,8 @@
 
   "rewards": {
     "weighted": [
-      { "match": "#forge:seeds", "weight": 10, "count": { "min": 3, "max": 10 } },
-      { "match": "#forge:nuggets", "weight": 1, "count": 1 },
+      { "match": "#c:seeds", "weight": 10, "count": { "min": 3, "max": 10 } },
+      { "match": "#c:nuggets", "weight": 1, "count": 1 },
       { "match": "minecraft:air", "weight": 1 }
     ]
   }

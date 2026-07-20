@@ -9,7 +9,7 @@
   "target": { "kind": "air" },
   "rewards": {
     "weighted": [
-      { "match": "#forge:seeds", "weight": 10, "count": { "min": 3, "max": 10 } },
+      { "match": "#c:seeds", "weight": 10, "count": { "min": 3, "max": 10 } },
       { "match": "minecraft:air", "weight": 90 }
     ]
   }

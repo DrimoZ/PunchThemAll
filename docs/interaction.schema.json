@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DrimoZ/PunchThemAll/blob/master/docs/interaction.schema.json",
+  "title": "PunchThemAll interaction (schema_version 2)",
+  "description": "A single PunchThemAll interaction file (data/<namespace>/pta/interaction/*.json).",
+  "type": "object",
+  "required": ["type"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "integer", "const": 2, "description": "Must be 2." },
+    "enabled": { "type": "boolean", "default": true, "description": "Set false to skip this interaction." },
+    "type": {
+      "description": "Which click triggers this interaction.",
+      "enum": ["left_click", "right_click", "shift_left_click", "shift_right_click"]
+    },
+    "hand": { "$ref": "#/$defs/hand" },
+    "target": { "$ref": "#/$defs/target" },
+    "transformation": { "$ref": "#/$defs/transformation" },
+    "rewards": { "$ref": "#/$defs/rewards" },
+    "costs": { "$ref": "#/$defs/costs" },
+    "conditions": { "$ref": "#/$defs/conditions" },
+    "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" }, "description": "Potion effects applied to the player on success." },
+    "sound": { "type": "string", "description": "Sound id played on the interaction (e.g. minecraft:block.stone.hit)." },
+    "particles": { "type": "string", "description": "Block id used for interaction particles." }
+  },
+  "$defs": {
+    "match": {
+      "description": "A registry id, or a #tag, or an array of them.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      ]
+    },
+    "count": {
+      "description": "A count: an integer, {count}, or {min,max}.",
+      "oneOf": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "object", "additionalProperties": false, "required": ["count"], "properties": { "count": { "type": "integer", "minimum": 0 } } },
+        { "type": "object", "additionalProperties": false, "properties": { "min": { "type": "integer", "minimum": 0 }, "max": { "type": "integer", "minimum": 0 } } }
+      ]
+    },
+    "nbtPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "SNBT-string NBT matchers (run against PTA's stable item/block-entity view).",
+      "properties": {
+        "whitelist": { "type": "string" },
+        "blacklist": { "type": "string" }
+      }
+    },
+    "nbtPredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "description": "Dotted path; a segment ending in [] iterates a list." },
+        "int_range": { "type": "array", "items": { "type": "integer" }, "minItems": 1, "maxItems": 2, "description": "[min, max]; omit to test presence only." },
+        "where": { "type": "string", "description": "SNBT filtering which list elements qualify." }
+      }
+    },
+    "statePair": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "whitelist": { "type": "object", "additionalProperties": { "type": ["string", "boolean", "integer"] } },
+        "blacklist": { "type": "object", "additionalProperties": { "type": ["string", "boolean", "integer"] } }
+      }
+    },
+    "consume": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["durability", "shrink", "none"], "default": "none", "description": "How the held item is spent on success." },
+        "chance": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 }
+      }
+    },
+    "hand": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Held-item requirement. Omit for an empty hand.",
+      "properties": {
+        "hand": { "enum": ["any", "main", "off"], "default": "any" },
+        "match": { "$ref": "#/$defs/match" },
+        "consume": { "$ref": "#/$defs/consume" },
+        "nbt": { "$ref": "#/$defs/nbtPair" },
+        "nbt_predicates": { "type": "array", "items": { "$ref": "#/$defs/nbtPredicate" } }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["block", "fluid", "air", "any"], "default": "block" },
+        "match": { "$ref": "#/$defs/match" },
+        "state": { "$ref": "#/$defs/statePair" },
+        "nbt": { "$ref": "#/$defs/nbtPair" },
+        "nbt_predicates": { "type": "array", "items": { "$ref": "#/$defs/nbtPredicate" } }
+      }
+    },
+    "into": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "kind": { "enum": ["block", "fluid", "air"], "default": "block" },
+        "id": { "type": "string" },
+        "state": { "type": "object", "additionalProperties": { "type": ["string", "boolean", "integer"] }, "description": "State values, or \"copy_state_value\" to keep the original." }
+      }
+    },
+    "transformation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chance"],
+      "properties": {
+        "chance": { "type": "number", "minimum": 0, "maximum": 1 },
+        "into": { "$ref": "#/$defs/into" },
+        "nbt": { "type": "string", "description": "SNBT applied to the resulting block entity." },
+        "sound": { "type": "string" },
+        "particles": { "type": "string", "description": "Block id used for particles." }
+      }
+    },
+    "rewardEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["match"],
+      "properties": {
+        "match": { "$ref": "#/$defs/match" },
+        "weight": { "type": "integer", "minimum": 1, "default": 1 },
+        "count": { "$ref": "#/$defs/count" },
+        "nbt": { "type": "string", "description": "SNBT applied to the dropped item (stable view: Damage/custom)." }
+      }
+    },
+    "fortune": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enchant": { "type": "string", "default": "minecraft:fortune" },
+        "factor": { "type": "number", "minimum": 0, "default": 1 }
+      }
+    },
+    "rewards": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rolls": { "type": "integer", "minimum": 0, "default": 1 },
+        "guaranteed": { "type": "array", "items": { "$ref": "#/$defs/rewardEntry" } },
+        "weighted": { "type": "array", "items": { "$ref": "#/$defs/rewardEntry" } },
+        "fortune": { "$ref": "#/$defs/fortune" }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount"],
+      "properties": {
+        "chance": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+        "amount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "costs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "damage": { "$ref": "#/$defs/cost" },
+        "hunger": { "$ref": "#/$defs/cost" }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "description": "Mob effect id (e.g. minecraft:haste)." },
+        "duration": { "type": "integer", "minimum": 1, "default": 200 },
+        "amplifier": { "type": "integer", "minimum": 0, "default": 0 },
+        "chance": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 }
+      }
+    },
+    "conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "biomes": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "whitelist": { "type": "array", "items": { "type": "string" }, "description": "Biome/dimension ids, or #biome-tags." },
+            "blacklist": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "time": { "enum": ["any", "day", "night"], "default": "any" },
+        "weather": { "type": "array", "items": { "enum": ["clear", "rain", "thunder"] } },
+        "y_range": { "type": "array", "items": { "type": "integer" }, "minItems": 1, "maxItems": 2 },
+        "light": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "min": { "type": "integer", "minimum": 0, "maximum": 15 }, "max": { "type": "integer", "minimum": 0, "maximum": 15 } }
+        },
+        "requires_sneaking": { "type": "boolean" },
+        "player_state": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "min_food": { "type": "integer", "minimum": 0 }, "min_xp_levels": { "type": "integer", "minimum": 0 } }
+        }
+      }
+    }
+  }
+}
