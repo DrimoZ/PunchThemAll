@@ -113,6 +113,38 @@ means a tag; otherwise it is a registry id.
 }
 ```
 
+### Which one: `nbt` whitelist/blacklist, or `nbt_predicates`?
+
+Both filter the same thing — does the held item (or the target's block entity) qualify. They differ in
+how you write the condition, and both remain supported.
+
+| | `nbt.whitelist` / `nbt.blacklist` | `nbt_predicates` |
+| --- | --- | --- |
+| Written as | one SNBT string: `"{Damage:{RangeTag:[0,500]}}"` | a list of JSON objects |
+| Targets by | **shape** — your SNBT must mirror the tag structure | **path** — `Enchantments[].lvl` |
+| Ranges | the `{RangeTag:[min,max]}` convention | the `int_range` field |
+| Filter a list element | not possible | `where` |
+| Exclude | yes, via `blacklist` | no — use a blacklist for that |
+
+**Prefer `nbt_predicates`, and keep the whitelist/blacklist for exclusions** or for packs carried over
+from v1.
+
+The reason is a trap in the SNBT form. This:
+
+```json
+"whitelist": "{Enchantments:[{lvl:{RangeTag:[2s,7s]}},{id:\"minecraft:fortune\"}]}"
+```
+
+does **not** mean "Fortune between 2 and 7". It means *some* enchantment has level 2-7 **and** *some*
+enchantment is Fortune — two independent tests that a Fortune I + Efficiency V tool passes. To tie a
+level to a specific enchantment you need `where`:
+
+```json
+{ "path": "Enchantments[].lvl", "int_range": [2, 7], "where": "{id:\"minecraft:fortune\"}" }
+```
+
+Numeric widths (`5` vs `5s`) do not matter — comparisons are numeric on both sides.
+
 ### Typed NBT predicates (`nbt_predicates`)
 
 A validated alternative to raw SNBT whitelist/blacklist, usable on `hand` and `target`:
@@ -138,7 +170,10 @@ Everything is visible in the **Interaction** category:
 
 - `guaranteed` drops appear as extra output slots (tooltip: *Guaranteed*).
 - `weighted` drops show their chance and count range.
-- `nbt_predicates` are listed in the tooltip of the hand / target slot.
+- Item conditions are spelled out on the hand / target slot as two plain-language blocks — green
+  **The item must have:** and red **The item must NOT have:** — covering `nbt.whitelist`,
+  `nbt.blacklist` and `nbt_predicates` together, since a player does not care which syntax you used.
+  Enchantments are named and levelled (*Efficiency I - V*), not printed as raw tags.
 - Hovering the **arrow** shows a summary: `rolls`, Fortune bonus, `effects`, all `conditions`
   (time/weather/Y/light/sneaking/food/XP), and whether the interaction plays a sound / particles.
 

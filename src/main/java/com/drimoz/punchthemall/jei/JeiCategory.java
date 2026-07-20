@@ -13,6 +13,7 @@ import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
+import com.drimoz.punchthemall.core.util.ItemConstraintDescriber;
 import com.drimoz.punchthemall.core.util.TranslationKeys;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
@@ -169,9 +170,9 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                                     : Component.translatable(TranslationKeys.INTERACTION_HAND_DAMAGE).getString())
                     ));
                 }
-                addStateAndNbtTooltip(tooltip, new HashSet<>(0), new HashSet<>(0),
-                        interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList());
-                addPredicateTooltip(tooltip, interaction.getHand().getNbtPredicates());
+                addConstraintTooltip(tooltip,
+                        interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList(),
+                        interaction.getHand().getNbtPredicates(), ItemConstraintDescriber.Subject.ITEM);
             });
         }
 
@@ -184,18 +185,20 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         } else if (interaction.getBlock().isBlock()) {
             blockSlot = setupInputSlot(builder, interaction.getBlock().getBlockStacks(), 1 + X_BLOCK, 1 + Y_BLOCK);
             blockSlot.addRichTooltipCallback((recipeSlotView, tooltip) -> {
-                addStateAndNbtTooltip(tooltip,
-                        interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
-                        interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList());
-                addPredicateTooltip(tooltip, interaction.getBlock().getNbtPredicates());
+                addStateTooltip(tooltip,
+                        interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList());
+                addConstraintTooltip(tooltip,
+                        interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList(),
+                        interaction.getBlock().getNbtPredicates(), ItemConstraintDescriber.Subject.TARGET);
             });
         } else {
             blockSlot = setupFluidInputSlot(builder, interaction.getBlock().getFluid(), 1 + X_BLOCK, 1 + Y_BLOCK);
             blockSlot.addRichTooltipCallback((recipeSlotView, tooltip) -> {
-                addStateAndNbtTooltip(tooltip,
-                        interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList(),
-                        interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList());
-                addPredicateTooltip(tooltip, interaction.getBlock().getNbtPredicates());
+                addStateTooltip(tooltip,
+                        interaction.getBlock().getStateWhiteList(), interaction.getBlock().getStateBlackList());
+                addConstraintTooltip(tooltip,
+                        interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList(),
+                        interaction.getBlock().getNbtPredicates(), ItemConstraintDescriber.Subject.TARGET);
             });
         }
 
@@ -503,133 +506,31 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         };
     }
 
-    private void addStateAndNbtTooltip(ITooltipBuilder tooltip, Set<PtaStateRecord<?>> whitelistStates, Set<PtaStateRecord<?>> blacklistStates, CompoundTag whitelistNbt, CompoundTag blacklistNbt) {
-        if (!whitelistStates.isEmpty() || !blacklistStates.isEmpty()) {
-            tooltip.add(Component.literal(""));
-            tooltip.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_TEXT_STATE).getString() + " :"));
-
-            if (!whitelistStates.isEmpty()) {
-                tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_WHITELIST).getString() + " :"));
-                for (PtaStateRecord<?> state : whitelistStates) {
-                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value()));
-                }
-            }
-            if (!blacklistStates.isEmpty()) {
-                tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
-                for (PtaStateRecord<?> state : blacklistStates) {
-                    tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value()));
-                }
-            }
-        }
-
-        if (!whitelistNbt.isEmpty() || !blacklistNbt.isEmpty()) {
-            tooltip.add(Component.literal(""));
-            tooltip.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_TEXT_NBT).getString() + " :"));
-
-            if (!whitelistNbt.isEmpty()) {
-                tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_WHITELIST).getString() + " :"));
-                for (String key : whitelistNbt.getAllKeys()) {
-                    formatNbtDisplay(tooltip, key, whitelistNbt.get(key));
-                }
-            }
-            if (!blacklistNbt.isEmpty()) {
-                tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
-                for (String key : blacklistNbt.getAllKeys()) {
-                    formatNbtDisplay(tooltip, key, blacklistNbt.get(key));
-                }
-            }
-        }
-    }
-
-    private void addPredicateTooltip(ITooltipBuilder tooltip, List<PtaNbtPredicate> predicates) {
-        if (predicates.isEmpty()) return;
+    private void addStateTooltip(ITooltipBuilder tooltip, Set<PtaStateRecord<?>> whitelistStates, Set<PtaStateRecord<?>> blacklistStates) {
+        if (whitelistStates.isEmpty() && blacklistStates.isEmpty()) return;
 
         tooltip.add(Component.literal(""));
-        tooltip.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_TEXT_PREDICATES).getString() + " :"));
-        for (PtaNbtPredicate predicate : predicates) {
-            StringBuilder line = new StringBuilder("§8  - " + predicate.path());
-            if (predicate.intMin().isPresent() || predicate.intMax().isPresent()) {
-                String min = predicate.intMin().map(String::valueOf).orElse("*");
-                String max = predicate.intMax().map(String::valueOf).orElse("*");
-                line.append(" : §5[").append(min).append(" - ").append(max).append("]");
-            }
-            tooltip.add(Component.literal(line.toString()));
-            if (!predicate.where().isEmpty()) {
-                tooltip.add(Component.literal("§8      where §5" + predicate.where()));
+        tooltip.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_TEXT_STATE).getString() + " :"));
+
+        if (!whitelistStates.isEmpty()) {
+            tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_WHITELIST).getString() + " :"));
+            for (PtaStateRecord<?> state : whitelistStates) {
+                tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value()));
             }
         }
-    }
-
-    private void formatNbtDisplay(ITooltipBuilder tooltip, String key, Tag value) {
-        if (key.equals("Enchantments") && value instanceof ListTag listTag) {
-            formatEnchantments(tooltip, listTag);
-        } else if (value instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
-            readRange(compoundTag).ifPresent(range ->
-                    tooltip.add(Component.literal("§8  - " + key + " : §5" + range[0] + " - " + range[1])));
-        } else if (value instanceof ListTag listTag) {
-            StringBuilder listText = new StringBuilder("§8  - " + key + " : §5[");
-            for (Tag listElement : listTag) {
-                listText.append(listElement.getAsString()).append(", ");
-            }
-            if (listText.length() > 5) listText.setLength(listText.length() - 2);
-            listText.append("]");
-            tooltip.add(Component.literal(listText.toString()));
-        } else {
-            tooltip.add(Component.literal("§8  - " + key + " : §5" + value));
-        }
-    }
-
-    private void formatEnchantments(ITooltipBuilder tooltip, ListTag enchantments) {
-        tooltip.add(Component.literal("§8  - " + Component.translatable(TranslationKeys.INTERACTION_HAND_ENCHANTMENTS).getString() + " : §5"));
-        for (Tag enchantmentTag : enchantments) {
-            if (enchantmentTag instanceof CompoundTag enchantmentCompound) {
-                String id = enchantmentCompound.getString("id");
-                Tag levelTag = enchantmentCompound.get("lvl");
-                tooltip.add(Component.literal("§8    - §d" + getEnchantmentName(id) + " §5 " + formatEnchantmentLevel(levelTag)));
+        if (!blacklistStates.isEmpty()) {
+            tooltip.add(Component.literal(" " + Component.translatable(TranslationKeys.INTERACTION_TEXT_BLACKLIST).getString() + " :"));
+            for (PtaStateRecord<?> state : blacklistStates) {
+                tooltip.add(Component.literal("§8  - " + state.property().getName() + " : §5" + state.value()));
             }
         }
     }
 
-    private String formatEnchantmentLevel(Tag levelTag) {
-        if (levelTag instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
-            return readRange(compoundTag)
-                    .map(range -> toRomanNumeral((int) range[0]) + " - " + toRomanNumeral((int) range[1]))
-                    .orElse("");
-        } else if (levelTag instanceof NumericTag numericTag) {
-            int level = numericTag.getAsInt();
-            return level == 1 ? "" : toRomanNumeral(level);
-        }
-        return "";
+    // The SNBT lists and the path predicates are two ways of writing one idea, so they are described
+    // together in plain language rather than dumped as raw tag structure.
+    private void addConstraintTooltip(ITooltipBuilder tooltip, CompoundTag whitelist, CompoundTag blacklist,
+                                      List<PtaNbtPredicate> predicates, ItemConstraintDescriber.Subject subject) {
+        ItemConstraintDescriber.describe(whitelist, blacklist, predicates, subject).forEach(tooltip::add);
     }
 
-    /**
-     * Read a {@code {RangeTag:[min,max]}} bound without caring about the numeric width. Authored SNBT
-     * writes ints ({@code [0,500]}) or shorts ({@code [2s,7s]}) interchangeably, and asking for one
-     * exact tag type made the other silently render nothing.
-     */
-    private Optional<long[]> readRange(CompoundTag compoundTag) {
-        if (!(compoundTag.get("RangeTag") instanceof ListTag rangeTag) || rangeTag.size() != 2) return Optional.empty();
-        if (!(rangeTag.get(0) instanceof NumericTag min) || !(rangeTag.get(1) instanceof NumericTag max)) return Optional.empty();
-        return Optional.of(new long[]{min.getAsLong(), max.getAsLong()});
-    }
-
-    private String getEnchantmentName(String enchantmentId) {
-        ResourceLocation rl = ResourceLocation.tryParse(enchantmentId);
-        if (rl == null) return enchantmentId;
-        return Component.translatable("enchantment." + rl.getNamespace() + "." + rl.getPath()).getString();
-    }
-
-    private String toRomanNumeral(int number) {
-        if (number < 1 || number > 3999) return String.valueOf(number);
-        StringBuilder roman = new StringBuilder();
-        int[] values = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
-        String[] symbols = {"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
-        for (int i = 0; i < values.length; i++) {
-            while (number >= values[i]) {
-                number -= values[i];
-                roman.append(symbols[i]);
-            }
-        }
-        return roman.toString();
-    }
 }

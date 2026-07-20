@@ -9,6 +9,7 @@ import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.classes.PtaRewards;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
+import com.drimoz.punchthemall.core.util.ItemConstraintDescriber;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.render.EmiTexture;
@@ -176,6 +177,15 @@ public class PtaEmiRecipe implements EmiRecipe {
 
         if (extras.hasSound()) lines.add(Component.literal("Plays a sound"));
         if (extras.hasParticles()) lines.add(Component.literal("Shows particles"));
+
+        // Item/target NBT requirements, in the same wording JEI uses. EMI builds its input slots in
+        // one loop, so they ride along on the arrow summary rather than on the slot itself.
+        lines.addAll(ItemConstraintDescriber.describe(
+                interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList(),
+                interaction.getHand().getNbtPredicates(), ItemConstraintDescriber.Subject.ITEM));
+        lines.addAll(ItemConstraintDescriber.describe(
+                interaction.getBlock().getNbtWhiteList(), interaction.getBlock().getNbtBlackList(),
+                interaction.getBlock().getNbtPredicates(), ItemConstraintDescriber.Subject.TARGET));
 
         return lines;
     }
