@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "off", "match": "minecraft:bone_meal", "consume": { "mode": "shrink" } },
+  "target": { "kind": "block", "match": "minecraft:podzol" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:brown_mushroom", "count": 1 }
+    ]
+  },
+  "particles": "minecraft:happy_villager"
+}

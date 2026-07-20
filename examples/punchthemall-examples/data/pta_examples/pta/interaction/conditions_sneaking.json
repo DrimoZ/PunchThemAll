@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:torch" },
+  "target": { "kind": "block", "match": "minecraft:soul_sand" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:soul_torch", "count": 1 }
+    ]
+  },
+  "conditions": { "requires_sneaking": true }
+}

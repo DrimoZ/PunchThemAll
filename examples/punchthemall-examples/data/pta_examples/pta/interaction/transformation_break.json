@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": { "hand": "main", "match": "minecraft:bucket" },
+  "target": { "kind": "block", "match": "minecraft:cobweb" },
+  "transformation": {
+    "chance": 1.0,
+    "sound": "minecraft:block.wool.break",
+    "particles": "minecraft:cloud"
+  },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:string", "count": 1 }
+    ]
+  }
+}

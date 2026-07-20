@@ -21,6 +21,48 @@ Interactions are datapack data:
 There is no config-folder loading; the mod ships no interactions by default. See the ready-made
 [example datapack](../examples/punchthemall-examples).
 
+## Every field, and a file that uses it
+
+Each row points at a small, runnable example in the
+[example datapack](../examples/punchthemall-examples). The
+[catalogue](../examples/punchthemall-examples/README.md) says what each one does and how to trigger
+it in game.
+
+| Field | Values | Example |
+| --- | --- | --- |
+| `type` *(required)* | `left_click`, `right_click`, `shift_left_click`, `shift_right_click` | `minimal` |
+| `enabled` | `true` (default) / `false` | `enabled_false` |
+| `hand.hand` | `any` (default), `main`, `off` | `hand_off_hand` |
+| `hand.match` | id, `#tag`, list, or `[]` for an empty hand | `hand_empty` |
+| `hand.consume.mode` | `none` (default), `shrink`, `durability` | `hand_item_and_consume` |
+| `hand.consume.chance` | `0.0`–`1.0`, default `1.0` | `hand_consume_chance` |
+| `hand.nbt` | SNBT `whitelist` / `blacklist` | `hand_nbt_whitelist` |
+| `hand.nbt_predicates` | `path` + `int_range` + `where` | `hand_nbt_predicates` |
+| `target.kind` | `block` (default), `fluid`, `air`, `any` — `any` resolves either way, it does not mix the two | `target_kind_any` |
+| `target.match` | id, `#tag`, list | `target_any_with_tag` |
+| `target.state` | property → value, `whitelist` / `blacklist` | `target_state_blacklist` |
+| `target.nbt` | block-entity SNBT | `target_block_entity_nbt` |
+| `target.nbt_predicates` | block-entity predicates | `block_entity_predicates` |
+| `transformation.chance` *(required in the block)* | `0.0`–`1.0` | `transformation_state_copy` |
+| `transformation.into` | omit to break, or `kind` + `id` + `state` | `transformation_break`, `transformation_into_fluid` |
+| `transformation.into.state` | property → value, or `copy_state_value` | `transformation_state_copy` |
+| `transformation.nbt` | SNBT written into the new block entity | `transformation_block_entity_nbt` |
+| `rewards.weighted` | `match` + `weight` + `count` + `nbt` | `rewards_count_shapes` |
+| `rewards.guaranteed` | same shape, always dropped | `rewards_guaranteed_and_rolls` |
+| `rewards.rolls` | integer, default `1` | `rewards_multi_match` |
+| `rewards.fortune` | `enchant` + `factor` | `rewards_fortune` |
+| `costs.damage` / `costs.hunger` | `chance` + `amount` | `costs_damage_and_hunger` |
+| `conditions.biomes` | ids, dimension ids, `#tags`; `whitelist` / `blacklist` | `conditions_dimension_and_biome_tag` |
+| `conditions.time` | `any` (default), `day`, `night` | `conditions_time_weather` |
+| `conditions.weather` | list of `clear`, `rain`, `thunder` | `conditions_time_weather` |
+| `conditions.y_range` | `[min, max]` | `conditions_y_light_player` |
+| `conditions.light` | `min` / `max` | `conditions_y_light_player` |
+| `conditions.requires_sneaking` | `true` / `false` | `conditions_sneaking` |
+| `conditions.player_state` | `min_food`, `min_xp_levels` | `conditions_y_light_player` |
+| `effects` | `id` + `duration` + `amplifier` + `chance` | `effects_multiple` |
+| `sound` / `particles` | registry ids | `effects_and_feedback` |
+| `neoforge:conditions` | vanilla-style load conditions | `conditional_load_mod_present` |
+
 ## Selectors (`match`)
 
 Anywhere an item/block/fluid is selected, use `match`: a single string or a list. A leading `#`

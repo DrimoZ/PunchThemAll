@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:glass_bottle", "consume": { "mode": "shrink" } },
+  "target": { "kind": "block", "match": "#minecraft:leaves" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:honey_bottle", "count": 1 }
+    ]
+  },
+  "conditions": {
+    "biomes": { "whitelist": ["#minecraft:is_forest", "minecraft:overworld"] }
+  }
+}

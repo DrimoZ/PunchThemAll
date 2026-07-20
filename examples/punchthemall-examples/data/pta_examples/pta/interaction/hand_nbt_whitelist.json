@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "#minecraft:axes",
+    "consume": { "mode": "durability" },
+    "nbt": {
+      "whitelist": "{Damage:{RangeTag:[0,100]}}",
+      "blacklist": "{Enchantments:[{id:\"minecraft:mending\"}]}"
+    }
+  },
+  "target": { "kind": "block", "match": "#minecraft:logs" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:stick", "count": { "min": 2, "max": 4 } }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": { "hand": "main", "match": "minecraft:name_tag" },
+  "target": { "kind": "block", "match": "minecraft:chest" },
+  "transformation": {
+    "chance": 1.0,
+    "into": { "kind": "block", "id": "minecraft:trapped_chest", "state": { "facing": "copy_state_value" } },
+    "nbt": "{CustomName:'{\"text\":\"Rigged\"}'}",
+    "sound": "minecraft:block.chest.locked"
+  }
+}
