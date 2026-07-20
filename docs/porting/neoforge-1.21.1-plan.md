@@ -21,6 +21,7 @@ the mistake stays visible.
 | §13 `chance` vs `weight` naming | Backlog — internal, and it touches the display code |
 | §13 renames (`PtaBlock`/`PtaInteractionRecord`) | Backlog — wide, low-value diff |
 | §13 SPDX headers | Backlog |
+| §13 CI (GitHub Actions) | Dropped — the workflow was removed from the repo; builds are run locally |
 | §14.2 test suite | Dropped — heavy scaffolding for the return; revisit if a regression escapes twice |
 
 Everything else in §1–§15 is implemented, including the two items the plan left open as questions:
