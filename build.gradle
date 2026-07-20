@@ -85,6 +85,9 @@ dependencies {
 
     // EMI (NeoForge). API only at compile time; add the runtimeOnly line below to test EMI in-dev.
     compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
+    // Uncomment to test the EMI plugin in dev. The full jar currently fails to download from
+    // TerraformersMC (the transfer truncates; the api and sources jars are fine), so it has to be
+    // dropped into run/mods by hand for now.
     // runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
 
     // Unit tests (pure logic — no game bootstrap needed for most of them).

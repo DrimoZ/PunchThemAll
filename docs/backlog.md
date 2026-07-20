@@ -70,6 +70,26 @@ was considered and rejected is useful.
 - **Cooldown map keyed by UUID.** Fake players often reuse one UUID per machine type, so
   `apply_cooldown_to_fake_players` can bleed cooldowns between unrelated machines.
 
+## Known untested
+
+Not defects — things the code does that nobody has watched happen. Listed so they are not mistaken
+for verified behaviour.
+
+- **The EMI plugin has never been loaded.** `PtaEmiPlugin` compiles against the API and has never run
+  once: the `runtimeOnly` line in `build.gradle` is commented out because the full EMI jar fails to
+  download from TerraformersMC (the transfer truncates every time; the api and sources jars are
+  fine). Worth knowing that an `EmiPlugin` throwing at load disables **EMI as a whole** for the
+  player, not just our category. To test: drop the jar into `run/mods` by hand.
+- **Dedicated servers.** Everything has been exercised on the integrated server. The sync payload
+  does cross a real connection there, but never between two JVMs, and never with a client joining a
+  remote host.
+- **Most mechanics are verified as loading, not as firing.** Transformations, damage and hunger
+  costs, biome and weather conditions, the Fortune bonus and potion effects all resolve without
+  error; none has been triggered in game. The example datapack covers them all if someone plays with
+  it.
+- **The v1 rejection path.** A `schema_version: 1` file should be refused with a clear message. Never
+  tried with a real legacy file.
+
 ## Tooling
 
 - **SPDX headers** (`SPDX-License-Identifier: MIT`) on source files.
