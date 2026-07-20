@@ -1,30 +1,28 @@
 package com.drimoz.punchthemall;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class PTAConfig {
 
-    public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-    public static final ForgeConfigSpec COMMON_CONFIG;
+    public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+    public static final ModConfigSpec COMMON_CONFIG;
 
     public static final InteractionConfig INTERACTIONS;
     public static final PlayerConfig PLAYERS;
     public static final DropConfig DROPS;
-    public static final LoaderConfig LOADER;
     public static final DebugConfig DEBUG;
 
     static {
         BUILDER.comment(
                 "PunchThemAll common configuration.",
-                "The config is split by responsibility so pack makers can tune gameplay, automation, drops and JSON loading separately.",
-                "Most gameplay values are read live; JSON loader options apply on /reload or world load."
+                "The config is split by responsibility so pack makers can tune gameplay, automation and drops separately.",
+                "Interactions themselves are defined by datapacks at data/<namespace>/pta/interaction/*.json (see the docs)."
         );
         BUILDER.push("PunchThemAll");
 
         INTERACTIONS = new InteractionConfig(BUILDER);
         PLAYERS = new PlayerConfig(BUILDER);
         DROPS = new DropConfig(BUILDER);
-        LOADER = new LoaderConfig(BUILDER);
         DEBUG = new DebugConfig(BUILDER);
 
         BUILDER.pop();
@@ -33,18 +31,18 @@ public class PTAConfig {
     }
 
     public static class InteractionConfig {
-        public final ForgeConfigSpec.BooleanValue enabled;
-        public final ForgeConfigSpec.IntValue cooldownTicks;
-        public final ForgeConfigSpec.IntValue maxMatchesPerClick;
-        public final ForgeConfigSpec.BooleanValue cancelVanillaInteraction;
-        public final ForgeConfigSpec.BooleanValue allowLeftClick;
-        public final ForgeConfigSpec.BooleanValue allowRightClick;
-        public final ForgeConfigSpec.BooleanValue allowBlockInteractions;
-        public final ForgeConfigSpec.BooleanValue allowAirInteractions;
-        public final ForgeConfigSpec.BooleanValue allowFluidInteractions;
-        public final ForgeConfigSpec.BooleanValue allowTransformations;
+        public final ModConfigSpec.BooleanValue enabled;
+        public final ModConfigSpec.IntValue cooldownTicks;
+        public final ModConfigSpec.IntValue maxMatchesPerClick;
+        public final ModConfigSpec.BooleanValue cancelVanillaInteraction;
+        public final ModConfigSpec.BooleanValue allowLeftClick;
+        public final ModConfigSpec.BooleanValue allowRightClick;
+        public final ModConfigSpec.BooleanValue allowBlockInteractions;
+        public final ModConfigSpec.BooleanValue allowAirInteractions;
+        public final ModConfigSpec.BooleanValue allowFluidInteractions;
+        public final ModConfigSpec.BooleanValue allowTransformations;
 
-        private InteractionConfig(ForgeConfigSpec.Builder builder) {
+        private InteractionConfig(ModConfigSpec.Builder builder) {
             builder.push("Interactions");
             enabled = builder
                     .comment("Master switch for every configured PunchThemAll interaction.")
@@ -81,13 +79,13 @@ public class PTAConfig {
     }
 
     public static class PlayerConfig {
-        public final ForgeConfigSpec.BooleanValue allowFakePlayers;
-        public final ForgeConfigSpec.BooleanValue applyCooldownToFakePlayers;
-        public final ForgeConfigSpec.BooleanValue applyPlayerEffectsToFakePlayers;
-        public final ForgeConfigSpec.BooleanValue allowPlayerDamage;
-        public final ForgeConfigSpec.BooleanValue allowFoodConsumption;
+        public final ModConfigSpec.BooleanValue allowFakePlayers;
+        public final ModConfigSpec.BooleanValue applyCooldownToFakePlayers;
+        public final ModConfigSpec.BooleanValue applyPlayerEffectsToFakePlayers;
+        public final ModConfigSpec.BooleanValue allowPlayerDamage;
+        public final ModConfigSpec.BooleanValue allowFoodConsumption;
 
-        private PlayerConfig(ForgeConfigSpec.Builder builder) {
+        private PlayerConfig(ModConfigSpec.Builder builder) {
             builder.push("Players");
             allowFakePlayers = builder
                     .comment("Allow Fake Players and machines to perform PunchThemAll interactions.")
@@ -99,22 +97,22 @@ public class PTAConfig {
                     .comment("Apply player-only side effects such as swing animation, damage and hunger to Fake Players.", "Most automation setups should keep this disabled.")
                     .define("apply_player_effects_to_fake_players", false);
             allowPlayerDamage = builder
-                    .comment("Allow interaction JSON entries to hurt real players.")
+                    .comment("Allow interaction entries to hurt real players.")
                     .define("allow_player_damage", true);
             allowFoodConsumption = builder
-                    .comment("Allow interaction JSON entries to consume real player saturation/food.")
+                    .comment("Allow interaction entries to consume real player saturation/food.")
                     .define("allow_food_consumption", true);
             builder.pop();
         }
     }
 
     public static class DropConfig {
-        public final ForgeConfigSpec.BooleanValue placeInInventory;
-        public final ForgeConfigSpec.BooleanValue placeFakePlayerDropsInInventory;
-        public final ForgeConfigSpec.DoubleValue dropOffset;
-        public final ForgeConfigSpec.DoubleValue dropVelocity;
+        public final ModConfigSpec.BooleanValue placeInInventory;
+        public final ModConfigSpec.BooleanValue placeFakePlayerDropsInInventory;
+        public final ModConfigSpec.DoubleValue dropOffset;
+        public final ModConfigSpec.DoubleValue dropVelocity;
 
-        private DropConfig(ForgeConfigSpec.Builder builder) {
+        private DropConfig(ModConfigSpec.Builder builder) {
             builder.push("Drops");
             placeInInventory = builder
                     .comment("Try to place interaction result items directly into the player inventory.", "If the inventory is full, remaining items are dropped in the world.")
@@ -132,42 +130,14 @@ public class PTAConfig {
         }
     }
 
-    public static class LoaderConfig {
-        public final ForgeConfigSpec.BooleanValue recursiveDiscovery;
-        public final ForgeConfigSpec.BooleanValue failFast;
-        public final ForgeConfigSpec.BooleanValue lowerCaseGeneratedIds;
-        public final ForgeConfigSpec.BooleanValue loadFromDatapacks;
-
-        private LoaderConfig(ForgeConfigSpec.Builder builder) {
-            builder.push("Loader");
-            loadFromDatapacks = builder
-                    .comment(
-                            "Also load interactions from datapacks at data/<namespace>/pta/interaction/*.json, on top of config files.",
-                            "Datapack files are read on /reload and are synchronised to clients by vanilla; they support schema_version 1 and 2.",
-                            "A datapack interaction overrides a config interaction sharing the same id."
-                    )
-                    .define("load_from_datapacks", false);
-            recursiveDiscovery = builder
-                    .comment("Discover interaction JSON files recursively inside config/punchthemall/interactions.", "Disable to load only files directly in the interactions folder.")
-                    .define("recursive_discovery", true);
-            failFast = builder
-                    .comment("Stop loading remaining interactions after the first invalid JSON file.", "Useful while developing packs; keep disabled for production packs so one bad file does not disable all others.")
-                    .define("fail_fast", false);
-            lowerCaseGeneratedIds = builder
-                    .comment("Lowercase generated interaction ids based on file names.", "Minecraft resource locations require lowercase paths; keep enabled unless all file names are already valid.")
-                    .define("lowercase_generated_ids", true);
-            builder.pop();
-        }
-    }
-
     public static class DebugConfig {
-        public final ForgeConfigSpec.BooleanValue logLoadedInteractions;
-        public final ForgeConfigSpec.BooleanValue logSkippedInteractions;
+        public final ModConfigSpec.BooleanValue logLoadedInteractions;
+        public final ModConfigSpec.BooleanValue logSkippedInteractions;
 
-        private DebugConfig(ForgeConfigSpec.Builder builder) {
+        private DebugConfig(ModConfigSpec.Builder builder) {
             builder.push("Debug");
             logLoadedInteractions = builder
-                    .comment("Log every interaction id loaded from config.")
+                    .comment("Log every interaction id loaded from datapacks.")
                     .define("log_loaded_interactions", false);
             logSkippedInteractions = builder
                     .comment("Log why runtime interactions are skipped by global config gates.")

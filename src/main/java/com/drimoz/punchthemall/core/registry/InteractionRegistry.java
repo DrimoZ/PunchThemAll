@@ -1,17 +1,25 @@
 package com.drimoz.punchthemall.core.registry;
 
+import com.drimoz.punchthemall.PTAConfig;
+import com.drimoz.punchthemall.core.codec.InteractionSpec;
+import com.drimoz.punchthemall.core.codec.InteractionSpecResolver;
 import com.drimoz.punchthemall.core.model.classes.PtaBlock;
 import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.classes.PtaNbtPredicate;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
+import com.drimoz.punchthemall.core.util.ItemView;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -20,34 +28,22 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.common.util.FakePlayer;
+import net.neoforged.neoforge.common.util.FakePlayer;
 
 import java.util.*;
 
 public class InteractionRegistry {
 
-    // Private properties
-
     private static final InteractionRegistry INSTANCE = new InteractionRegistry();
     private final Map<ResourceLocation, PtaInteraction> interactions = new HashMap<>();
 
-    // Raw JSON source per interaction id, captured at load time. Used to synchronise the registry
-    // to clients (S2C) so JEI shows the server's interactions on dedicated servers.
-    private final Map<ResourceLocation, String> sources = new HashMap<>();
-
-    // Runtime indexes: candidates keyed by resolved click type and concrete target.
-    // Rebuilt lazily after any mutation so a click filters only the small matching bucket
-    // instead of scanning every interaction.
+    // Runtime indexes: candidates keyed by resolved click type and concrete target, rebuilt lazily.
     private final Map<PtaTypeEnum, Map<Block, List<PtaInteraction>>> blockIndex = new EnumMap<>(PtaTypeEnum.class);
     private final Map<PtaTypeEnum, Map<Fluid, List<PtaInteraction>>> fluidIndex = new EnumMap<>(PtaTypeEnum.class);
     private final Map<PtaTypeEnum, List<PtaInteraction>> airIndex = new EnumMap<>(PtaTypeEnum.class);
     private boolean indexDirty = true;
 
-    // Life cycle
-
     private InteractionRegistry() {}
-
-    // Interface
 
     public static InteractionRegistry getInstance() {
         return INSTANCE;
@@ -55,7 +51,6 @@ public class InteractionRegistry {
 
     public void clearInteractions() {
         this.interactions.clear();
-        this.sources.clear();
         this.indexDirty = true;
     }
 
@@ -64,20 +59,44 @@ public class InteractionRegistry {
     }
 
     public void addInteraction(PtaInteraction interaction) {
-        addInteraction(interaction, null);
-    }
-
-    public void addInteraction(PtaInteraction interaction, String rawJson) {
         interactions.put(interaction.getId(), interaction);
-        if (rawJson != null) {
-            sources.put(interaction.getId(), rawJson);
-        }
         this.indexDirty = true;
     }
 
-    /** Raw JSON keyed by interaction id, for S2C synchronisation. */
-    public Map<ResourceLocation, String> getSources() {
-        return sources;
+    /**
+     * Rebuild the runtime interactions by resolving every {@link InteractionSpec} in the
+     * {@code pta:interaction} datapack registry against the given provider. Called on both the server
+     * (after datapack load) and the client (after the registry is synchronised), so gameplay and JEI
+     * stay consistent everywhere.
+     */
+    public void rebuildFrom(HolderLookup.Provider registries) {
+        clearInteractions();
+
+        registries.lookup(PtaRegistries.INTERACTION).ifPresent(lookup ->
+                lookup.listElements().forEach(holder -> {
+                    ResourceLocation id = holder.key().location();
+                    InteractionSpec spec = holder.value();
+
+                    if (spec.schemaVersion() < 2) {
+                        PTALoggers.error(RegistryConstants.INCORRECT_FORMAT + " - " + id
+                                + " - schema_version " + spec.schemaVersion() + " is not supported; requires schema_version 2");
+                        return;
+                    }
+                    if (!spec.enabled()) {
+                        return;
+                    }
+
+                    PtaInteraction interaction = InteractionSpecResolver.resolve(id, spec, registries);
+                    if (interaction != null) {
+                        addInteraction(interaction);
+                        if (PTAConfig.DEBUG.logLoadedInteractions.get()) {
+                            PTALoggers.info("Loaded PunchThemAll interaction " + id);
+                        }
+                    }
+                })
+        );
+
+        PTALoggers.info("Loaded " + interactions.size() + " interaction(s)");
     }
 
     public PtaInteraction getInteractionById(ResourceLocation id) {
@@ -89,8 +108,6 @@ public class InteractionRegistry {
 
         PtaTypeEnum eventType = PtaTypeEnum.getTypeFromEvent(interactionType, player.isShiftKeyDown());
 
-        // Prefilter to the small bucket of candidates matching this click type and concrete target.
-        // The full per-interaction filters still run below, so semantics are unchanged.
         for (PtaInteraction interaction : getCandidates(eventType, clickOnBlock, pos, level)) {
             if (!passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level)) {
                 continue;
@@ -140,14 +157,12 @@ public class InteractionRegistry {
 
             if (ptaBlock.isAir()) {
                 airIndex.computeIfAbsent(type, t -> new ArrayList<>()).add(interaction);
-            }
-            else if (ptaBlock.isBlock()) {
+            } else if (ptaBlock.isBlock()) {
                 Map<Block, List<PtaInteraction>> byBlock = blockIndex.computeIfAbsent(type, t -> new HashMap<>());
                 for (Block block : ptaBlock.getBlockSet()) {
                     byBlock.computeIfAbsent(block, b -> new ArrayList<>()).add(interaction);
                 }
-            }
-            else {
+            } else {
                 Map<Fluid, List<PtaInteraction>> byFluid = fluidIndex.computeIfAbsent(type, t -> new HashMap<>());
                 for (Fluid fluid : ptaBlock.getFluidSet()) {
                     byFluid.computeIfAbsent(fluid, f -> new ArrayList<>()).add(interaction);
@@ -158,24 +173,12 @@ public class InteractionRegistry {
         indexDirty = false;
     }
 
-
-
     // Inner work ( Interaction Filter )
 
     private boolean passesInteractionFilters(
             PtaInteraction interaction, PtaTypeEnum eventType, boolean clickOnBlock,
             Player player, BlockPos pos, Level level
     ) {
-
-        // PTALoggers.info("=================================");
-        // PTALoggers.info("Interaction : " + interaction.getId().getPath());
-        // PTALoggers.info("passesInteractionTypeFilter : " + passesInteractionTypeFilter(interaction, eventType));
-        // PTALoggers.info("passesBiomeAndDimensionFilter : " + passesBiomeAndDimensionFilter(interaction, level, pos));
-        // PTALoggers.info("passesAirOrBlockFilter : " + passesAirOrBlockFilter(interaction, clickOnBlock));
-        // PTALoggers.info("passesBlockStateFilter : " + passesBlockStateFilter(interaction, clickOnBlock, pos, level));
-        // PTALoggers.info("passesBlockEntityNBTFilter : " + passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level));
-        // PTALoggers.info("passesHandItemFilter : " + passesHandItemFilter(interaction, player));
-
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&
                 interaction.getConditions().matches(level, player, pos) &&
@@ -190,21 +193,30 @@ public class InteractionRegistry {
     }
 
     private boolean passesBiomeAndDimensionFilter(PtaInteraction interaction, Level level, BlockPos pos) {
-        String playerDimensionId = level.dimension().location().toString();
-        // Guard against unregistered biome holders (custom worldgen): treat as "no biome id".
-        String playerBiomeId = level.getBiome(pos).unwrapKey().map(key -> key.location().toString()).orElse("");
-
-        // Check whitelist: only allow when the current dimension or biome is listed.
         if (interaction.hasBiomeWhiteList()) {
-            return interaction.getBiomeWhitelist().contains(playerDimensionId) || interaction.getBiomeWhitelist().contains(playerBiomeId);
+            return biomeOrDimensionMatches(interaction.getBiomeWhitelist(), level, pos);
         }
-
-        // Check blacklist: forbid when the current dimension or biome is listed.
         if (interaction.hasBiomeBlackList()) {
-            return !(interaction.getBiomeBlackList().contains(playerDimensionId) || interaction.getBiomeBlackList().contains(playerBiomeId));
+            return !biomeOrDimensionMatches(interaction.getBiomeBlackList(), level, pos);
         }
-
         return true;
+    }
+
+    // Matches an entry set against the current dimension/biome. A '#' prefix means a biome tag.
+    private boolean biomeOrDimensionMatches(Set<String> entries, Level level, BlockPos pos) {
+        String dimensionId = level.dimension().location().toString();
+        var biomeHolder = level.getBiome(pos);
+        String biomeId = biomeHolder.unwrapKey().map(key -> key.location().toString()).orElse("");
+
+        for (String entry : entries) {
+            if (!entry.isEmpty() && entry.charAt(0) == '#') {
+                TagKey<Biome> tag = TagKey.create(Registries.BIOME, ResourceLocation.parse(entry.substring(1)));
+                if (biomeHolder.is(tag)) return true;
+            } else if (entry.equals(dimensionId) || entry.equals(biomeId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean passesAirOrBlockFilter(PtaInteraction interaction, boolean clickOnBlock) {
@@ -224,19 +236,16 @@ public class InteractionRegistry {
         Block block = blockState.getBlock();
         Fluid fluid = fluidState.getType();
 
-        // Check if the block or fluid matches the interaction's whitelist or blacklist
         if (!ptaBlock.isBlockFromSet(block) && !ptaBlock.isFluidFromSet(fluid)) {
             return false;
         }
 
-        // Validate whitelist states
         for (PtaStateRecord<?> stateRecord : ptaBlock.getStateWhiteList()) {
             if (!matchesState(blockState, fluidState, stateRecord, ptaBlock.isBlock())) {
                 return false;
             }
         }
 
-        // Validate blacklist states
         for (PtaStateRecord<?> stateRecord : ptaBlock.getStateBlackList()) {
             if (matchesState(blockState, fluidState, stateRecord, ptaBlock.isBlock())) {
                 return false;
@@ -255,7 +264,8 @@ public class InteractionRegistry {
         BlockEntity worldBlockEntity = level.getBlockEntity(pos);
         if (worldBlockEntity == null) return false;
 
-        CompoundTag worldBlockEntityTag = worldBlockEntity.serializeNBT();
+        // Block entities still serialise to a CompoundTag (needs the registry provider in 1.21).
+        CompoundTag worldBlockEntityTag = worldBlockEntity.saveWithoutMetadata(level.registryAccess());
 
         boolean passesWhiteList = true, passesBlackList = true;
         if (ptaBlock.hasNbtWhiteList())
@@ -276,7 +286,7 @@ public class InteractionRegistry {
         ItemStack offHandItem = player.getItemInHand(net.minecraft.world.InteractionHand.OFF_HAND);
 
         if (player instanceof FakePlayer) {
-                offHandItem = mainHandItem;
+            offHandItem = mainHandItem;
         }
 
         if (hand.isEmpty()) {
@@ -304,8 +314,8 @@ public class InteractionRegistry {
             }
 
             if (hand.hasNbtPredicates()) {
-                matchesMainHand = matchesMainHand && matchesPredicates(mainHandItem.getTag(), hand.getNbtPredicates());
-                matchesOffHand = matchesOffHand && matchesPredicates(offHandItem.getTag(), hand.getNbtPredicates());
+                matchesMainHand = matchesMainHand && matchesPredicates(ItemView.of(mainHandItem), hand.getNbtPredicates());
+                matchesOffHand = matchesOffHand && matchesPredicates(ItemView.of(offHandItem), hand.getNbtPredicates());
             }
 
             return switch (hand.getHand()) {
@@ -330,15 +340,15 @@ public class InteractionRegistry {
         return itemSet.isEmpty() || itemSet.contains(itemStack.getItem());
     }
 
+    // Item NBT is matched against PTA's stable ItemView (so the authoring format is version-stable).
     private boolean matchesNBTWhitelist(ItemStack itemStack, CompoundTag nbtWhitelist) {
-        return TagHelper.containsRequiredTagsWithRange(itemStack.getTag(), nbtWhitelist);
+        return TagHelper.containsRequiredTagsWithRange(ItemView.of(itemStack), nbtWhitelist);
     }
 
     private boolean matchesNBTBlacklist(ItemStack itemStack, CompoundTag nbtBlacklist) {
-        return TagHelper.containsRequiredTagsWithRangeBlacklist(itemStack.getTag(), nbtBlacklist);
+        return TagHelper.containsRequiredTagsWithRangeBlacklist(ItemView.of(itemStack), nbtBlacklist);
     }
 
-    // All typed nbt_predicates must hold against the given tag (missing tag -> use an empty compound).
     private boolean matchesPredicates(CompoundTag tag, List<PtaNbtPredicate> predicates) {
         CompoundTag effective = tag == null ? new CompoundTag() : tag;
         for (PtaNbtPredicate predicate : predicates) {
@@ -351,11 +361,9 @@ public class InteractionRegistry {
 
     public int getJEIRowCount() {
         int maxRows = 0;
-
         for (PtaInteraction interaction : interactions.values()) {
             maxRows = Math.max(maxRows, interaction.getRewards().getJeiRowCount());
         }
-
         return maxRows;
     }
 }

@@ -7,11 +7,8 @@ import net.minecraft.world.level.Level;
 import java.util.Set;
 
 /**
- * Optional environmental / player gating for an interaction (schema_version 2, §5.7).
- *
- * <p>Every field is optional; an {@link #EMPTY} instance always matches, so interactions that do not
- * declare {@code conditions} behave exactly as before. Biome/dimension gating stays on
- * {@link PtaInteraction} itself; this covers time, weather, altitude, light and player state.</p>
+ * Optional environmental / player gating for an interaction (schema_version 2, §5.7). Every field is
+ * optional; {@link #EMPTY} always matches. Biome/dimension gating stays on {@link PtaInteraction}.
  */
 public record PtaConditions(
         Time time,

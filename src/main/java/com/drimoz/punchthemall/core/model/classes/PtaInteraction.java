@@ -10,8 +10,6 @@ import java.util.Set;
 
 public class PtaInteraction {
 
-    // Public Properties
-
     private final ResourceLocation id;
     private final PtaTypeEnum type;
 
@@ -126,25 +124,8 @@ public class PtaInteraction {
         this.extras = extras == null ? PtaExtras.EMPTY : extras;
     }
 
-    // Interface
-
-
-
-    // Interface ( Util )
-
-
     @Override
     public String toString() {
-        return "PtaInteraction{" +
-                "\n\tid=" + id +
-                ", \n\ttype=" + type +
-                ", \n\thand=" + hand +
-                ", \n\tblock=" + block +
-                ", \n\ttransformation=" + transformation +
-                ", \n\trewards=" + rewards +
-                ", \n\tbiomeWhitelist=" + biomeWhitelist +
-                ", \n\thunger=" + consumeFood +
-                ", \n\tdamage=" + hurtPlayer +
-                "\n}";
+        return "PtaInteraction{id=" + id + ", type=" + type + '}';
     }
 }

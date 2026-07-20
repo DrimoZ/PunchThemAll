@@ -1,17 +1,17 @@
 package com.drimoz.punchthemall.core.model.records;
 
-import java.util.concurrent.ThreadLocalRandom;
+import net.minecraft.util.RandomSource;
 
 public record PtaInteractionRecord (double chance, int min, int max) {
 
     // Calculated Properties
 
-    public boolean shouldExecute() {
-        return ThreadLocalRandom.current().nextDouble() <= chance;
+    public boolean shouldExecute(RandomSource random) {
+        return random.nextDouble() <= chance;
     }
 
-    public int getValue() {
-        return ThreadLocalRandom.current().nextInt(min, max + 1);
+    public int getValue(RandomSource random) {
+        return min >= max ? min : min + random.nextInt(max - min + 1);
     }
 
     // Life cycle
@@ -22,14 +22,8 @@ public record PtaInteractionRecord (double chance, int min, int max) {
         this.max = Math.max(min, max);
     }
 
-    // Interface
-
     @Override
     public String toString() {
-        return "PtaInteractionRecord{" +
-                "chance=" + chance +
-                ", min=" + min +
-                ", max=" + max +
-                '}';
+        return "PtaInteractionRecord{chance=" + chance + ", min=" + min + ", max=" + max + '}';
     }
 }

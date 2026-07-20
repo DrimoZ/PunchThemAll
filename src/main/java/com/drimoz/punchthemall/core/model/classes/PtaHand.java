@@ -1,24 +1,16 @@
 package com.drimoz.punchthemall.core.model.classes;
 
-
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
-import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
-
-/**
- * @author drimoz
- */
 
 public class PtaHand {
-
-    // Private Properties
 
     private final PtaHandEnum hand;
     private final Set<Item> itemSet;
@@ -111,7 +103,7 @@ public class PtaHand {
         return new PtaHand(hand, null, null, null, List.of(), 0, false, false);
     }
 
-    protected PtaHand(PtaHandEnum hand, Set<Item> itemSet,  CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates, double chance, boolean damageable, boolean consumable) {
+    protected PtaHand(PtaHandEnum hand, Set<Item> itemSet, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates, double chance, boolean damageable, boolean consumable) {
         this.hand = hand;
         this.chance = chance < 0 ? 0 : chance > 1 ? 1 : chance;
         this.damageable = damageable;
@@ -122,8 +114,7 @@ public class PtaHand {
             this.nbtWhiteList = new CompoundTag();
             this.nbtBlackList = new CompoundTag();
             this.nbtPredicates = List.of();
-        }
-        else {
+        } else {
             this.itemSet = itemSet;
             this.nbtWhiteList = nbtWhiteList == null ? new CompoundTag() : nbtWhiteList;
             this.nbtBlackList = nbtBlackList == null ? new CompoundTag() : nbtBlackList;
@@ -137,24 +128,12 @@ public class PtaHand {
         return itemSet.stream().map(ItemStack::new).toList();
     }
 
-    public boolean shouldConsume() {
-        return !isEmpty() && chance > 0 && ThreadLocalRandom.current().nextDouble() <= chance;
+    public boolean shouldConsume(RandomSource random) {
+        return !isEmpty() && chance > 0 && random.nextDouble() <= chance;
     }
-
-    // Interface ( Util )
 
     @Override
     public String toString() {
-        return "PtaHand{" +
-                "hand=" + hand +
-                ", itemSet=" + itemSet +
-                ", nbtWhiteList=" + nbtWhiteList +
-                ", nbtBlackList=" + nbtBlackList +
-                ", chance=" + chance +
-                ", damageable=" + damageable +
-                ", consumable=" + consumable +
-                '}';
+        return "PtaHand{hand=" + hand + ", itemSet=" + itemSet + ", chance=" + chance + ", damageable=" + damageable + ", consumable=" + consumable + '}';
     }
-
-
 }

@@ -10,20 +10,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * A typed NBT predicate (schema_version 2, §5.3), a validated replacement for the ad-hoc
- * {@code RangeTag} convention embedded in raw SNBT.
+ * A typed NBT predicate (schema_version 2, §5.3). Matches against a {@link CompoundTag}; for items
+ * this is PTA's stable {@code ItemView} (so the authoring format is identical across mod versions).
  *
- * <p>Shape: a dotted {@code path} into a {@link CompoundTag}, where a segment ending in {@code []}
- * iterates a list; an optional {@code where} compound filters which list elements qualify; and an
- * optional integer range checks the numeric leaf value. The predicate is satisfied when at least
- * one reachable leaf falls within the range (or, when no range is given, when at least one leaf
- * exists).</p>
- *
- * <p>Examples:</p>
- * <pre>
- * { "path": "Damage", "int_range": [0, 500] }
- * { "path": "Enchantments[].lvl", "int_range": [2, 7], "where": { "id": "minecraft:unbreaking" } }
- * </pre>
+ * <p>Shape: a dotted {@code path}, where a segment ending in {@code []} iterates a list; an optional
+ * {@code where} compound filters which list elements qualify; and an optional integer range checks
+ * the numeric leaf. Satisfied when at least one reachable leaf is in range (or exists, if no range).</p>
  */
 public record PtaNbtPredicate(String path, Optional<Integer> intMin, Optional<Integer> intMax, CompoundTag where) {
 
@@ -34,7 +26,6 @@ public record PtaNbtPredicate(String path, Optional<Integer> intMin, Optional<In
         this.where = where == null ? new CompoundTag() : where;
     }
 
-    /** @return true when the predicate is satisfied against the given (possibly null) tag. */
     public boolean matches(CompoundTag root) {
         if (root == null) return false;
 
@@ -57,7 +48,6 @@ public record PtaNbtPredicate(String path, Optional<Integer> intMin, Optional<In
         return false;
     }
 
-    // Walk the path, collecting every leaf tag reachable through it.
     private void collect(Tag current, String[] segments, int index, List<Tag> out) {
         if (index >= segments.length) {
             out.add(current);
@@ -84,7 +74,6 @@ public record PtaNbtPredicate(String path, Optional<Integer> intMin, Optional<In
         }
     }
 
-    // A list element qualifies when it contains every key of "where" with an equal value.
     private boolean matchesWhere(Tag element) {
         if (where.isEmpty()) return true;
         if (!(element instanceof CompoundTag compound)) return false;

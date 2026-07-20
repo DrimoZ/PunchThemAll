@@ -12,37 +12,26 @@ public class TagHelper {
     private TagHelper() {}
 
     public static boolean containsRequiredTagsWithRange(Object itemTag, Object compareTag) {
-        // Si il n'y a rien à comparer, on est bon
+        // Nothing to compare against -> pass.
         if (compareTag == null || (compareTag instanceof ListTag && ((ListTag) compareTag).isEmpty()) ||
                 (compareTag instanceof CompoundTag && ((CompoundTag) compareTag).isEmpty())) return true;
 
         if (compareTag instanceof CompoundTag) {
             Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
 
-            // Si on a un format spécifique, on a un comportement spécifique
+            // Special-case the RangeTag convention.
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
-                // si on a un 'RangeTag' dans le compare, on veut un nombre (entier?)
                 if (itemTag instanceof IntTag) {
-                    // On vérifie que la valeur liée à RangeTag soit une list
-                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return false;
-
-                    assert listRangeTag.size() == 2 : "RangeTag too short";
-                    return ((IntTag)listRangeTag.get(0)).getAsInt() <= ((IntTag) itemTag).getAsInt() && ((IntTag) itemTag).getAsInt() <= ((IntTag)listRangeTag.get(1)).getAsInt();
+                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag) || listRangeTag.size() != 2) return false;
+                    return ((IntTag) listRangeTag.get(0)).getAsInt() <= ((IntTag) itemTag).getAsInt() && ((IntTag) itemTag).getAsInt() <= ((IntTag) listRangeTag.get(1)).getAsInt();
                 }
                 if (itemTag instanceof ShortTag) {
-                    // On vérifie que la valeur liée à RangeTag soit une list
-                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return false;
-
-                    assert listRangeTag.size() == 2 : "RangeTag too short";
-                    return ((ShortTag)listRangeTag.get(0)).getAsInt() <= ((ShortTag) itemTag).getAsInt() && ((ShortTag) itemTag).getAsInt() <= ((ShortTag)listRangeTag.get(1)).getAsInt();
+                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag) || listRangeTag.size() != 2) return false;
+                    return ((ShortTag) listRangeTag.get(0)).getAsInt() <= ((ShortTag) itemTag).getAsInt() && ((ShortTag) itemTag).getAsInt() <= ((ShortTag) listRangeTag.get(1)).getAsInt();
                 }
-                else {
-                    return false;
-                }
-
-
+                return false;
             }
-            // Sinon pour chaque field de l'objet, on vérifie récursivement que l'item a le meme
+            // Otherwise recurse on each field.
             else {
                 if (!(itemTag instanceof CompoundTag)) return false;
 
@@ -60,10 +49,9 @@ public class TagHelper {
             }
         }
         else if (compareTag instanceof ListTag) {
-            // Pour chaque element de la liste, on vérifie récursivement qu'il est dans les tags de l'item
-            for (var compareVal : ((ListTag)compareTag).stream().toList()) {
+            for (var compareVal : ((ListTag) compareTag).stream().toList()) {
                 boolean test = false;
-                for (var itemVal : ((ListTag)itemTag).stream().toList()) {
+                for (var itemVal : ((ListTag) itemTag).stream().toList()) {
                     if (containsRequiredTagsWithRange(itemVal, compareVal)) {
                         test = true;
                         break;
@@ -75,29 +63,24 @@ public class TagHelper {
             return true;
         }
         else {
-            // Si on a atteint un primitif, on se contente de vérifier l'équivalence
             return compareTag.getClass().equals(itemTag.getClass()) && compareTag.equals(itemTag);
         }
     }
 
     public static boolean containsRequiredTagsWithRangeBlacklist(Object itemTag, Object compareTag) {
-        // Si il n'y a rien à comparer, on est bon
         if (compareTag == null || (compareTag instanceof ListTag && ((ListTag) compareTag).isEmpty()) ||
                 (compareTag instanceof CompoundTag && ((CompoundTag) compareTag).isEmpty())) return true;
 
         if (compareTag instanceof CompoundTag) {
             Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
 
-            // Si on a un format spécifique, on a un comportement spécifique
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
-                // Un RangeTag en blacklist interdit les valeurs DANS [min, max] ; tout le reste passe.
-                // On accepte les entiers et les shorts (ex. niveaux d'enchantement).
+                // A RangeTag in a blacklist forbids values inside [min, max]; everything else passes.
                 int value;
                 if (itemTag instanceof IntTag intTag) value = intTag.getAsInt();
                 else if (itemTag instanceof ShortTag shortTag) value = shortTag.getAsInt();
                 else return true;
 
-                // On vérifie que la valeur liée à RangeTag soit une list de deux bornes
                 if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)
                         || listRangeTag.size() != 2
                         || !(listRangeTag.get(0) instanceof NumericTag minTag)
@@ -107,14 +90,12 @@ public class TagHelper {
 
                 return value < minTag.getAsInt() || value > maxTag.getAsInt();
             }
-            // Sinon pour chaque field de l'objet, on vérifie récursivement que l'item n'ai pas les memes
             else {
                 if (!(itemTag instanceof CompoundTag)) return true;
 
                 Set<String> itemKeys = ((CompoundTag) itemTag).getAllKeys();
                 for (String compareKey : compareKeys) {
                     if (itemKeys.contains(compareKey)) {
-                        // Si containsRequiredTagsWithRangeBlacklist = true => Pas d'occurence => on check la clé suivante
                         if (!containsRequiredTagsWithRangeBlacklist(
                                 ((CompoundTag) itemTag).get(compareKey),
                                 ((CompoundTag) compareTag).get(compareKey))) {
@@ -126,7 +107,6 @@ public class TagHelper {
                 return true;
             }
         } else if (compareTag instanceof ListTag) {
-            // Pour chaque element de la liste, on vérifie récursivement qu'il est dans les tags de l'item
             for (var compareVal : ((ListTag) compareTag).stream().toList()) {
                 boolean test = true;
                 for (var itemVal : ((ListTag) itemTag).stream().toList()) {
@@ -134,16 +114,13 @@ public class TagHelper {
                         test = false;
                         break;
                     }
-
                 }
                 if (!test) return false;
             }
 
             return true;
         } else {
-            // Si on a atteint un primitif, on se contente de vérifier l'équivalence
             return !compareTag.getClass().equals(itemTag.getClass()) || !compareTag.equals(itemTag);
         }
     }
-
 }
