@@ -27,8 +27,7 @@ copy-paste-ready.
 
 ## 1. Setup
 
-Interactions are **datapack** data — the datapack registry `pta:interaction`. So you author them in a
-datapack, not a config folder.
+Interactions are **datapack** data. So you author them in a datapack, not a config folder.
 
 1. Install NeoForge 1.21.1, a recipe viewer ([JEI](https://www.curseforge.com/minecraft/mc-mods/jei)
    or [EMI](https://modrinth.com/mod/emi)), and PunchThemAll.
@@ -53,7 +52,7 @@ datapack, not a config folder.
 > Not sure how a datapack is laid out? Copy the ready-made
 > [example datapack](../examples/punchthemall-examples) and edit it.
 >
-> On a server the registry is synchronised to clients by vanilla, so JEI/EMI just work — no extra step.
+> On a server the interactions are synced to clients automatically, so JEI/EMI just work — no extra step.
 
 > **Always start a file with `"schema_version": 2`.** It gives strict JSON validation and the clearest
 > error messages. (This version of the mod only accepts `schema_version: 2`.)
@@ -357,8 +356,8 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 - **Toggle without deleting.** Add `"enabled": false` to a file to skip it.
 - **Override & gate.** Datapacks override each other by pack order (later packs win for the same id),
   and you can add `neoforge:conditions` to a file to load it only when, say, another mod is present.
-- **Dedicated servers just work.** The `pta:interaction` registry is synchronised to clients by
-  vanilla, so JEI/EMI show the server's interactions with no extra setup.
+- **Dedicated servers just work.** The server syncs its interactions to every client on join
+  and after each `/reload`, so JEI/EMI show the server as-is with no extra setup.
 - **Global tuning** (cooldowns, click/target gates, fake players, drop physics) lives in
   `config/punchthemall/pta-common.toml` — see [configuration.md](configuration.md).
 
@@ -445,8 +444,8 @@ The tag is probably absent (e.g. `Damage` on a fresh tool). Loosen the predicate
 actually exists on the item.
 
 **JEI/EMI shows nothing on a dedicated server.**
-The `pta:interaction` registry is a datapack registry, so vanilla synchronises it to clients on join
-and on `/reload`. Reconnect or `/reload` on the server. In single-player this is automatic.
+The server syncs its interactions on join and after `/reload`. Reconnect, or run `/reload` on the
+server. In single-player this is automatic.
 
 **My file is rejected with "schema_version … is not supported".**
 This version only accepts `schema_version: 2`. Set `"schema_version": 2` at the top of the file.

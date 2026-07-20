@@ -166,6 +166,15 @@ Consequences:
   the main reason for this choice. Dedicated-server JEI/EMI becomes correct with no packet code.
 - **Free wins:** `/reload` support, datapack override/priority by pack order, and
   `neoforge:conditions` load conditions (gate an interaction on another mod being present, etc.).
+
+> ⚠️ **Correction (found during implementation).** "`/reload` support" and "vanilla syncs it" are
+> **mutually exclusive**, and this section was wrong to claim both. A datapack *registry* is read
+> once by `WorldLoader`; `MinecraftServer.reloadResources` passes its existing `this.registries`
+> straight through, so `/reload` can never re-read it — verified empirically (0 interactions after
+> two `/reload`s, 21 after a rejoin, same files on disk) and in the 1.21.1 source. The shipped
+> implementation therefore uses an ordinary `SimpleJsonResourceReloadListener` (reloadable) plus a
+> small S2C payload sent on `OnDatapackSyncEvent` (which fires on join *and* after a reload). That
+> reinstates a trimmed `core/network/`, contrary to §4/§11 below.
 - **IDs** come from the resource path exactly like other datapack data:
   `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`.
 - PTA still ships **no** interactions by default; packs provide a datapack (a `pack.mcmeta` +

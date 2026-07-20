@@ -31,7 +31,7 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
 - 💥 **Player feedback** — potion effects, damage, hunger cost, plus interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
 - 📖 **JEI & EMI integration** — players browse every interaction, its inputs, drops, and conditions.
-- 🖥️ **Server-friendly** — interactions are a datapack registry synchronised to clients by vanilla, so
+- 🖥️ **Server-friendly** — interactions live in datapacks and the server syncs them to clients, so
   JEI/EMI are correct on dedicated servers with no extra setup.
 - 🤖 **Automation-aware** — fake players / machines are supported with dedicated config gates.
 
@@ -77,11 +77,11 @@ search the **Interaction** category to see it.
 
 ## How it works
 
-- Interactions are the datapack registry `pta:interaction`: files go in
+- Interactions are datapack data: files go in
   `data/<namespace>/pta/interaction/**/*.json`. The path becomes the id
   (e.g. `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`).
-- Because it's a datapack registry, vanilla **synchronises it to clients** — so gameplay and JEI/EMI
-  match on dedicated servers with no custom networking.
+- The server **syncs its loaded set to clients** on join and after `/reload`, so gameplay and JEI/EMI
+  match on dedicated servers.
 - Edit files and run `/reload` to apply changes live. Datapacks override each other by pack order, and
   you can gate a file with `neoforge:conditions` (e.g. only if another mod is present).
 - Global behaviour (cooldowns, click/target gates, fake players, drop physics) is controlled by

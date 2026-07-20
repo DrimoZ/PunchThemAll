@@ -25,7 +25,7 @@ dimension, time, weather, altitude, light or player state. Everything shows up i
 - 💥 **Player feedback** — potion effects, damage, hunger cost, and interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
 - 📖 **JEI & EMI integration** — players can browse every interaction, its inputs, drops and conditions.
-- 🖥️ **Server-friendly** — interactions are a datapack registry synchronised to clients by vanilla, so
+- 🖥️ **Server-friendly** — interactions live in datapacks and the server syncs them to clients, so
   JEI/EMI are correct on dedicated servers with zero setup. Datapacks also override and can be gated
   with `neoforge:conditions`.
 

@@ -10,12 +10,12 @@ New to the mod? Read [getting-started.md](getting-started.md) first, and use the
 
 ## Where files live
 
-Interactions are the datapack registry `pta:interaction`:
+Interactions are datapack data:
 
 - `data/<namespace>/pta/interaction/**/*.json` — one interaction per file, inside any loaded
   datapack. The path is the id: `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`.
-- Because it's a datapack registry, vanilla **synchronises it to clients** — gameplay and JEI/EMI
-  match on dedicated servers with no custom networking.
+- The server **syncs its loaded set to clients** on join and after `/reload`, so gameplay and JEI/EMI
+  match on dedicated servers.
 - Datapacks override each other by pack order, and you can gate a file with `neoforge:conditions`.
 
 There is no config-folder loading; the mod ships no interactions by default. See the ready-made
@@ -184,8 +184,8 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
   the player on success.
 - **Global config can still block an interaction** even if the file is valid — see
   [configuration.md](configuration.md). Turn on `Debug.log_skipped_interactions` to find out why.
-- **Multiplayer:** the `pta:interaction` registry is a datapack registry synchronised to clients by
-  vanilla, so a dedicated server is authoritative and JEI/EMI match it. See
+- **Multiplayer:** the server is authoritative and syncs its interactions to clients, so JEI/EMI
+  match it. See
   [interactions.md](interactions.md).
 
 ## Migrating from the legacy (Forge 1.20.1) format

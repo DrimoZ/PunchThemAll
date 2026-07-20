@@ -1,7 +1,6 @@
 # PunchThemAll — example datapack
 
-Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks** as the datapack
-registry `pta:interaction`. This folder is a ready-to-use example datapack.
+Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a ready-to-use example datapack.
 
 ## What's inside
 
@@ -24,8 +23,8 @@ datapacks folder:
 - **New world:** on the world-creation screen, open **Data Packs**, drag the folder in, and enable it.
 - **Server:** put it in `<server>/world/datapacks/` and `/reload`.
 
-It works on dedicated servers too: the `pta:interaction` registry is synchronised to clients by
-vanilla, so JEI/EMI show the server's interactions with no extra setup.
+It works on dedicated servers too: the server syncs its interactions to clients, so JEI/EMI show the
+server's set with no extra setup.
 
 ## Authoring your own
 

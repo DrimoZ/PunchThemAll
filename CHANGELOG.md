@@ -23,10 +23,10 @@ you put it changed: interactions are now **datapack** data.
   `load_from_datapacks`). All other config sections are unchanged.
 
 ### Added
-- **Datapack registry `pta:interaction`.** Interactions are proper datapack data: they load with
-  `/reload`, can be **overridden by pack order**, support `neoforge:conditions`, and are
-  **synchronised to clients by vanilla** — so JEI/EMI are correct on dedicated servers with no custom
-  networking at all.
+- **Interactions are datapack data**, at `data/<namespace>/pta/interaction/*.json`. They reload with
+  `/reload`, can be **overridden by pack order**, and support `neoforge:conditions`. The server syncs
+  its loaded set to clients on join and after every reload, so JEI/EMI are correct on dedicated
+  servers with no setup.
 - **Native EMI support**, alongside JEI (now JEI 19).
 - **Biome `#tags`** in `conditions.biomes`, in addition to exact biome/dimension ids.
 - **JSON schema** (`docs/interaction.schema.json`) for editor autocomplete and validation.

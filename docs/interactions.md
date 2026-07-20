@@ -1,7 +1,6 @@
 # Datapacks, loading & the JEI/EMI display
 
-PunchThemAll interactions are **datapack** data: the datapack registry `pta:interaction`. Files live
-at:
+PunchThemAll interactions are **datapack** data. Files live at:
 
 ```text
 data/<namespace>/pta/interaction/**/*.json
@@ -24,18 +23,19 @@ The mod ships **no** interactions by default — packs provide them. See the rea
 
 ## Reloading
 
-Run **`/reload`** after changing files. On server start and after every `/reload`, PunchThemAll
-resolves the registry into its runtime form. There is no separate config option for discovery — it's
-standard datapack behaviour.
+Run **`/reload`** after changing files. Interactions are loaded by a datapack reload listener, so a
+reload re-reads every file and resolves it into the runtime form — no restart, no separate discovery
+option. Note this only works because interactions are ordinary datapack data: `/reload` does not
+re-read datapack *registries* (worldgen and the like), which is why they are not one.
 
 ## Multiplayer
 
-Because `pta:interaction` is a **datapack registry**, vanilla synchronises it to every client
-automatically:
+The server pushes its loaded set to clients over a small sync payload, on join and after every
+`/reload`:
 
 - gameplay always uses the **server's** interactions;
-- clients receive the same registry on join and after `/reload`, so **JEI and EMI show exactly the
-  server's interactions** — no custom networking, no per-client config;
+- clients receive the same set on join and after `/reload`, so **JEI and EMI show exactly the
+  server's interactions** — nothing to configure per client;
 - in single-player and on a LAN host it's the same shared data.
 
 ## Runtime gates
@@ -68,8 +68,8 @@ overview of every loaded interaction. It shows:
   in JEI, and in EMI's recipe display;
 * the interaction id (handy when reporting an issue — it maps straight to the datapack file).
 
-Both viewers pick up the interactions once the registry is available (world load / `/reload`); on a
-dedicated server that's the synchronised copy, so the display matches the server.
+Both viewers refresh whenever the synced set arrives (join / `/reload`), so the display always
+matches the server.
 
 ## Organising a pack
 

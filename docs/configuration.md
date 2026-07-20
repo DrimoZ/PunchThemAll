@@ -11,7 +11,7 @@ diagnostics independently. **All keys are read live** — they take effect immed
 needed. (Interactions themselves are **not** configured here; they are datapack data — see
 [interactions.md](interactions.md).)
 
-> There is no `Loader` section anymore: interactions moved to the `pta:interaction` datapack registry,
+> There is no `Loader` section anymore: interactions moved into datapacks,
 > so the old config-folder discovery options (`recursive_discovery`, `lowercase_generated_ids`,
 > `load_from_datapacks`) no longer exist.
 
@@ -111,9 +111,9 @@ world_drop_velocity = 0.10
 
 ## Where interactions come from
 
-Interactions are **not** in this config file — they are the `pta:interaction` datapack registry,
-loaded from `data/<namespace>/pta/interaction/*.json` inside any enabled datapack and synchronised to
-clients by vanilla. See [interactions.md](interactions.md) and
+Interactions are **not** in this config file — they are datapack data, loaded from
+`data/<namespace>/pta/interaction/*.json` inside any enabled datapack and synced to clients by the
+mod. See [interactions.md](interactions.md) and
 [interaction-format.md](interaction-format.md).
 
 ## `PunchThemAll.Debug`
