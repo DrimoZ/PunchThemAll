@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:flint", "consume": { "mode": "shrink", "chance": 0.25 } },
+  "target": { "kind": "block", "match": "minecraft:cobblestone" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:gravel", "count": 1 }
+    ]
+  }
+}

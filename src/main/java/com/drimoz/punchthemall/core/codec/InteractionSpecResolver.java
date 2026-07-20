@@ -11,10 +11,15 @@ import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaInteractionRecord;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
@@ -26,7 +31,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -34,10 +38,9 @@ import static com.drimoz.punchthemall.core.registry.RegistryConstants.INCORRECT_
 import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE;
 
 /**
- * Turns a validated {@link InteractionSpec} (schema_version 2) into the existing runtime
- * {@link PtaInteraction} model. Structural problems are already caught by the codec; this stage
- * only resolves ids/tags against the live registries and logs unknown entries, exactly like the
- * legacy v1 creator, so gameplay behaviour is identical between the two formats.
+ * Turns a validated {@link InteractionSpec} (schema_version 2) into the runtime {@link PtaInteraction}
+ * model. Resolves ids/tags against the live registries; enchantments come from the dynamic registry
+ * via the supplied {@link HolderLookup.Provider}. Structural problems are already caught by the codec.
  */
 public final class InteractionSpecResolver {
 
@@ -45,7 +48,7 @@ public final class InteractionSpecResolver {
 
     private InteractionSpecResolver() {}
 
-    public static PtaInteraction resolve(ResourceLocation id, InteractionSpec spec) {
+    public static PtaInteraction resolve(ResourceLocation id, InteractionSpec spec, HolderLookup.Provider registries) {
         PtaTypeEnum type;
         try {
             type = PtaTypeEnum.fromString(spec.type());
@@ -57,7 +60,7 @@ public final class InteractionSpecResolver {
         PtaHand hand = resolveHand(id, spec.hand().orElse(null));
         PtaBlock block = resolveTarget(id, spec.target().orElse(null));
         PtaTransformation transformation = resolveTransformation(id, spec.transformation().orElse(null));
-        PtaRewards rewards = resolveRewards(id, spec.rewards().orElse(null));
+        PtaRewards rewards = resolveRewards(id, spec.rewards().orElse(null), registries);
 
         PtaInteractionRecord damage = null;
         PtaInteractionRecord hunger = null;
@@ -128,11 +131,13 @@ public final class InteractionSpecResolver {
             boolean isTag = !entry.isEmpty() && entry.charAt(0) == TAG_PREFIX;
             String name = isTag ? entry.substring(1) : entry;
             switch (kind) {
-                case "block" -> addBlock(id, blockSet, name, isTag, "target.match");
-                case "fluid" -> addFluid(id, fluidSet, name, isTag, "target.match");
+                case "block" -> addBlock(id, blockSet, name, isTag, "target.match", true);
+                case "fluid" -> addFluid(id, fluidSet, name, isTag, "target.match", true);
                 case "any" -> {
-                    boolean found = addBlock(id, blockSet, name, isTag, "target.match");
-                    found |= addFluid(id, fluidSet, name, isTag, "target.match");
+                    // Trying both sides is the point of "any", so neither lookup reports on its
+                    // own — only failing at both is an error worth showing.
+                    boolean found = addBlock(id, blockSet, name, isTag, "target.match", false);
+                    found |= addFluid(id, fluidSet, name, isTag, "target.match", false);
                     if (!found) error(id, "target.match - Unknown block/fluid " + entry);
                 }
                 default -> error(id, "target.kind - Unknown kind " + spec.kind());
@@ -172,13 +177,8 @@ public final class InteractionSpecResolver {
         double chance = spec.chance();
         if (chance <= 0) return PtaTransformation.createAir(0, null, null);
 
-        SoundEvent sound = spec.sound()
-                .map(name -> ForgeRegistries.SOUND_EVENTS.getValue(new ResourceLocation(name)))
-                .orElse(null);
-        ParticleOptions particle = spec.particles()
-                .filter(BlockChecker::doesBlockExist)
-                .map(name -> (ParticleOptions) new BlockParticleOption(ParticleTypes.BLOCK, BlockChecker.getExistingBlock(name).defaultBlockState()))
-                .orElse(null);
+        SoundEvent sound = resolveSound(spec.sound().orElse(null));
+        ParticleOptions particle = resolveParticles(spec.particles().orElse(null));
 
         IntoSpec into = spec.into().orElse(null);
         if (into == null) {
@@ -221,7 +221,7 @@ public final class InteractionSpecResolver {
 
     // Rewards / pool
 
-    private static PtaRewards resolveRewards(ResourceLocation id, RewardsSpec spec) {
+    private static PtaRewards resolveRewards(ResourceLocation id, RewardsSpec spec, HolderLookup.Provider registries) {
         if (spec == null) return PtaRewards.of(PtaPool.create(new HashMap<>()));
 
         Map<PtaDropRecord, Integer> pool = new HashMap<>();
@@ -235,8 +235,7 @@ public final class InteractionSpecResolver {
                 continue;
             }
 
-            PtaDropRecord record = toDropRecord(id, entry, path);
-            pool.put(record, entry.weight());
+            pool.put(toDropRecord(id, entry, path), entry.weight());
         }
 
         List<PtaDropRecord> guaranteed = new ArrayList<>();
@@ -247,11 +246,11 @@ public final class InteractionSpecResolver {
             guaranteed.add(toDropRecord(id, entry, path));
         }
 
-        Enchantment fortuneEnchant = null;
+        Holder<Enchantment> fortuneEnchant = null;
         double fortuneFactor = 0;
         if (spec.fortune().isPresent()) {
             String enchantId = spec.fortune().get().enchant();
-            fortuneEnchant = ForgeRegistries.ENCHANTMENTS.getValue(new ResourceLocation(enchantId));
+            fortuneEnchant = resolveEnchantment(registries, enchantId);
             if (fortuneEnchant == null) {
                 error(id, "rewards.fortune.enchant - Unknown enchantment " + enchantId);
             } else {
@@ -276,7 +275,9 @@ public final class InteractionSpecResolver {
 
         List<PtaEffect> effects = new ArrayList<>();
         for (EffectSpec effectSpec : spec.effects()) {
-            MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(new ResourceLocation(effectSpec.id()));
+            Holder<MobEffect> effect = BuiltInRegistries.MOB_EFFECT
+                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, ResourceLocation.parse(effectSpec.id())))
+                    .orElse(null);
             if (effect == null) {
                 error(id, "effects - Unknown effect " + effectSpec.id());
                 continue;
@@ -284,13 +285,8 @@ public final class InteractionSpecResolver {
             effects.add(new PtaEffect(effect, effectSpec.duration(), effectSpec.amplifier(), effectSpec.chance()));
         }
 
-        SoundEvent sound = spec.sound()
-                .map(name -> ForgeRegistries.SOUND_EVENTS.getValue(new ResourceLocation(name)))
-                .orElse(null);
-        ParticleOptions particles = spec.particles()
-                .filter(BlockChecker::doesBlockExist)
-                .map(name -> (ParticleOptions) new BlockParticleOption(ParticleTypes.BLOCK, BlockChecker.getExistingBlock(name).defaultBlockState()))
-                .orElse(null);
+        SoundEvent sound = resolveSound(spec.sound().orElse(null));
+        ParticleOptions particles = resolveParticles(spec.particles().orElse(null));
 
         if (conditions.isEmpty() && effects.isEmpty() && sound == null && particles == null) {
             return PtaExtras.EMPTY;
@@ -329,6 +325,26 @@ public final class InteractionSpecResolver {
 
         return new PtaConditions(time, weather, yMin, yMax, lightMin, lightMax, requiresSneaking,
                 spec.playerState().minFood(), spec.playerState().minXpLevels());
+    }
+
+    // Registry resolution helpers
+
+    private static SoundEvent resolveSound(String name) {
+        if (name == null) return null;
+        return BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse(name));
+    }
+
+    private static ParticleOptions resolveParticles(String name) {
+        if (name == null || !BlockChecker.doesBlockExist(name)) return null;
+        return new BlockParticleOption(ParticleTypes.BLOCK, BlockChecker.getExistingBlock(name).defaultBlockState());
+    }
+
+    private static Holder<Enchantment> resolveEnchantment(HolderLookup.Provider registries, String enchantId) {
+        if (registries == null) return null;
+        return registries.lookupOrThrow(Registries.ENCHANTMENT)
+                .get(ResourceKey.create(Registries.ENCHANTMENT, ResourceLocation.parse(enchantId)))
+                .map(holder -> (Holder<Enchantment>) holder)
+                .orElse(null);
     }
 
     // Costs
@@ -383,7 +399,7 @@ public final class InteractionSpecResolver {
         return items;
     }
 
-    private static boolean addBlock(ResourceLocation id, Set<Block> blocks, String name, boolean isTag, String path) {
+    private static boolean addBlock(ResourceLocation id, Set<Block> blocks, String name, boolean isTag, String path, boolean reportMissing) {
         try {
             if (isTag) {
                 if (!BlockChecker.isBlockTagExisting(name)) return false;
@@ -395,7 +411,7 @@ public final class InteractionSpecResolver {
                 blocks.add(BlockChecker.getExistingBlock(name));
                 return true;
             }
-            error(id, path + " - Unknown block " + name);
+            if (reportMissing) error(id, path + " - Unknown block " + name);
             return false;
         } catch (RuntimeException e) {
             error(id, path + " - Invalid block entry " + name + " : " + e);
@@ -403,7 +419,7 @@ public final class InteractionSpecResolver {
         }
     }
 
-    private static boolean addFluid(ResourceLocation id, Set<Fluid> fluids, String name, boolean isTag, String path) {
+    private static boolean addFluid(ResourceLocation id, Set<Fluid> fluids, String name, boolean isTag, String path, boolean reportMissing) {
         try {
             if (isTag) {
                 if (!FluidChecker.isFluidTagExisting(name)) return false;
@@ -415,7 +431,7 @@ public final class InteractionSpecResolver {
                 fluids.add(FluidChecker.getExistingFluid(name));
                 return true;
             }
-            error(id, path + " - Unknown fluid " + name);
+            if (reportMissing) error(id, path + " - Unknown fluid " + name);
             return false;
         } catch (RuntimeException e) {
             error(id, path + " - Invalid fluid entry " + name + " : " + e);
@@ -423,7 +439,7 @@ public final class InteractionSpecResolver {
         }
     }
 
-    // State resolution (mirrors the legacy creator so behaviour matches v1 exactly)
+    // State resolution
 
     private static Set<PtaStateRecord<?>> buildStates(ResourceLocation id, Map<String, String> states, Set<?> entries) {
         Set<PtaStateRecord<?>> result = new HashSet<>();

@@ -47,6 +47,17 @@ public class TranslationKeys {
     public static final String INTERACTION_HUNGER_CHANCE = "gui." + PunchThemAll.MOD_ID + ".category.hunger.chance";
     public static final String INTERACTION_HUNGER_HUNGER = "gui." + PunchThemAll.MOD_ID + ".category.hunger.hunger";
 
+    // Item constraints, phrased for players (see ItemConstraintDescriber)
+    public static final String INTERACTION_NBT_REQUIRES = "gui." + PunchThemAll.MOD_ID + ".category.nbt.requires";
+    public static final String INTERACTION_NBT_FORBIDS = "gui." + PunchThemAll.MOD_ID + ".category.nbt.forbids";
+    public static final String INTERACTION_NBT_DAMAGE = "gui." + PunchThemAll.MOD_ID + ".category.nbt.damage";
+    public static final String INTERACTION_NBT_BETWEEN = "gui." + PunchThemAll.MOD_ID + ".category.nbt.between";
+    public static final String INTERACTION_NBT_PRESENT = "gui." + PunchThemAll.MOD_ID + ".category.nbt.present";
+    public static final String INTERACTION_NBT_ANY_LEVEL = "gui." + PunchThemAll.MOD_ID + ".category.nbt.any_level";
+    public static final String INTERACTION_NBT_ANY_ENCHANT = "gui." + PunchThemAll.MOD_ID + ".category.nbt.any_enchant";
+    public static final String INTERACTION_NBT_TARGET_REQUIRES = "gui." + PunchThemAll.MOD_ID + ".category.nbt.target_requires";
+    public static final String INTERACTION_NBT_TARGET_FORBIDS = "gui." + PunchThemAll.MOD_ID + ".category.nbt.target_forbids";
+
     // Schema v2 extensions
     public static final String INTERACTION_OUTPUT_GUARANTEED = "gui." + PunchThemAll.MOD_ID + ".category.output.guaranteed";
     public static final String INTERACTION_TEXT_PREDICATES = "gui." + PunchThemAll.MOD_ID + ".category.text.predicates";

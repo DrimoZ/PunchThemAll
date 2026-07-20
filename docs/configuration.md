@@ -1,18 +1,19 @@
 # PunchThemAll configuration
 
-PunchThemAll uses a Forge common config file located at:
+PunchThemAll uses a NeoForge common config file located at:
 
 ```text
 config/punchthemall/pta-common.toml
 ```
 
-The configuration is intentionally modular. Pack makers can tune gameplay,
-automation, drops, loader behavior, and diagnostics independently.
+The configuration is intentionally modular. Pack makers can tune gameplay, automation, drops, and
+diagnostics independently. **All keys are read live** — they take effect immediately, no restart
+needed. (Interactions themselves are **not** configured here; they are datapack data — see
+[interactions.md](interactions.md).)
 
-Most runtime options are read directly when an interaction is processed, so they
-can be changed while testing without rebuilding the mod. Loader options affect
-JSON discovery and therefore apply when interactions are loaded again, usually on
-world load or `/reload`.
+> There is no `Loader` section anymore: interactions moved into datapacks,
+> so the old config-folder discovery options (`recursive_discovery`, `lowercase_generated_ids`,
+> `load_from_datapacks`) no longer exist.
 
 ## Section overview
 
@@ -21,7 +22,6 @@ world load or `/reload`.
 | `PunchThemAll.Interactions` | Global interaction pipeline, click gates, target gates, transformations, cooldowns. |
 | `PunchThemAll.Players` | Real-player effects, fake-player automation, player damage, food costs. |
 | `PunchThemAll.Drops` | Inventory insertion and world drop spawn physics. |
-| `PunchThemAll.Loader` | JSON file discovery, generated IDs, development fail-fast mode. |
 | `PunchThemAll.Debug` | Optional logs for loaded and skipped interactions. |
 
 ## `PunchThemAll.Interactions`
@@ -109,51 +109,23 @@ world_drop_offset = 0.75
 world_drop_velocity = 0.10
 ```
 
-## `PunchThemAll.Loader`
+## Where interactions come from
 
-| Key | Default | Description |
-| --- | ---: | --- |
-| `load_from_datapacks` | `false` | Also loads interactions from datapacks at `data/<namespace>/pta/interaction/*.json`, on top of the config folder. Datapack files are read on `/reload`, are synchronised to clients by vanilla, and a datapack interaction overrides a config interaction that shares the same id. Both schema versions are supported. |
-| `recursive_discovery` | `true` | Loads `*.json` interaction files recursively inside `config/punchthemall/interactions`. Disable to load only files directly inside that folder. |
-| `fail_fast` | `false` | Stops loading remaining interactions after the first invalid JSON file. Enable while developing packs; disable for released packs. |
-| `lowercase_generated_ids` | `true` | Lowercases IDs generated from file paths. Minecraft resource locations require lowercase paths, so this should normally stay enabled. |
-
-### Config folder vs. datapacks
-
-By default, interactions live in `config/punchthemall/interactions` — easy to edit and hot-reload,
-and the intended workflow for most packs. The config source is **always** loaded.
-
-Enabling `load_from_datapacks` adds a **second** source: `data/<namespace>/pta/interaction/*.json`
-inside any loaded datapack. This is useful when you want interactions to travel with a datapack,
-benefit from vanilla's automatic client synchronisation, or be overridable by other datapacks.
-The two sources are layered — config first, datapacks on top — so a datapack file replaces a config
-file with the same id.
-
-When recursive discovery is enabled, a file at:
-
-```text
-config/punchthemall/interactions/early_game/flint.json
-```
-
-is loaded as:
-
-```text
-pta:early_game/flint
-```
+Interactions are **not** in this config file — they are datapack data, loaded from
+`data/<namespace>/pta/interaction/*.json` inside any enabled datapack and synced to clients by the
+mod. See [interactions.md](interactions.md) and
+[interaction-format.md](interaction-format.md).
 
 ## `PunchThemAll.Debug`
 
 | Key | Default | Description |
 | --- | ---: | --- |
-| `log_loaded_interactions` | `false` | Logs every interaction ID loaded from config. |
+| `log_loaded_interactions` | `false` | Logs every interaction ID loaded from datapacks. |
 | `log_skipped_interactions` | `false` | Logs when runtime interactions are skipped by global config gates. |
 
 Debug preset for pack development:
 
 ```toml
-[PunchThemAll.Loader]
-fail_fast = true
-
 [PunchThemAll.Debug]
 log_loaded_interactions = true
 log_skipped_interactions = true
@@ -161,7 +133,12 @@ log_skipped_interactions = true
 
 ## Migration notes
 
-Older configs used a flatter layout with keys such as `min_interaction_delay`.
-The current config uses grouped sections and clearer names such as
-`cooldown_ticks`. If a world already has an older generated config, regenerate or
-manually migrate the file to the grouped layout above.
+Coming from the Forge 1.20.1 version (2.0.x)? Two things changed:
+
+- **The `Loader` section is gone.** Interactions are no longer read from
+  `config/punchthemall/interactions` — move them into a datapack at
+  `data/<namespace>/pta/interaction/` (see [interactions.md](interactions.md)).
+- **Only `schema_version: 2` is accepted.** Convert any legacy files first — the mapping table is in
+  [interaction-format.md](interaction-format.md).
+
+The `Interactions`, `Players`, `Drops` and `Debug` sections are unchanged.

@@ -8,73 +8,74 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
-import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.runtime.IJeiRuntime;
-import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * JEI 19 integration. Because interactions are datapack data, the registry is empty when JEI loads
+ * and only fills once a world is loaded (server data reload). So recipes are pushed at runtime — on
+ * {@link #onRuntimeAvailable} and whenever the client's recipes update ({@link RecipesUpdatedEvent}) —
+ * rather than in {@code registerRecipes}. This keeps JEI in sync with the server's interactions.
+ */
 @JeiPlugin
 public class JEIPlugin implements IModPlugin {
-    public static final RecipeType<PtaInteraction> INTERACTION_RECIPE_TYPE = RecipeType.create(PunchThemAll.MOD_ID, "air_interactions", PtaInteraction.class);
 
-    // Captured JEI runtime + the recipes we pushed at runtime, so we can replace them when the
-    // server re-synchronises the registry (dedicated servers, /reload).
+    public static final RecipeType<PtaInteraction> INTERACTION_RECIPE_TYPE =
+            RecipeType.create(PunchThemAll.MOD_ID, "interactions", PtaInteraction.class);
+
     private static IJeiRuntime runtime;
-    private static final List<PtaInteraction> DYNAMIC_RECIPES = new ArrayList<>();
-
+    private static final List<PtaInteraction> SHOWN = new ArrayList<>();
 
     @Override
     public ResourceLocation getPluginUid() {
-        return new ResourceLocation(PunchThemAll.MOD_ID, "jei_plugin");
+        return ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "jei_plugin");
     }
 
     @Override
     public void registerCategories(IRecipeCategoryRegistration registration) {
         final IGuiHelper guiHelper = registration.getJeiHelpers().getGuiHelper();
-
         registration.addRecipeCategories(new JeiCategory(guiHelper));
-    }
-
-    @Override
-    public void registerRecipes(IRecipeRegistration registration) {
-        registration.addRecipes(INTERACTION_RECIPE_TYPE, InteractionRegistry.getInstance().getInteractions().values().stream().toList());
     }
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         runtime = jeiRuntime;
-        // If a server sync landed before the runtime was ready, reflect it now.
+        // JEI restarts its runtime on RecipesUpdatedEvent, and the new one holds none of our recipes,
+        // so the bookkeeping has to reset with it or the next refresh would hide recipes that the
+        // fresh runtime never received.
+        SHOWN.clear();
         applyRegistryToRuntime();
     }
 
-    /**
-     * Re-populate JEI from the current (server-synchronised) registry. Called after an S2C sync.
-     *
-     * <p>No-op in single-player / on the host: there the registry is shared with the integrated
-     * server and {@link #registerRecipes} already added everything, so touching the runtime would
-     * duplicate entries. On a dedicated-server client the registry is empty at JEI load, so this is
-     * the only path that shows PunchThemAll recipes.</p>
-     */
+    /** Re-populate JEI from the current (server-synchronised) interaction registry. */
     public static void refreshFromRegistry() {
         applyRegistryToRuntime();
     }
 
     private static synchronized void applyRegistryToRuntime() {
         if (runtime == null) return;
-        if (Minecraft.getInstance().getSingleplayerServer() != null) return;
-
-        if (!DYNAMIC_RECIPES.isEmpty()) {
-            runtime.getRecipeManager().hideRecipes(INTERACTION_RECIPE_TYPE, new ArrayList<>(DYNAMIC_RECIPES));
-            DYNAMIC_RECIPES.clear();
-        }
 
         List<PtaInteraction> current = new ArrayList<>(InteractionRegistry.getInstance().getInteractions().values());
-        if (!current.isEmpty()) {
-            runtime.getRecipeManager().addRecipes(INTERACTION_RECIPE_TYPE, current);
-            DYNAMIC_RECIPES.addAll(current);
+
+        // Diff rather than hide-everything-then-re-add. JEI remembers a hidden recipe permanently and
+        // refuses to add it back ("Recipe not added because it is hidden"), so the blunt version wiped
+        // the category the moment anything refreshed twice — which it does on every world join, where
+        // onRuntimeAvailable and RecipesUpdatedEvent both land.
+        List<PtaInteraction> stale = SHOWN.stream().filter(shown -> !current.contains(shown)).toList();
+        List<PtaInteraction> added = current.stream().filter(recipe -> !SHOWN.contains(recipe)).toList();
+        if (stale.isEmpty() && added.isEmpty()) return;
+
+        if (!stale.isEmpty()) {
+            runtime.getRecipeManager().hideRecipes(INTERACTION_RECIPE_TYPE, stale);
         }
+        if (!added.isEmpty()) {
+            runtime.getRecipeManager().addRecipes(INTERACTION_RECIPE_TYPE, added);
+        }
+
+        SHOWN.clear();
+        SHOWN.addAll(current);
     }
 }

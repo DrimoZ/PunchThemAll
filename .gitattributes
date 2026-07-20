@@ -1,3 +1,16 @@
+# Normalise line endings: LF in the repository, native in the working tree.
+# Without this, core.autocrlf on Windows checks in CRLF and every file a Windows
+# contributor touches shows up as a whole-file diff.
+* text=auto eol=lf
+
+# Binaries git must never convert.
+*.png binary
+*.jar binary
+
+# The wrapper scripts need the line endings their interpreter expects.
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
 # Disable autocrlf on generated files, they always generate with LF
 # Add any extra files or paths here to make git stop saying they
 # are changed when only line endings change.

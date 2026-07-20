@@ -1,6 +1,5 @@
 package com.drimoz.punchthemall.core.model.classes;
 
-
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
@@ -12,13 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * @author drimoz
- */
-
 public class PtaBlock {
-
-    // Private Properties
 
     private final Set<Block> blockSet;
     private final Set<Fluid> fluidSet;
@@ -94,24 +87,24 @@ public class PtaBlock {
 
     // Life cycle
 
-    public static PtaBlock createBlock (Set<Block> blockSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList) {
+    public static PtaBlock createBlock(Set<Block> blockSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList) {
         return new PtaBlock(blockSet, null, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, List.of());
     }
 
-    public static PtaBlock createBlock (Set<Block> blockSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates) {
+    public static PtaBlock createBlock(Set<Block> blockSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates) {
         return new PtaBlock(blockSet, null, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, nbtPredicates);
     }
 
-    public static PtaBlock createFluid (Set<Fluid> fluidSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList) {
+    public static PtaBlock createFluid(Set<Fluid> fluidSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList) {
         return new PtaBlock(null, fluidSet, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, List.of());
     }
 
-    public static PtaBlock createFluid (Set<Fluid> fluidSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates) {
+    public static PtaBlock createFluid(Set<Fluid> fluidSet, Set<PtaStateRecord<?>> stateWhiteList, Set<PtaStateRecord<?>> stateBlackList, CompoundTag nbtWhiteList, CompoundTag nbtBlackList, List<PtaNbtPredicate> nbtPredicates) {
         return new PtaBlock(null, fluidSet, stateWhiteList, stateBlackList, nbtWhiteList, nbtBlackList, nbtPredicates);
     }
 
-    public static PtaBlock createAir () {
-        return new PtaBlock(null, null,null,null,null,null, List.of());
+    public static PtaBlock createAir() {
+        return new PtaBlock(null, null, null, null, null, null, List.of());
     }
 
     protected PtaBlock(
@@ -123,7 +116,6 @@ public class PtaBlock {
         if (blockSet != null && !blockSet.isEmpty() && fluidSet != null && !fluidSet.isEmpty())
             throw new IllegalArgumentException("Block must be either a Fluid or a Block.");
 
-        // Air
         if (blockSet == null && fluidSet == null) {
             this.blockSet = new HashSet<>();
             this.fluidSet = new HashSet<>();
@@ -132,10 +124,7 @@ public class PtaBlock {
             this.nbtWhiteList = new CompoundTag();
             this.nbtBlackList = new CompoundTag();
             this.nbtPredicates = List.of();
-        }
-
-        // Fluid or Block
-        else {
+        } else {
             this.blockSet = blockSet == null ? new HashSet<>() : blockSet;
             this.fluidSet = fluidSet == null ? new HashSet<>() : fluidSet;
             this.stateWhiteList = stateWhiteList == null ? new HashSet<>() : stateWhiteList;
@@ -170,17 +159,8 @@ public class PtaBlock {
         return isFluid() && fluidSet.contains(fluid);
     }
 
-    // Interface ( Util )
-
     @Override
     public String toString() {
-        return "PtaBlock{" +
-                "blockSet=" + blockSet +
-                ", fluidSet=" + fluidSet +
-                ", stateWhiteList=" + stateWhiteList +
-                ", stateBlackList=" + stateBlackList +
-                ", nbtWhiteList=" + nbtWhiteList +
-                ", nbtBlackList=" + nbtBlackList +
-                '}';
+        return "PtaBlock{blockSet=" + blockSet + ", fluidSet=" + fluidSet + '}';
     }
 }

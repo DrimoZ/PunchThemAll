@@ -2,53 +2,50 @@ package com.drimoz.punchthemall.core.network;
 
 import com.drimoz.punchthemall.PunchThemAll;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
-
-import java.util.HashMap;
+import com.drimoz.punchthemall.core.event.PlayerInteractionHandler;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
- * Forge networking for PunchThemAll: a single channel used to push the server's interaction
- * registry to clients (S2C) so JEI is correct on dedicated servers.
+ * Registers PTA's payloads: interactions out to clients, and the left-click-on-nothing signal
+ * back in. Bumping {@code PROTOCOL_VERSION} makes clients on an older
+ * protocol fail the handshake rather than silently mis-parse the spec stream.
  */
-public final class PtaNetwork {
+@EventBusSubscriber(modid = PunchThemAll.MOD_ID)
+public class PtaNetwork {
 
     private static final String PROTOCOL_VERSION = "1";
 
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(PunchThemAll.MOD_ID, "main"),
-            () -> PROTOCOL_VERSION,
-            PROTOCOL_VERSION::equals,
-            PROTOCOL_VERSION::equals
-    );
-
-    private PtaNetwork() {}
-
-    public static void register() {
-        int id = 0;
-        CHANNEL.registerMessage(
-                id++,
-                SyncInteractionsPacket.class,
-                SyncInteractionsPacket::encode,
-                SyncInteractionsPacket::decode,
-                SyncInteractionsPacket::handle
-        );
+    @SubscribeEvent
+    public static void register(RegisterPayloadHandlersEvent event) {
+        event.registrar(PROTOCOL_VERSION)
+                .playToClient(
+                        SyncInteractionsPayload.TYPE,
+                        SyncInteractionsPayload.STREAM_CODEC,
+                        PtaNetwork::handleOnClient
+                )
+                .playToServer(
+                        LeftClickEmptyPayload.TYPE,
+                        LeftClickEmptyPayload.STREAM_CODEC,
+                        PtaNetwork::handleLeftClickEmpty
+                );
     }
 
-    /** Send the whole registry to one player (used on login). */
-    public static void syncTo(ServerPlayer player) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), currentPacket());
+    private static void handleLeftClickEmpty(LeftClickEmptyPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> PlayerInteractionHandler.onLeftClickEmptyFromClient(context.player()));
     }
 
-    /** Broadcast the whole registry to every connected player (used after a reload). */
-    public static void syncToAll() {
-        CHANNEL.send(PacketDistributor.ALL.noArg(), currentPacket());
-    }
+    private static void handleOnClient(SyncInteractionsPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            InteractionRegistry.getInstance().rebuildFrom(payload.specs(), context.player().registryAccess());
 
-    private static SyncInteractionsPacket currentPacket() {
-        return new SyncInteractionsPacket(new HashMap<>(InteractionRegistry.getInstance().getSources()));
+            // Push the new set into the viewers (guarded so the classes only load when present).
+            if (ModList.get().isLoaded("jei")) {
+                com.drimoz.punchthemall.jei.JEIPlugin.refreshFromRegistry();
+            }
+        });
     }
 }

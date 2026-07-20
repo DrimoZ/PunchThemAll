@@ -1,6 +1,7 @@
 package com.drimoz.punchthemall.core.model.classes;
 
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
+import net.minecraft.core.Holder;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -10,23 +11,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The full reward description for an interaction (schema_version 2, §5.5): a weighted
- * {@link PtaPool} plus optional {@code guaranteed} drops, multiple {@code rolls}, and a
- * Fortune/Looting-style bonus.
- *
- * <p>The default {@link #of(PtaPool)} form (1 roll, no guaranteed, no fortune) reproduces the legacy
- * single-pick behaviour exactly, and {@link #getPool()} still exposes the weighted pool so JEI and
- * existing code keep working unchanged.</p>
+ * The full reward description for an interaction (§5.5): a weighted {@link PtaPool} plus optional
+ * {@code guaranteed} drops, multiple {@code rolls}, and a Fortune/Looting-style bonus. In 1.21 the
+ * fortune enchantment is a {@link Holder} from the dynamic enchantment registry.
  */
 public class PtaRewards {
 
     private final PtaPool pool;
     private final List<PtaDropRecord> guaranteed;
     private final int rolls;
-    private final Enchantment fortuneEnchant; // null = no fortune bonus
+    private final Holder<Enchantment> fortuneEnchant; // null = no fortune bonus
     private final double fortuneFactor;
 
-    private PtaRewards(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Enchantment fortuneEnchant, double fortuneFactor) {
+    private PtaRewards(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Holder<Enchantment> fortuneEnchant, double fortuneFactor) {
         this.pool = pool == null ? PtaPool.create(null) : pool;
         this.guaranteed = guaranteed == null ? List.of() : guaranteed;
         this.rolls = Math.max(0, rolls);
@@ -38,7 +35,7 @@ public class PtaRewards {
         return new PtaRewards(pool, List.of(), 1, null, 0);
     }
 
-    public static PtaRewards create(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Enchantment fortuneEnchant, double fortuneFactor) {
+    public static PtaRewards create(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Holder<Enchantment> fortuneEnchant, double fortuneFactor) {
         return new PtaRewards(pool, guaranteed, rolls, fortuneEnchant, fortuneFactor);
     }
 
@@ -62,7 +59,7 @@ public class PtaRewards {
         return fortuneEnchant != null && fortuneFactor > 0;
     }
 
-    public Enchantment getFortuneEnchant() {
+    public Holder<Enchantment> getFortuneEnchant() {
         return fortuneEnchant;
     }
 
@@ -70,7 +67,6 @@ public class PtaRewards {
         return fortuneFactor;
     }
 
-    // Number of non-empty drops shown as slots in JEI (weighted pool + guaranteed).
     public int getJeiDropCount() {
         int guaranteedCount = (int) guaranteed.stream().filter(record -> !record.isEmpty()).count();
         return pool.getTotalPoolSize() + guaranteedCount;
@@ -89,14 +85,14 @@ public class PtaRewards {
         List<ItemStack> results = new ArrayList<>();
 
         for (PtaDropRecord entry : guaranteed) {
-            ItemStack stack = entry.getItemStack();
+            ItemStack stack = entry.getItemStack(random);
             if (!stack.isEmpty()) results.add(stack);
         }
 
         int totalWeight = pool.getTotalPoolWeight();
         int bonus = fortuneBonus(handItem);
         for (int i = 0; i < rolls && totalWeight > 0; i++) {
-            ItemStack stack = pool.getItemStackForChance(random.nextInt(totalWeight));
+            ItemStack stack = pool.getItemStackForChance(random.nextInt(totalWeight), random);
             if (!stack.isEmpty()) {
                 if (bonus > 0) stack.grow(bonus);
                 results.add(stack);
@@ -114,7 +110,6 @@ public class PtaRewards {
 
     @Override
     public String toString() {
-        return "PtaRewards{pool=" + pool + ", guaranteed=" + guaranteed + ", rolls=" + rolls
-                + ", fortuneEnchant=" + fortuneEnchant + ", fortuneFactor=" + fortuneFactor + '}';
+        return "PtaRewards{pool=" + pool + ", guaranteed=" + guaranteed + ", rolls=" + rolls + ", fortuneFactor=" + fortuneFactor + '}';
     }
 }

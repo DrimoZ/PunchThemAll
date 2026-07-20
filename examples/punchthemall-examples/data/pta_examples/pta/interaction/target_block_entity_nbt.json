@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "target": {
+    "kind": "block",
+    "match": "minecraft:furnace",
+    "nbt": { "whitelist": "{BurnTime:{RangeTag:[1,32767]}}" }
+  },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:charcoal", "count": 1 }
+    ]
+  },
+  "sound": "minecraft:block.fire.extinguish",
+  "particles": "minecraft:smoke"
+}

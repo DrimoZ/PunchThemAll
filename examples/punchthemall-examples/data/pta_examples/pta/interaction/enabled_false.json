@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "enabled": false,
+  "type": "left_click",
+  "target": { "kind": "block", "match": "minecraft:bedrock" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:netherite_ingot", "count": 1 }
+    ]
+  }
+}

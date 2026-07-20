@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": { "hand": "main", "match": "#minecraft:pickaxes", "consume": { "mode": "durability" } },
+  "target": { "kind": "block", "match": "minecraft:netherrack" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:quartz", "weight": 15, "count": 1 },
+      { "match": "minecraft:air", "weight": 85 }
+    ]
+  },
+  "costs": { "damage": { "chance": 0.1, "amount": 1 } },
+  "conditions": {
+    "biomes": { "blacklist": ["minecraft:overworld", "minecraft:the_end"] }
+  }
+}

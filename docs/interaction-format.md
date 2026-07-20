@@ -1,26 +1,67 @@
 # PunchThemAll — Interaction format
 
-Interactions are JSON files. Two schema versions are supported:
+Interactions are JSON files loaded from **datapacks**, and this version accepts **only
+`schema_version: 2`** — the strictly-valid-JSON format documented below, parsed by a
+Mojang-serialization `Codec` (shape errors are reported with a path and reason). Files declaring an
+older `schema_version` are rejected with a clear error.
 
-- **`schema_version: 2`** — the current, strictly-valid-JSON format documented below. Parsed by a
-  Mojang-serialization `Codec`, so shape errors are reported with a path and reason.
-- **legacy (no `schema_version`, or `1`)** — the original lenient format. Still loads, but is
-  **deprecated** and logs a warning on load. See the `*.json` samples without a `_v2` suffix in
-  `configExamples/interactions`.
-
-A legacy file and its v2 translation behave identically in-game. The v2 format additionally unlocks
-features that legacy files cannot express (guaranteed drops, multiple rolls, Fortune, potion effects,
-extended conditions, interaction sound/particles, typed NBT predicates), and gives far clearer error
-messages. New to the mod? Read [getting-started.md](getting-started.md) first.
+New to the mod? Read [getting-started.md](getting-started.md) first, and use the
+[JSON schema](interaction.schema.json) for editor autocomplete/validation.
 
 ## Where files live
 
-- `config/punchthemall/interactions/**/*.json` — always loaded (editable by pack makers, hot-reload
-  with `/reload`).
-- `data/<namespace>/pta/interaction/**/*.json` — loaded **only** when
-  `Loader.load_from_datapacks = true` in `punchthemall/pta-common.toml`. Layered on top of config;
-  a datapack interaction overrides a config one with the same id, and datapack files are
-  synchronised to clients by vanilla.
+Interactions are datapack data:
+
+- `data/<namespace>/pta/interaction/**/*.json` — one interaction per file, inside any loaded
+  datapack. The path is the id: `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`.
+- The server **syncs its loaded set to clients** on join and after `/reload`, so gameplay and JEI/EMI
+  match on dedicated servers.
+- Datapacks override each other by pack order, and you can gate a file with `neoforge:conditions`.
+
+There is no config-folder loading; the mod ships no interactions by default. See the ready-made
+[example datapack](../examples/punchthemall-examples).
+
+## Every field, and a file that uses it
+
+Each row points at a small, runnable example in the
+[example datapack](../examples/punchthemall-examples). The
+[catalogue](../examples/punchthemall-examples/README.md) says what each one does and how to trigger
+it in game.
+
+| Field | Values | Example |
+| --- | --- | --- |
+| `type` *(required)* | `left_click`, `right_click`, `shift_left_click`, `shift_right_click` | `minimal` |
+| `enabled` | `true` (default) / `false` | `enabled_false` |
+| `hand.hand` | `any` (default), `main`, `off` | `hand_off_hand` |
+| `hand.match` | id, `#tag`, list, or `[]` for an empty hand | `hand_empty` |
+| `hand.consume.mode` | `none` (default), `shrink`, `durability` | `hand_item_and_consume` |
+| `hand.consume.chance` | `0.0`–`1.0`, default `1.0` | `hand_consume_chance` |
+| `hand.nbt` | SNBT `whitelist` / `blacklist` | `hand_nbt_whitelist` |
+| `hand.nbt_predicates` | `path` + `int_range` + `where` | `hand_nbt_predicates` |
+| `target.kind` | `block` (default), `fluid`, `air`, `any` — `any` resolves either way, it does not mix the two | `target_kind_any` |
+| `target.match` | id, `#tag`, list | `target_any_with_tag` |
+| `target.state` | property → value, `whitelist` / `blacklist` | `target_state_blacklist` |
+| `target.nbt` | block-entity SNBT | `target_block_entity_nbt` |
+| `target.nbt_predicates` | block-entity predicates | `block_entity_predicates` |
+| `transformation.chance` *(required in the block)* | `0.0`–`1.0` | `transformation_state_copy` |
+| `transformation.into` | omit to break, or `kind` + `id` + `state` | `transformation_break`, `transformation_into_fluid` |
+| `transformation.into.state` | property → value, or `copy_state_value` | `transformation_state_copy` |
+| `transformation.nbt` | SNBT written into the new block entity | `transformation_block_entity_nbt` |
+| `rewards.weighted` | `match` + `weight` + `count` + `nbt` | `rewards_count_shapes` |
+| `rewards.guaranteed` | same shape, always dropped | `rewards_guaranteed_and_rolls` |
+| `rewards.rolls` | integer, default `1` | `rewards_multi_match` |
+| `rewards.fortune` | `enchant` + `factor` | `rewards_fortune` |
+| `costs.damage` / `costs.hunger` | `chance` + `amount` | `costs_damage_and_hunger` |
+| `conditions.biomes` | ids, dimension ids, `#tags`; `whitelist` / `blacklist` | `conditions_dimension_and_biome_tag` |
+| `conditions.time` | `any` (default), `day`, `night` | `conditions_time_weather` |
+| `conditions.weather` | list of `clear`, `rain`, `thunder` | `conditions_time_weather` |
+| `conditions.y_range` | `[min, max]` | `conditions_y_light_player` |
+| `conditions.light` | `min` / `max` | `conditions_y_light_player` |
+| `conditions.requires_sneaking` | `true` / `false` | `conditions_sneaking` |
+| `conditions.player_state` | `min_food`, `min_xp_levels` | `conditions_y_light_player` |
+| `effects` | `id` + `duration` + `amplifier` + `chance` | `effects_multiple` |
+| `sound` / `particles` | registry ids | `effects_and_feedback` |
+| `neoforge:conditions` | vanilla-style load conditions | `conditional_load_mod_present` |
 
 ## Selectors (`match`)
 
@@ -29,7 +70,7 @@ means a tag; otherwise it is a registry id.
 
 ```json
 "match": "minecraft:stick"
-"match": ["minecraft:stick", "#forge:tools/hammers"]
+"match": ["minecraft:stick", "#c:tools"]
 ```
 
 ## Full shape (all sections optional except `type`)
@@ -114,6 +155,38 @@ means a tag; otherwise it is a registry id.
 }
 ```
 
+### Which one: `nbt` whitelist/blacklist, or `nbt_predicates`?
+
+Both filter the same thing — does the held item (or the target's block entity) qualify. They differ in
+how you write the condition, and both remain supported.
+
+| | `nbt.whitelist` / `nbt.blacklist` | `nbt_predicates` |
+| --- | --- | --- |
+| Written as | one SNBT string: `"{Damage:{RangeTag:[0,500]}}"` | a list of JSON objects |
+| Targets by | **shape** — your SNBT must mirror the tag structure | **path** — `Enchantments[].lvl` |
+| Ranges | the `{RangeTag:[min,max]}` convention | the `int_range` field |
+| Filter a list element | not possible | `where` |
+| Exclude | yes, via `blacklist` | no — use a blacklist for that |
+
+**Prefer `nbt_predicates`, and keep the whitelist/blacklist for exclusions** or for packs carried over
+from v1.
+
+The reason is a trap in the SNBT form. This:
+
+```json
+"whitelist": "{Enchantments:[{lvl:{RangeTag:[2s,7s]}},{id:\"minecraft:fortune\"}]}"
+```
+
+does **not** mean "Fortune between 2 and 7". It means *some* enchantment has level 2-7 **and** *some*
+enchantment is Fortune — two independent tests that a Fortune I + Efficiency V tool passes. To tie a
+level to a specific enchantment you need `where`:
+
+```json
+{ "path": "Enchantments[].lvl", "int_range": [2, 7], "where": "{id:\"minecraft:fortune\"}" }
+```
+
+Numeric widths (`5` vs `5s`) do not matter — comparisons are numeric on both sides.
+
 ### Typed NBT predicates (`nbt_predicates`)
 
 A validated alternative to raw SNBT whitelist/blacklist, usable on `hand` and `target`:
@@ -139,7 +212,10 @@ Everything is visible in the **Interaction** category:
 
 - `guaranteed` drops appear as extra output slots (tooltip: *Guaranteed*).
 - `weighted` drops show their chance and count range.
-- `nbt_predicates` are listed in the tooltip of the hand / target slot.
+- Item conditions are spelled out on the hand / target slot as two plain-language blocks — green
+  **The item must have:** and red **The item must NOT have:** — covering `nbt.whitelist`,
+  `nbt.blacklist` and `nbt_predicates` together, since a player does not care which syntax you used.
+  Enchantments are named and levelled (*Efficiency I - V*), not printed as raw tags.
 - Hovering the **arrow** shows a summary: `rolls`, Fortune bonus, `effects`, all `conditions`
   (time/weather/Y/light/sneaking/food/XP), and whether the interaction plays a sound / particles.
 
@@ -176,16 +252,23 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 - **Transformations happen at most once per click**, after a successful drop, subject to `chance`
   and the `allow_transformations` config gate.
 - **`particles`** takes a **block id** (block-break particles), not a particle-type id.
-- **Biomes/dimensions are matched by exact id** (e.g. `minecraft:desert`, `minecraft:overworld`).
-  Biome **tags** are not supported here yet.
+- **Biomes/dimensions** in `conditions.biomes` match by exact id (e.g. `minecraft:desert`,
+  `minecraft:overworld`) **or** by biome **`#tag`** (e.g. `#minecraft:is_forest`).
+- **Item NBT is matched against a version-stable view** (`Damage`, `Enchantments:[{id,lvl}]`,
+  `custom`), so the same `path` / `nbt` expressions work across mod versions even though 1.21 stores
+  item data as data components.
 - **`effects` can be harmful.** They are whatever you declare (e.g. `minecraft:poison`), applied to
   the player on success.
 - **Global config can still block an interaction** even if the file is valid — see
   [configuration.md](configuration.md). Turn on `Debug.log_skipped_interactions` to find out why.
-- **Multiplayer:** gameplay uses the server's interactions; the JEI list is synchronised from the
-  server, so a dedicated server is authoritative. See [interactions.md](interactions.md).
+- **Multiplayer:** the server is authoritative and syncs its interactions to clients, so JEI/EMI
+  match it. See
+  [interactions.md](interactions.md).
 
-## Legacy → v2 quick reference
+## Migrating from the legacy (Forge 1.20.1) format
+
+This NeoForge version only loads `schema_version: 2`. If you have files from the old lenient format
+(the Forge 1.20.1 branch), convert them with this mapping:
 
 | legacy | v2 |
 | --- | --- |
@@ -199,4 +282,6 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 | `consumable: true` | `consume.mode = "shrink"` |
 | pseudo-JSON NBT object | SNBT string |
 | `copy_state_value` | `copy_state_value` (unchanged) |
-```
+
+…and move the files from `config/punchthemall/interactions/` into a datapack at
+`data/<namespace>/pta/interaction/`.

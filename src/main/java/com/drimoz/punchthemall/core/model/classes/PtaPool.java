@@ -1,6 +1,7 @@
 package com.drimoz.punchthemall.core.model.classes;
 
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -8,11 +9,7 @@ import java.util.*;
 
 public class PtaPool {
 
-    // Private Properties
-
     private final Map<PtaDropRecord, Integer> dropPool;
-
-    // Calculated Properties
 
     public int getTotalPoolWeight() {
         return this.dropPool.values().stream().mapToInt(Integer::intValue).sum();
@@ -26,13 +23,9 @@ public class PtaPool {
         return dropPool.isEmpty() || getTotalPoolWeight() == 0;
     }
 
-    // Getters
-
     public Map<PtaDropRecord, Integer> getDropPool() {
         return dropPool;
     }
-
-    // Life cycle
 
     public static PtaPool create(Map<PtaDropRecord, Integer> dropPool) {
         return new PtaPool(dropPool);
@@ -42,24 +35,18 @@ public class PtaPool {
         this.dropPool = dropPool == null ? new HashMap<>() : dropPool;
     }
 
-    // Interface
-
-    public ItemStack getRandomItemStack() {
-        return getItemStackForChance((int) (Math.random() * getTotalPoolWeight()));
-    }
-
-    public ItemStack getItemStackForChance(int chance) {
+    /**
+     * Weighted pick for a roll value in {@code [0, totalWeight)}. Uses a strict {@code <} comparison
+     * so each entry covers exactly {@code weight} slots (fixes the legacy off-by-one boundary bias).
+     */
+    public ItemStack getItemStackForChance(int chance, RandomSource random) {
         if (isEmpty()) return ItemStack.EMPTY;
 
         int cumulativeChance = 0;
-
-        // Weighted pick: iteration order is irrelevant to the distribution (it accumulates every
-        // weight), so we iterate the pool directly instead of copying/shuffling it on each roll.
         for (Map.Entry<PtaDropRecord, Integer> drop : dropPool.entrySet()) {
             cumulativeChance += drop.getValue();
-
-            if (chance <= cumulativeChance) {
-                return drop.getKey().getItemStack();
+            if (chance < cumulativeChance) {
+                return drop.getKey().getItemStack(random);
             }
         }
 
@@ -70,13 +57,8 @@ public class PtaPool {
         return getTotalPoolSize() % 9 == 0 ? getTotalPoolSize() / 9 : getTotalPoolSize() / 9 + 1;
     }
 
-    // Interface ( Util )
-
     @Override
     public String toString() {
-        return "PtaPool{" +
-                "dropPool=" + dropPool +
-                '}';
+        return "PtaPool{dropPool=" + dropPool + '}';
     }
-
 }

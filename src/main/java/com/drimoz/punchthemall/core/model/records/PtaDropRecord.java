@@ -1,6 +1,8 @@
 package com.drimoz.punchthemall.core.model.records;
 
+import com.drimoz.punchthemall.core.util.ItemView;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -28,32 +30,25 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
 
     // Interface
 
-    public ItemStack getItemStack() {
-        return isEmpty() ? ItemStack.EMPTY : new ItemStack(pickRandomItem(), calculateCount(), nbt);
+    public ItemStack getItemStack(RandomSource random) {
+        if (isEmpty()) return ItemStack.EMPTY;
+        ItemStack stack = new ItemStack(pickRandomItem(random), calculateCount(random));
+        // Apply the authored (stable-view) NBT as 1.21 data components.
+        ItemView.applyTo(stack, nbt);
+        return stack;
     }
 
-    public int calculateCount() {
-        if (min == max) {
-            return min;
-        } else {
-            return min + (int) (Math.random() * (max - min + 1));
-        }
+    public int calculateCount(RandomSource random) {
+        return min >= max ? min : min + random.nextInt(max - min + 1);
     }
 
-    public Item pickRandomItem() {
+    public Item pickRandomItem(RandomSource random) {
         if (items.isEmpty()) return Items.AIR;
-        return items.stream().skip((int) (Math.random() * items.size())).findFirst().orElse(Items.AIR);
+        return items.stream().skip(random.nextInt(items.size())).findFirst().orElse(Items.AIR);
     }
-
-    // Interface ( Util )
 
     @Override
     public String toString() {
-        return "PtaDropRecord{" +
-                "items=" + items +
-                ", min=" + min +
-                ", max=" + max +
-                ", nbt=" + nbt +
-                '}';
+        return "PtaDropRecord{items=" + items + ", min=" + min + ", max=" + max + ", nbt=" + nbt + '}';
     }
 }

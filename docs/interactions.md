@@ -1,218 +1,85 @@
-# Interaction files and JEI display
+# Datapacks, loading & the JEI/EMI display
 
-PunchThemAll interactions are JSON files placed in:
-
-```text
-config/punchthemall/interactions
-```
-
-Example interaction files are available in:
+PunchThemAll interactions are **datapack** data. Files live at:
 
 ```text
-configExamples/interactions
+data/<namespace>/pta/interaction/**/*.json
 ```
 
-## Loading behavior
+The mod ships **no** interactions by default — packs provide them. See the ready-made
+[example datapack](../examples/punchthemall-examples), and the format reference in
+[interaction-format.md](interaction-format.md).
 
-Interaction loading is controlled by `PunchThemAll.Loader` in the common config.
-By default, the loader:
+## Loading behaviour
 
-1. Creates `config/punchthemall/interactions` if it is missing.
-2. Recursively scans for `*.json` files.
-3. Sorts files deterministically by relative path.
-4. Generates a resource ID from each relative path.
-5. Lowercases generated IDs so they remain valid Minecraft resource locations.
-6. Logs errors per invalid file and continues loading the rest unless
-   `fail_fast = true`.
-
-Example:
-
-```text
-config/punchthemall/interactions/crushing/gravel.json
-```
-
-becomes:
-
-```text
-pta:crushing/gravel
-```
-
-If `recursive_discovery = false`, only JSON files directly inside
-`config/punchthemall/interactions` are loaded.
+- Every `*.json` under `data/<namespace>/pta/interaction/` becomes one registry entry.
+- The **id is the resource path**: `data/mypack/pta/interaction/crushing/gravel.json` → the id
+  `mypack:crushing/gravel`.
+- Only **`schema_version: 2`** is accepted; files declaring an older version are rejected with a clear
+  error in the log (`Incorrect Json format - <id> - schema_version … is not supported`).
+- Add `"enabled": false` to skip a file without deleting it.
+- Datapacks **override** each other by pack order (a later pack wins for the same id), and you can gate
+  a file with `neoforge:conditions` (e.g. only load it when another mod is present).
 
 ## Reloading
 
-Interactions are loaded when the mod initializes/reloads its data listener. For
-pack development, use `/reload` after changing JSON files. Loader config changes
-such as recursive discovery or fail-fast behavior also require interactions to be
-loaded again.
-
-## Runtime gates
-
-Even when a JSON file is valid and loaded, it can be disabled at runtime by the
-common config. The most important gates are:
-
-* `PunchThemAll.Interactions.enabled`
-* `PunchThemAll.Interactions.allow_left_click`
-* `PunchThemAll.Interactions.allow_right_click`
-* `PunchThemAll.Interactions.allow_block_interactions`
-* `PunchThemAll.Interactions.allow_air_interactions`
-* `PunchThemAll.Interactions.allow_fluid_interactions`
-* `PunchThemAll.Interactions.allow_transformations`
-* `PunchThemAll.Players.allow_fake_players`
-* `PunchThemAll.Players.allow_player_damage`
-* `PunchThemAll.Players.allow_food_consumption`
-
-Enable `PunchThemAll.Debug.log_skipped_interactions` when debugging why a loaded
-interaction does not run.
+Run **`/reload`** after changing files. Interactions are loaded by a datapack reload listener, so a
+reload re-reads every file and resolves it into the runtime form — no restart, no separate discovery
+option. Note this only works because interactions are ordinary datapack data: `/reload` does not
+re-read datapack *registries* (worldgen and the like), which is why they are not one.
 
 ## Multiplayer
 
-On a dedicated server, gameplay always uses the **server's** interactions. To keep the client's JEI
-list correct, the server sends its interaction registry to each client when they join and again
-after every `/reload`. This means:
+The server pushes its loaded set to clients over a small sync payload, on join and after every
+`/reload`:
 
-* players see the server's interactions in JEI even if their local config differs;
-* editing files on the server and running `/reload` updates every connected client;
-* in single-player and on a LAN host, the client and server already share the same data, so no sync
-  is needed.
+- gameplay always uses the **server's** interactions;
+- clients receive the same set on join and after `/reload`, so **JEI and EMI show exactly the
+  server's interactions** — nothing to configure per client;
+- in single-player and on a LAN host it's the same shared data.
 
-Interactions loaded from **datapacks** (`load_from_datapacks = true`) are additionally synchronised
-by vanilla's normal datapack handling.
+## Runtime gates
 
-## JEI category
+Even when a file is valid and loaded, the common config (`config/punchthemall/pta-common.toml`) can
+disable interactions at runtime. The most important gates:
 
-PunchThemAll registers a JEI interaction category. The category is intended to be
-a pack-author and player-facing overview of loaded interactions.
+* `Interactions.enabled`
+* `Interactions.allow_left_click` / `allow_right_click`
+* `Interactions.allow_block_interactions` / `allow_air_interactions` / `allow_fluid_interactions`
+* `Interactions.allow_transformations`
+* `Players.allow_fake_players`
+* `Players.allow_player_damage` / `allow_food_consumption`
 
-The JEI display includes:
+Enable `Debug.log_skipped_interactions` to log why a loaded interaction does not run. See
+[configuration.md](configuration.md) for every key.
 
-* click type icon;
-* sneak/regular state icon;
-* hand requirement and hand mode icon;
-* target block, fluid, or air marker;
-* transformation output when present;
-* weighted result pool rows;
-* **guaranteed drops** (schema v2) shown as extra output slots with a "Guaranteed" tooltip;
-* output chance and count ranges;
-* biome whitelist/blacklist tooltip;
-* player damage and hunger cost tooltips;
-* block-state whitelist/blacklist details;
-* NBT whitelist/blacklist details, and **typed `nbt_predicates`** (schema v2) on the hand/target tooltip;
-* a **summary tooltip on the arrow** (schema v2) listing rolls, Fortune bonus, player effects,
-  conditions (time/weather/Y/light/sneaking/food/XP) and whether the interaction plays a
-  sound/particles;
-* interaction ID in the click tooltip.
+## JEI / EMI category
 
-The interaction ID shown in JEI is useful when a user reports a recipe issue: it
-maps directly to the generated ID of the JSON file loaded from the config folder.
+PunchThemAll registers an **Interaction** category in both **JEI** and **EMI** — a player-facing
+overview of every loaded interaction. It shows:
 
-## Pack organization tips
+* click type + sneak/regular icons;
+* the hand requirement (item/tag, hand slot, consume mode) with its NBT / `nbt_predicates` in the
+  tooltip;
+* the target block, fluid, or air marker, with state / NBT details;
+* the transformation output when present;
+* **weighted** drop slots with chance and count, and **guaranteed** drops as extra output slots;
+* a summary (rolls, Fortune bonus, potion effects, conditions, sound/particles) — on the arrow tooltip
+  in JEI, and in EMI's recipe display;
+* the interaction id (handy when reporting an issue — it maps straight to the datapack file).
 
-For small packs, keeping all files directly in `interactions` is simple:
+Both viewers refresh whenever the synced set arrives (join / `/reload`), so the display always
+matches the server.
 
-```text
-interactions/flint_from_gravel.json
-interactions/clay_from_water.json
-```
+## Organising a pack
 
-For larger packs, use folders and recursive discovery:
+- **One interaction per file**, lowercase names with underscores, folders for grouping:
 
-```text
-interactions/early_game/flint_from_gravel.json
-interactions/create/crushing_dust.json
-interactions/automation/click_machine_only.json
-```
+  ```text
+  data/mypack/pta/interaction/early_game/flint_from_gravel.json   → mypack:early_game/flint_from_gravel
+  data/mypack/pta/interaction/create/crushing_dust.json           → mypack:create/crushing_dust
+  data/mypack/pta/interaction/automation/click_machine_only.json  → mypack:automation/click_machine_only
+  ```
 
-Keep filenames lowercase with underscores to avoid resource-location issues and
-to make generated IDs stable across operating systems.
-
-## JSON authoring robustness
-
-The interaction reader validates common reusable shapes before creating runtime
-objects. This keeps the format extensible while giving pack authors clearer logs.
-Top-level metadata can be added without changing gameplay; `enabled: false` skips
-a file without deleting it, and `schema_version` selects the parser:
-
-
-```json
-{
-  "schema_version": 1,
-  "enabled": true,
-  "type": "shift_left_click"
-}
-```
-
-> **Two formats.** Files with `schema_version: 2` use the modern, strictly-valid-JSON format
-> (unified `match` selectors, SNBT-string NBT, `rewards`, `costs`, `conditions`, `effects`, typed
-> `nbt_predicates`, advanced rewards, …). Files without `schema_version` (or `1`) use the original
-> format described on this page — still supported, but **deprecated** (a warning is logged on load).
-> The full v2 reference lives in [interaction-format.md](interaction-format.md), and ready-to-copy
-> v2 examples are in [`configExamples/interactions`](../configExamples/interactions) (the `*_v2.json`
-> files and the `v2/` folder).
-
-* `hunger`, `damage`, and pool entries all use the same count range pattern:
-  either `count` or `min`/`max`.
-* `pool` is optional so transformation-only interactions remain possible; when
-  present, it must be an array of objects and invalid entries are skipped
-  independently so one bad drop does not discard the whole file unless
-  `fail_fast = true`.
-* Pool `chance` values must be positive weights.
-* `biome.whitelist` and `biome.blacklist` are parsed as string arrays. If both
-  are present, the loader logs the conflict so the file can be cleaned up.
-* Transformation state is read from `transformation.state`, matching the JSON
-  format documented for block/fluid state filters.
-
-For future features, prefer adding new optional objects or sections rather than
-changing the meaning of existing keys. This lets older interaction files keep
-loading while newer packs opt in to expanded behavior.
-
-### Selector formats
-
-Selectors now accept both the historical single-value keys and plural list keys.
-This makes small files stay concise while larger packs can group related targets
-without duplicating whole interaction files.
-
-Hand item selectors support any combination of:
-
-```json
-"hand": {
-  "hand": "main_hand",
-  "item": {
-    "item": "minecraft:stick",
-    "items": ["minecraft:bone", "minecraft:blaze_rod"],
-    "tag": "forge:tools/hammers",
-    "tags": ["forge:tools/wrenches"]
-  }
-}
-```
-
-Block target selectors support block, fluid, and tag lists:
-
-```json
-"block": {
-  "blocks": ["minecraft:cobblestone", "minecraft:stone"],
-  "state": {
-    "blacklist": {
-      "waterlogged": "true"
-    }
-  }
-}
-```
-
-Pool entries support item and tag lists too:
-
-```json
-"pool": [
-  {
-    "items": ["minecraft:flint", "minecraft:gravel"],
-    "chance": 10,
-    "min": 1,
-    "max": 2
-  }
-]
-```
-
-Avoid mixing block and fluid targets in the same `block` selector. If both are
-present, the loader logs the conflict and keeps the block targets because the
-runtime model treats block and fluid targets as different interaction kinds.
+- Ship interactions inside your modpack's datapack, or as a standalone datapack players enable in the
+  **Data Packs** screen / drop into a world's `datapacks/` folder.

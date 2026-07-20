@@ -10,13 +10,7 @@ import net.minecraft.world.level.material.Fluid;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * @author drimoz
- */
-
 public class PtaTransformation {
-
-    // Private Properties
 
     private final double chance;
     private final Block block;
@@ -92,19 +86,19 @@ public class PtaTransformation {
 
     // Life cycle
 
-    public static PtaTransformation createBlock (double chance, Block block, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
+    public static PtaTransformation createBlock(double chance, Block block, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
         return new PtaTransformation(chance, block, null, stateList, nbtList, sound, particles);
     }
 
-    public static PtaTransformation createFluid (double chance, Fluid fluid, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
+    public static PtaTransformation createFluid(double chance, Fluid fluid, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
         return new PtaTransformation(chance, null, fluid, stateList, nbtList, sound, particles);
     }
 
-    public static PtaTransformation createAir (double chance, SoundEvent sound, ParticleOptions particles) {
-        return new PtaTransformation(chance, null,null,null,null, sound, particles);
+    public static PtaTransformation createAir(double chance, SoundEvent sound, ParticleOptions particles) {
+        return new PtaTransformation(chance, null, null, null, null, sound, particles);
     }
 
-    protected PtaTransformation (
+    protected PtaTransformation(
             double chance,
             Block block, Fluid fluid,
             Set<PtaStateRecord<?>> stateList, CompoundTag nbtList,
@@ -122,9 +116,7 @@ public class PtaTransformation {
             this.fluid = null;
             this.stateList = new HashSet<>();
             this.nbtList = new CompoundTag();
-
-        }
-        else {
+        } else {
             this.block = block;
             this.fluid = fluid;
             this.stateList = stateList == null ? new HashSet<>() : stateList;
@@ -132,22 +124,8 @@ public class PtaTransformation {
         }
     }
 
-    // Interface
-
-
-
-    // Interface ( Util )
-
     @Override
     public String toString() {
-        return "PtaTransformation{" +
-                "chance=" + chance +
-                ", block=" + block +
-                ", fluid=" + fluid +
-                ", stateList=" + stateList +
-                ", nbtList=" + nbtList +
-                ", sound=" + sound +
-                ", particles=" + particles +
-                '}';
+        return "PtaTransformation{chance=" + chance + ", block=" + block + ", fluid=" + fluid + '}';
     }
 }
