@@ -64,37 +64,32 @@ public class InteractionRegistry {
     }
 
     /**
-     * Rebuild the runtime interactions by resolving every {@link InteractionSpec} in the
-     * {@code pta:interaction} datapack registry against the given provider. Called on both the server
-     * (after datapack load) and the client (after the registry is synchronised), so gameplay and JEI
-     * stay consistent everywhere.
+     * Rebuild the runtime interactions by resolving each {@link InteractionSpec} against the given
+     * provider. The server calls this from the reload listener, the client from the sync payload
+     * handler, so both sides resolve against their own registries and gameplay matches what the
+     * viewers display.
      */
-    public void rebuildFrom(HolderLookup.Provider registries) {
+    public void rebuildFrom(Map<ResourceLocation, InteractionSpec> specs, HolderLookup.Provider registries) {
         clearInteractions();
 
-        registries.lookup(PtaRegistries.INTERACTION).ifPresent(lookup ->
-                lookup.listElements().forEach(holder -> {
-                    ResourceLocation id = holder.key().location();
-                    InteractionSpec spec = holder.value();
+        specs.forEach((id, spec) -> {
+            if (spec.schemaVersion() < 2) {
+                PTALoggers.error(RegistryConstants.INCORRECT_FORMAT + " - " + id
+                        + " - schema_version " + spec.schemaVersion() + " is not supported; requires schema_version 2");
+                return;
+            }
+            if (!spec.enabled()) {
+                return;
+            }
 
-                    if (spec.schemaVersion() < 2) {
-                        PTALoggers.error(RegistryConstants.INCORRECT_FORMAT + " - " + id
-                                + " - schema_version " + spec.schemaVersion() + " is not supported; requires schema_version 2");
-                        return;
-                    }
-                    if (!spec.enabled()) {
-                        return;
-                    }
-
-                    PtaInteraction interaction = InteractionSpecResolver.resolve(id, spec, registries);
-                    if (interaction != null) {
-                        addInteraction(interaction);
-                        if (PTAConfig.DEBUG.logLoadedInteractions.get()) {
-                            PTALoggers.info("Loaded PunchThemAll interaction " + id);
-                        }
-                    }
-                })
-        );
+            PtaInteraction interaction = InteractionSpecResolver.resolve(id, spec, registries);
+            if (interaction != null) {
+                addInteraction(interaction);
+                if (PTAConfig.DEBUG.logLoadedInteractions.get()) {
+                    PTALoggers.info("Loaded PunchThemAll interaction " + id);
+                }
+            }
+        });
 
         PTALoggers.info("Loaded " + interactions.size() + " interaction(s)");
     }

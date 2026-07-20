@@ -43,7 +43,10 @@ public class JEIPlugin implements IModPlugin {
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         runtime = jeiRuntime;
-        // Data updates are pushed by PtaClientEvents (RecipesUpdatedEvent -> refreshFromRegistry).
+        // JEI restarts its runtime on RecipesUpdatedEvent, and the new one holds none of our recipes,
+        // so the bookkeeping has to reset with it or the next refresh would hide recipes that the
+        // fresh runtime never received.
+        SHOWN.clear();
         applyRegistryToRuntime();
     }
 
