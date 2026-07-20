@@ -132,9 +132,12 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         return ICON;
     }
 
+    // Deliberately left null. Returning an id makes JEI attach its OutputSlotTooltipCallback, which
+    // appends a "Recipe By: PunchThemAll" line to every drop's tooltip — noise here, since the
+    // interaction id is already shown on the arrow tooltip.
     @Override
     public ResourceLocation getRegistryName(PtaInteraction recipe) {
-        return recipe.getId();
+        return null;
     }
 
     @Override
@@ -561,10 +564,8 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         if (key.equals("Enchantments") && value instanceof ListTag listTag) {
             formatEnchantments(tooltip, listTag);
         } else if (value instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
-            ListTag rangeTag = compoundTag.getList("RangeTag", Tag.TAG_INT);
-            if (rangeTag.size() == 2) {
-                tooltip.add(Component.literal("§8  - " + key + " : §5" + rangeTag.getInt(0) + " - " + rangeTag.getInt(1)));
-            }
+            readRange(compoundTag).ifPresent(range ->
+                    tooltip.add(Component.literal("§8  - " + key + " : §5" + range[0] + " - " + range[1])));
         } else if (value instanceof ListTag listTag) {
             StringBuilder listText = new StringBuilder("§8  - " + key + " : §5[");
             for (Tag listElement : listTag) {
@@ -591,15 +592,25 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     private String formatEnchantmentLevel(Tag levelTag) {
         if (levelTag instanceof CompoundTag compoundTag && compoundTag.contains("RangeTag")) {
-            ListTag rangeTag = compoundTag.getList("RangeTag", Tag.TAG_SHORT);
-            if (rangeTag.size() == 2) {
-                return toRomanNumeral(rangeTag.getShort(0)) + " - " + toRomanNumeral(rangeTag.getShort(1));
-            }
+            return readRange(compoundTag)
+                    .map(range -> toRomanNumeral((int) range[0]) + " - " + toRomanNumeral((int) range[1]))
+                    .orElse("");
         } else if (levelTag instanceof NumericTag numericTag) {
             int level = numericTag.getAsInt();
             return level == 1 ? "" : toRomanNumeral(level);
         }
         return "";
+    }
+
+    /**
+     * Read a {@code {RangeTag:[min,max]}} bound without caring about the numeric width. Authored SNBT
+     * writes ints ({@code [0,500]}) or shorts ({@code [2s,7s]}) interchangeably, and asking for one
+     * exact tag type made the other silently render nothing.
+     */
+    private Optional<long[]> readRange(CompoundTag compoundTag) {
+        if (!(compoundTag.get("RangeTag") instanceof ListTag rangeTag) || rangeTag.size() != 2) return Optional.empty();
+        if (!(rangeTag.get(0) instanceof NumericTag min) || !(rangeTag.get(1) instanceof NumericTag max)) return Optional.empty();
+        return Optional.of(new long[]{min.getAsLong(), max.getAsLong()});
     }
 
     private String getEnchantmentName(String enchantmentId) {

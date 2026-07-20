@@ -52,6 +52,8 @@ import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE
 
 public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
+    // Guards against handling both hands of the same right-click; see onRightClickItem.
+    private static final Map<UUID, Long> LAST_ITEM_CLICK_TICK = new HashMap<>();
 
     // NeoForge's event bus refuses listeners on the abstract PlayerInteractEvent parent, so each
     // concrete sub-event gets its own listener; they all funnel into handlePlayerInteract.
@@ -87,10 +89,23 @@ public class PlayerInteractionHandler {
     @SubscribeEvent(priority = EventPriority.HIGH, receiveCanceled = true)
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         if (!passesCommonChecks(event)) return;
-        if (event.getHand() != InteractionHand.MAIN_HAND) return;
+
+        // Unlike RightClickBlock, this cannot be filtered to the main hand: the client walks both
+        // hands and stops at the first that consumes the click, so an item held only in the off hand
+        // arrives as an OFF_HAND event — which is exactly how the "in the air" interactions are
+        // authored. Both hands can still fire for one click when the main hand passes, so dedupe by
+        // tick instead; handlePlayerInteract already inspects both hands itself.
+        if (alreadyHandledThisTick(event.getEntity())) return;
+
         if (isClickTypeEnabled(PtaTypeEnum.RIGHT_CLICK)) {
             handlePlayerInteract(PtaTypeEnum.RIGHT_CLICK, false, event);
         }
+    }
+
+    private static boolean alreadyHandledThisTick(Player player) {
+        long now = player.level().getGameTime();
+        Long last = LAST_ITEM_CLICK_TICK.put(player.getUUID(), now);
+        return last != null && last == now;
     }
 
     private static boolean passesCommonChecks(PlayerInteractEvent event) {
@@ -460,6 +475,7 @@ public class PlayerInteractionHandler {
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent ev) {
         PLAYER_COOLDOWNS.remove(ev.getEntity().getUUID());
+        LAST_ITEM_CLICK_TICK.remove(ev.getEntity().getUUID());
     }
 
     private static boolean isPlayerOnCooldown(UUID uuid, long currentTick) {

@@ -1,10 +1,8 @@
 package com.drimoz.punchthemall.core.util;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.ShortTag;
 
 import java.util.Set;
 
@@ -19,17 +17,17 @@ public class TagHelper {
         if (compareTag instanceof CompoundTag) {
             Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
 
-            // Special-case the RangeTag convention.
+            // Special-case the RangeTag convention. Compare numerically rather than by tag class:
+            // authored SNBT freely mixes `[0,500]` (int) and `[2s,7s]` (short), and the value read
+            // from the item need not use the same width, so matching on the exact tag type made
+            // valid files silently fail to match — or throw when the two widths disagreed.
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
-                if (itemTag instanceof IntTag) {
-                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag) || listRangeTag.size() != 2) return false;
-                    return ((IntTag) listRangeTag.get(0)).getAsInt() <= ((IntTag) itemTag).getAsInt() && ((IntTag) itemTag).getAsInt() <= ((IntTag) listRangeTag.get(1)).getAsInt();
-                }
-                if (itemTag instanceof ShortTag) {
-                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag) || listRangeTag.size() != 2) return false;
-                    return ((ShortTag) listRangeTag.get(0)).getAsInt() <= ((ShortTag) itemTag).getAsInt() && ((ShortTag) itemTag).getAsInt() <= ((ShortTag) listRangeTag.get(1)).getAsInt();
-                }
-                return false;
+                if (!(itemTag instanceof NumericTag itemNumeric)) return false;
+                if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag) || listRangeTag.size() != 2) return false;
+                if (!(listRangeTag.get(0) instanceof NumericTag minTag) || !(listRangeTag.get(1) instanceof NumericTag maxTag)) return false;
+
+                long value = itemNumeric.getAsLong();
+                return minTag.getAsLong() <= value && value <= maxTag.getAsLong();
             }
             // Otherwise recurse on each field.
             else {
@@ -76,10 +74,7 @@ public class TagHelper {
 
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
                 // A RangeTag in a blacklist forbids values inside [min, max]; everything else passes.
-                int value;
-                if (itemTag instanceof IntTag intTag) value = intTag.getAsInt();
-                else if (itemTag instanceof ShortTag shortTag) value = shortTag.getAsInt();
-                else return true;
+                if (!(itemTag instanceof NumericTag itemNumeric)) return true;
 
                 if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)
                         || listRangeTag.size() != 2
@@ -88,7 +83,8 @@ public class TagHelper {
                     return true;
                 }
 
-                return value < minTag.getAsInt() || value > maxTag.getAsInt();
+                long value = itemNumeric.getAsLong();
+                return value < minTag.getAsLong() || value > maxTag.getAsLong();
             }
             else {
                 if (!(itemTag instanceof CompoundTag)) return true;

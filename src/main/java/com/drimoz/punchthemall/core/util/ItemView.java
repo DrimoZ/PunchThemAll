@@ -48,7 +48,9 @@ public final class ItemView {
                 Holder<Enchantment> holder = entry.getKey();
                 CompoundTag e = new CompoundTag();
                 holder.unwrapKey().ifPresent(key -> e.putString("id", key.location().toString()));
-                e.putInt("lvl", entry.getIntValue());
+                // 1.20.1 stored enchantment levels as shorts, and authored files write them as `3s`.
+                // Keep the same width so existing whitelists/blacklists read identically.
+                e.putShort("lvl", (short) entry.getIntValue());
                 list.add(e);
             }
             view.put("Enchantments", list);
