@@ -92,10 +92,16 @@ dependencies {
     // dropped into run/mods by hand for now.
     // runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
 
-    // Unit tests (pure logic — no game bootstrap needed for most of them).
+    // Unit tests. Most exercise pure logic, but anything touching ItemStack/NBT needs the vanilla
+    // registries, so the suite boots Minecraft's Bootstrap once (see McBootstrap).
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    // The launcher is compiled against, not just run with: McBootstrapSessionListener hooks session
+    // start so Minecraft boots before JUnit loads any test class.
+    testImplementation "org.junit.platform:junit-platform-launcher"
+    // Mockito for the handful of tests that need a Level or Player: those interfaces reach deep into
+    // the game and building a real one costs more than it proves.
+    testImplementation "org.mockito:mockito-core:5.14.2"
 }
 
 // Give the test source set the Minecraft/NeoForge classes (NBT, codecs, ...).

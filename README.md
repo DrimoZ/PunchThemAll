@@ -108,11 +108,22 @@ search the **Interaction** category to see it.
 Standard NeoForge / ModDevGradle workflow (Java 21). There is no CI; builds are run locally.
 
 ```bash
-./gradlew build            # build the mod jar (into build/libs)
+./gradlew build            # build the mod jar (into build/libs), tests included
+./gradlew test             # unit tests only
 ./gradlew runClient        # launch the client to test
 ./gradlew runServer        # launch a dedicated server
 ./gradlew --refresh-dependencies   # if dependencies fail to resolve
 ```
+
+The unit suite boots the game's registries in process, so it exercises real `ItemStack` and NBT
+behaviour. It covers the logic below the game — NBT matching, drop and weight arithmetic, the codec,
+the resolver, the registry, sync batching. It does **not** cover anything that needs a live world
+(the click path, rendering) or tags, which need a running server; `docs/backlog.md` lists what that
+leaves untested.
+
+For that layer, [`examples/dev-probe-pack`](examples/dev-probe-pack) is a by-hand harness: drop it
+into a dev world, `/reload`, and read `run/logs/latest.log`. A green build has repeatedly not
+predicted correctness on this mod — run the client.
 
 ## Compatibility
 

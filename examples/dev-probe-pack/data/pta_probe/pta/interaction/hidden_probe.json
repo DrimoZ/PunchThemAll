@@ -1,0 +1,8 @@
+{
+  "schema_version": 2,
+  "hidden": true,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:stick" },
+  "target": { "kind": "block", "match": "minecraft:bookshelf" },
+  "rewards": { "guaranteed": [{ "match": "minecraft:diamond" }] }
+}

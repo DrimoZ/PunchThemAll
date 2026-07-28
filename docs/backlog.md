@@ -27,7 +27,10 @@ was considered and rejected is useful.
 - **Component escape hatch.** Expose exotic 1.21 components as `components."minecraft:xxx"` for power
   users, alongside the version-stable view. Niche, and deliberately version-specific.
 - **Weighted pool "nothing" entry.** `minecraft:air` as a filler works but reads like a trick; an
-  explicit `{ "empty": true, "weight": n }` would say what it means.
+  explicit `{ "empty": true, "weight": n }` would say what it means. (`count: {min: 0}` is *not* the
+  answer — that is a per-roll range on an entry that still exists.)
+- **`hidden` on a whole namespace.** `hidden` is per file. A pack with thirty internal steps has to
+  set it thirty times.
 
 ## Display (JEI / EMI)
 
@@ -48,7 +51,8 @@ was considered and rejected is useful.
 - **Tag freshness.** Tags are flattened into concrete `Set<Item/Block/Fluid>` when an interaction
   resolves. That is correct today because resolution is redone on every `TagsUpdatedEvent` — but
   storing `TagKey`/`HolderSet` and resolving at click time would remove the ordering constraint
-  entirely.
+  entirely. It would also make tags reachable from the test suite, which currently cannot cover them
+  at all (they need a running server).
 - **Sealed target type.** `PtaBlock` models block/fluid/air with an empty-set sentinel for air. A
   sealed type would be clearer and would prepare the entity target above.
 - **Renames.** `PtaBlock` → `PtaTarget`, `PtaInteractionRecord` → `PtaCost` — the v2 JSON already
@@ -63,17 +67,29 @@ was considered and rejected is useful.
   only if someone actually asks.
 - **`chance` vs `weight` naming.** `PtaPool.getItemStackForChance` takes a *weight* roll, and the
   pool mixes both words for the same thing. Internal only; renaming touches the JEI display code.
-- **Payload protocol discipline.** `PtaNetwork.PROTOCOL_VERSION` is `"1"` and now covers two
-  payloads. Nothing is published yet, so it has never mattered — but after the first release any
-  payload change must bump it, or a mismatched client and server will believe they agree and fail at
-  decode time.
 - **Cooldown map keyed by UUID.** Fake players often reuse one UUID per machine type, so
   `apply_cooldown_to_fake_players` can bleed cooldowns between unrelated machines.
+- **EMI is not pushed on sync.** JEI is refreshed explicitly when the interaction set changes; EMI is
+  left to re-run `register` on its own reload. That has always been the case and nobody has reported
+  a stale EMI category, but it is an asymmetry, not a decision.
+- **`PtaInteraction.contentHash` is a plain `int`.** It exists so an unchanged reload compares equal.
+  A collision would make an *edited* interaction look unchanged and leave the viewers showing the old
+  one until the next restart. Astronomically unlikely, cheap to make impossible by keeping the spec
+  itself instead of its hash.
 
 ## Known untested
 
 Not defects — things the code does that nobody has watched happen. Listed so they are not mistaken
 for verified behaviour.
+
+Since 2.2.0 there is a unit suite (`./gradlew test`), so the *logic* below the game — NBT matching,
+count and weight arithmetic, the codec, the resolver, the registry, sync batching — is covered.
+What follows is what a unit test cannot reach.
+
+For the layer just above it, `examples/dev-probe-pack` is a by-hand harness: drop it in a dev world,
+`/reload`, and it exercises malformed ids, the `count: {min: 0}` roll, the sneak conflict warning and
+`hidden` — each either logging something specific or visibly doing something. It is what found the
+two example-datapack bugs fixed in 2.2.0.
 
 - **The EMI plugin has never been loaded.** `PtaEmiPlugin` compiles against the API and has never run
   once: the `runtimeOnly` line in `build.gradle` is commented out because the full EMI jar fails to
@@ -82,24 +98,42 @@ for verified behaviour.
   player, not just our category. To test: drop the jar into `run/mods` by hand.
 - **Dedicated servers.** Everything has been exercised on the integrated server. The sync payload
   does cross a real connection there, but never between two JVMs, and never with a client joining a
-  remote host.
+  remote host. The 2.2.0 batching in particular has only been proven by unit test — the split is
+  correct, but nobody has watched a multi-batch series arrive over a wire.
+- **A vanilla client on a PTA server.** The channel is optional as of 2.2.0, so it should just work.
+  Never tried.
 - **Most mechanics are verified as loading, not as firing.** Transformations, damage and hunger
   costs, biome and weather conditions, the Fortune bonus and potion effects all resolve without
   error; none has been triggered in game. The example datapack covers them all if someone plays with
   it.
-- **The v1 rejection path.** A `schema_version: 1` file should be refused with a clear message. Never
-  tried with a real legacy file.
+- **The v1 rejection path.** A `schema_version: 1` file is refused in the unit suite, but never tried
+  with a real legacy file in a real datapack.
+- **Nothing renders in a test.** `JeiCategory` and `PtaEmiRecipe` are entirely unexercised — the row
+  arithmetic they depend on is covered, the drawing is not.
+- **The click path itself.** `PlayerInteractionHandler` needs a live world; the filtering it calls
+  into is tested, the event wiring, cooldown timing and drop placement are not.
 
 ## Tooling
 
 - **SPDX headers** (`SPDX-License-Identifier: MIT`) on source files.
 - **Schema/codec agreement check.** `docs/interaction.schema.json` and `InteractionSpec` are kept in
-  sync by hand; nothing catches a drift.
+  sync by hand; nothing catches a drift. A test that parses every example datapack file against the
+  codec would catch half of it, and is easy now that a suite exists.
+- **Validate the example datapack in CI.** The 41 files are the closest thing to an integration test
+  the format has, and nothing currently loads them outside the game.
+- **The test bootstrap reaches into FML internals.** `McBootstrap` publishes an empty
+  `LoadingModList` by reflection so `FeatureFlags` can initialise. It is one method and it fails
+  loudly with a pointed message, but a NeoForge update can break it.
 
 ---
 
 ## Done
 
+- **`hidden` on an interaction** — keep it out of JEI/EMI without disabling it. *(1.21.1-2.2.0)*
+- **A unit test suite** — 241 tests, booting the game's registries in process. Listed under *Dropped*
+  for a while; the reasoning there was half right and half wrong, see that entry. *(1.21.1-2.2.0)*
+- **Payload protocol discipline** — `PROTOCOL_VERSION` is now bumped with the payload shape, and the
+  channel is `optional()` so a client without PTA can still join. *(1.21.1-2.2.0)*
 - **`left_click` + `target: air`** — impossible on both loaders until 2.1.0 (the event is
   client-only); now reported to the server by a payload. *(1.21.1-2.1.0)*
 - **Native EMI plugin**, alongside JEI 19. *(1.21.1-2.1.0)*
@@ -109,9 +143,13 @@ for verified behaviour.
 
 ## Dropped
 
-- **JUnit / GameTest suite.** Considered during the port and dropped: heavy scaffolding for the
-  return, given how much of the risk sits in in-world behaviour that unit tests would not reach
-  anyway. Revisit if the logic layer grows or a regression escapes twice.
+- ~~**JUnit / GameTest suite.**~~ **Reversed in 2.2.0.** The original reasoning — that the risk sits
+  in in-world behaviour a unit test cannot reach — held for GameTest, and still does. It did not hold
+  for the logic layer: the audit that preceded 2.2.0 found four real bugs (the `min: 0` drop, the
+  `ClassCastException` in the NBT matcher, the inverted cost range, the non-deterministic match
+  order) that a unit test would have caught the day it was written. The scaffolding turned out to be
+  one class, `McBootstrap`. In-world behaviour is still uncovered and still listed under *Known
+  untested*.
 - **REI plugin.** EMI and JEI cover the field; REI pulls in Architectury for a NeoForge-only mod.
 - **NEI.** Dead since 1.12 — listed only so nobody re-proposes it.
 - **"Source hint" in the viewers** (show whether an interaction came from the config folder or a

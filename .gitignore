@@ -20,6 +20,8 @@ build
 # other
 eclipse
 run
+# The unit suite boots Minecraft, whose log4j config writes here.
+logs
 
 # Files from Forge MDK
 forge*changelog.txt

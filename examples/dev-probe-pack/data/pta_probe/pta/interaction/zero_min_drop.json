@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:bowl" },
+  "target": { "kind": "block", "match": "minecraft:gravel" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:wheat_seeds", "weight": 1, "count": { "min": 0, "max": 3 } }
+    ]
+  }
+}

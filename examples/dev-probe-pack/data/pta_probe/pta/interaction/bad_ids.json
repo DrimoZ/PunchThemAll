@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "type": "left_click",
+  "target": { "kind": "block", "match": "minecraft:sand" },
+  "sound": "NOT AN ID",
+  "particles": "Bad Id!",
+  "effects": [{ "id": "UPPER CASE" }],
+  "conditions": { "biomes": { "whitelist": ["#NOT A TAG", "minecraft:overworld"] } },
+  "rewards": { "guaranteed": [{ "match": "minecraft:flint" }] }
+}
