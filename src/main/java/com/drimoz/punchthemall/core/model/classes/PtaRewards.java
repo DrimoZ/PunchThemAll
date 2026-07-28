@@ -98,7 +98,12 @@ public class PtaRewards {
         for (int i = 0; i < rolls && totalWeight > 0; i++) {
             ItemStack stack = pool.getItemStackForChance(random.nextInt(totalWeight));
             if (!stack.isEmpty()) {
-                if (bonus > 0) stack.grow(bonus);
+                // Fortune must not push the stack past what the item can hold: an over-sized stack
+                // survives in an ItemEntity but is clamped the moment it enters an inventory, so the
+                // surplus would vanish silently.
+                if (bonus > 0) {
+                    stack.setCount(Math.min(stack.getMaxStackSize(), stack.getCount() + bonus));
+                }
                 results.add(stack);
             }
         }

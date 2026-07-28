@@ -20,6 +20,34 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
   Back-ported from the NeoForge 1.21.1 line so a pack can move between them without editing files.
   The legacy (schema 1) loader ignores it, as it already ignores `enabled`.
 
+### Fixed
+
+Also back-ported from the 1.21.1 audit. All six affect both schema versions.
+
+- **`count: { "min": 0, "max": 3 }` on a drop now means "nothing to three".** It silently meant
+  "never anything": the entry produced no items, vanished from JEI, and still consumed its weight in
+  the pool — while the docs advertised it as valid.
+- **A shape mismatch in `nbt.whitelist` / `nbt.blacklist` no longer crashes mid-click.** Requiring a
+  list where the item or block entity holds something else threw a `ClassCastException` from inside
+  the interaction filter.
+- **`RangeTag` in a whitelist now compares numerically.** It matched on the exact tag type, so a
+  range written as `[1,5]` (ints) against an enchantment level (a short) threw a
+  `ClassCastException`, and valid files silently failed to match. A malformed `RangeTag` is now
+  rejected rather than running off the end of the list — the old size check was an `assert`, which
+  is disabled at runtime. The blacklist path already did this; the two now agree, and both accept any
+  numeric width.
+- **Which interaction wins is now deterministic.** Matches were collected into a hash set, so with
+  `max_matches_per_click`, or with several interactions competing to transform one block, the winner
+  varied between runs and between machines. Candidates are ordered by id.
+- **Fortune can no longer produce an over-sized stack.** The bonus is clamped to the item's maximum
+  stack size; the surplus used to disappear the moment the drop entered an inventory.
+- **A cost's maximum is clamped against its floored minimum**, so `amount: 0` no longer produces an
+  inverted range. Slot counting also matches what JEI lays out, so a drop grid can no longer overflow
+  the category background.
+
+> These were found by an audit on the 1.21.1 branch, which has a unit suite covering this logic. This
+> branch has none, so the fixes here are verified by review and a build only — see `docs/backlog.md`.
+
 ---
 
 ## [1.20.1-2.0.0]

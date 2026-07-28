@@ -19,7 +19,9 @@ public record PtaInteractionRecord (double chance, int min, int max) {
     public PtaInteractionRecord(double chance, int min, int max) {
         this.chance = chance < 0 ? 0 : chance > 1 ? 1 : chance;
         this.min = Math.max(min, 1);
-        this.max = Math.max(min, max);
+        // Clamp against the floored minimum, not the raw parameter, or a max below the floor survives
+        // and getValue() silently ignores the authored range.
+        this.max = Math.max(this.min, max);
     }
 
     // Interface

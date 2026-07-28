@@ -43,8 +43,8 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -117,7 +117,7 @@ public class PlayerInteractionHandler {
             }
         }
 
-        Set<PtaInteraction> interactions;
+        List<PtaInteraction> interactions;
 
         if (fluidInteraction) {
             interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, hitResult.getBlockPos(), level);

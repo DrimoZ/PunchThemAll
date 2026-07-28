@@ -84,8 +84,15 @@ public class InteractionRegistry {
         return interactions.get(id);
     }
 
-    public Set<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level) {
-        Set<PtaInteraction> filteredInteractions = new HashSet<>();
+    /**
+     * The interactions a click should run, in a stable order.
+     *
+     * <p>Ordered rather than a set because the caller stops at {@code max_matches_per_click} and
+     * applies at most one transformation: with a hash set, which of several competing interactions
+     * won varied between runs, and between machines.</p>
+     */
+    public List<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level) {
+        List<PtaInteraction> filteredInteractions = new ArrayList<>();
 
         PtaTypeEnum eventType = PtaTypeEnum.getTypeFromEvent(interactionType, player.isShiftKeyDown());
 
@@ -134,7 +141,14 @@ public class InteractionRegistry {
         fluidIndex.clear();
         airIndex.clear();
 
-        for (PtaInteraction interaction : interactions.values()) {
+        // Sorted by id so the candidate lists — and therefore which interactions survive
+        // max_matches_per_click and which one transforms the block — are the same on every run.
+        // `interactions` is a HashMap keyed by ResourceLocation, so its own iteration order is not.
+        List<PtaInteraction> ordered = interactions.values().stream()
+                .sorted(Comparator.comparing(interaction -> interaction.getId().toString()))
+                .toList();
+
+        for (PtaInteraction interaction : ordered) {
             PtaTypeEnum type = interaction.getType();
             PtaBlock ptaBlock = interaction.getBlock();
 

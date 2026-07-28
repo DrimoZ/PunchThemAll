@@ -1,10 +1,8 @@
 package com.drimoz.punchthemall.core.util;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.ShortTag;
 
 import java.util.Set;
 
@@ -19,28 +17,26 @@ public class TagHelper {
         if (compareTag instanceof CompoundTag) {
             Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
 
-            // Si on a un format spécifique, on a un comportement spécifique
+            // Si on a un format spécifique, on a un comportement spécifique.
+            // On compare numériquement plutôt que par type de tag : le SNBT écrit librement `[0,500]`
+            // (int) ou `[2s,7s]` (short), et la valeur lue sur l'item n'a aucune raison d'utiliser la
+            // même largeur. Comparer les types exacts faisait silencieusement échouer des fichiers
+            // valides — et lançait une ClassCastException quand les deux largeurs différaient.
+            // Le chemin blacklist ci-dessous fait déjà cela ; les deux sont maintenant alignés.
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
-                // si on a un 'RangeTag' dans le compare, on veut un nombre (entier?)
-                if (itemTag instanceof IntTag) {
-                    // On vérifie que la valeur liée à RangeTag soit une list
-                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return false;
+                if (!(itemTag instanceof NumericTag itemNumeric)) return false;
 
-                    assert listRangeTag.size() == 2 : "RangeTag too short";
-                    return ((IntTag)listRangeTag.get(0)).getAsInt() <= ((IntTag) itemTag).getAsInt() && ((IntTag) itemTag).getAsInt() <= ((IntTag)listRangeTag.get(1)).getAsInt();
-                }
-                if (itemTag instanceof ShortTag) {
-                    // On vérifie que la valeur liée à RangeTag soit une list
-                    if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)) return false;
-
-                    assert listRangeTag.size() == 2 : "RangeTag too short";
-                    return ((ShortTag)listRangeTag.get(0)).getAsInt() <= ((ShortTag) itemTag).getAsInt() && ((ShortTag) itemTag).getAsInt() <= ((ShortTag)listRangeTag.get(1)).getAsInt();
-                }
-                else {
+                // `assert` ne sert à rien ici : les assertions sont désactivées par défaut en jeu,
+                // donc un RangeTag mal formé partait en IndexOutOfBounds au lieu d'être rejeté.
+                if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)
+                        || listRangeTag.size() != 2
+                        || !(listRangeTag.get(0) instanceof NumericTag minTag)
+                        || !(listRangeTag.get(1) instanceof NumericTag maxTag)) {
                     return false;
                 }
 
-
+                long value = itemNumeric.getAsLong();
+                return minTag.getAsLong() <= value && value <= maxTag.getAsLong();
             }
             // Sinon pour chaque field de l'objet, on vérifie récursivement que l'item a le meme
             else {
@@ -60,10 +56,15 @@ public class TagHelper {
             }
         }
         else if (compareTag instanceof ListTag) {
+            // A list is required, so anything that is not a list cannot satisfy it. The authored NBT
+            // and the value read from the world are independent, so a shape mismatch here is normal
+            // input (another mod's item NBT, a block entity that changed layout) — never a cast.
+            if (!(itemTag instanceof ListTag itemList)) return false;
+
             // Pour chaque element de la liste, on vérifie récursivement qu'il est dans les tags de l'item
             for (var compareVal : ((ListTag)compareTag).stream().toList()) {
                 boolean test = false;
-                for (var itemVal : ((ListTag)itemTag).stream().toList()) {
+                for (var itemVal : itemList.stream().toList()) {
                     if (containsRequiredTagsWithRange(itemVal, compareVal)) {
                         test = true;
                         break;
@@ -76,7 +77,7 @@ public class TagHelper {
         }
         else {
             // Si on a atteint un primitif, on se contente de vérifier l'équivalence
-            return compareTag.getClass().equals(itemTag.getClass()) && compareTag.equals(itemTag);
+            return itemTag != null && compareTag.getClass().equals(itemTag.getClass()) && compareTag.equals(itemTag);
         }
     }
 
@@ -91,11 +92,10 @@ public class TagHelper {
             // Si on a un format spécifique, on a un comportement spécifique
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
                 // Un RangeTag en blacklist interdit les valeurs DANS [min, max] ; tout le reste passe.
-                // On accepte les entiers et les shorts (ex. niveaux d'enchantement).
-                int value;
-                if (itemTag instanceof IntTag intTag) value = intTag.getAsInt();
-                else if (itemTag instanceof ShortTag shortTag) value = shortTag.getAsInt();
-                else return true;
+                // Toute valeur numérique est acceptée, quelle que soit sa largeur — même règle que
+                // la whitelist ci-dessus.
+                if (!(itemTag instanceof NumericTag itemNumeric)) return true;
+                long value = itemNumeric.getAsLong();
 
                 // On vérifie que la valeur liée à RangeTag soit une list de deux bornes
                 if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag)
@@ -105,7 +105,7 @@ public class TagHelper {
                     return true;
                 }
 
-                return value < minTag.getAsInt() || value > maxTag.getAsInt();
+                return value < minTag.getAsLong() || value > maxTag.getAsLong();
             }
             // Sinon pour chaque field de l'objet, on vérifie récursivement que l'item n'ai pas les memes
             else {
@@ -126,10 +126,14 @@ public class TagHelper {
                 return true;
             }
         } else if (compareTag instanceof ListTag) {
+            // Nothing that is not a list can hold a forbidden element, so it passes. Mirrors the
+            // whitelist guard above: a shape mismatch is input, not a cast failure.
+            if (!(itemTag instanceof ListTag itemList)) return true;
+
             // Pour chaque element de la liste, on vérifie récursivement qu'il est dans les tags de l'item
             for (var compareVal : ((ListTag) compareTag).stream().toList()) {
                 boolean test = true;
-                for (var itemVal : ((ListTag) itemTag).stream().toList()) {
+                for (var itemVal : itemList.stream().toList()) {
                     if (!containsRequiredTagsWithRangeBlacklist(itemVal, compareVal)) {
                         test = false;
                         break;
@@ -142,7 +146,7 @@ public class TagHelper {
             return true;
         } else {
             // Si on a atteint un primitif, on se contente de vérifier l'équivalence
-            return !compareTag.getClass().equals(itemTag.getClass()) || !compareTag.equals(itemTag);
+            return itemTag == null || !compareTag.getClass().equals(itemTag.getClass()) || !compareTag.equals(itemTag);
         }
     }
 

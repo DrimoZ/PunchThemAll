@@ -12,8 +12,14 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
 
     // Calculated Properties
 
+    /**
+     * Whether this entry can never yield anything. That is decided by {@code max}, not {@code min}:
+     * {@code {"min": 0, "max": 3}} is a legitimate "nothing to three" roll, and treating it as empty
+     * silently deleted the entry from both the drop roll and the JEI display, while it still took up
+     * its weight in the pool.
+     */
     public boolean isEmpty() {
-        return items.isEmpty() || min == 0 || items.stream().allMatch(item -> item.equals(Items.AIR));
+        return items.isEmpty() || max == 0 || items.stream().allMatch(item -> item.equals(Items.AIR));
     }
 
     // Life cycle
@@ -22,14 +28,21 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
         this.items = items == null ? new HashSet<>() : items;
 
         this.min = Math.max(0, min);
-        this.max = this.min == 0 ? 0 : Math.max(this.min, max);
-        this.nbt = this.min == 0 || nbt == null ? new CompoundTag() : nbt;
+        this.max = Math.max(this.min, max);
+        this.nbt = nbt == null ? new CompoundTag() : nbt;
     }
 
     // Interface
 
     public ItemStack getItemStack() {
-        return isEmpty() ? ItemStack.EMPTY : new ItemStack(pickRandomItem(), calculateCount(), nbt);
+        if (isEmpty()) return ItemStack.EMPTY;
+
+        // A [0, n] range legitimately rolls a zero; ItemStack would otherwise be constructed with a
+        // count of 0, which is empty-but-not-EMPTY and not what callers expect.
+        int count = calculateCount();
+        if (count <= 0) return ItemStack.EMPTY;
+
+        return new ItemStack(pickRandomItem(), count, nbt);
     }
 
     public int calculateCount() {
