@@ -23,3 +23,6 @@ run
 
 # Files from Forge MDK
 forge*changelog.txt
+
+# Minecraft writes here when the game is launched from the project root.
+logs

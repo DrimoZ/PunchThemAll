@@ -80,7 +80,8 @@ public final class InteractionSpecResolver {
 
         PtaExtras extras = resolveExtras(id, spec);
 
-        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, rewards, biomeWhitelist, biomeBlacklist, extras);
+        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, rewards,
+                biomeWhitelist, biomeBlacklist, extras, spec.hidden());
     }
 
     // Hand

@@ -28,6 +28,9 @@ public class PtaInteraction {
 
     private final PtaExtras extras;
 
+    /** Gameplay is unaffected; only JEI skips this interaction. See {@link #isHidden()}. */
+    private final boolean hidden;
+
     // Calculated Properties
 
     public boolean hasBiomeWhiteList() {
@@ -100,8 +103,21 @@ public class PtaInteraction {
         return extras.conditions();
     }
 
+    /**
+     * Whether JEI should leave this interaction out. It still loads and still fires: this is for
+     * interactions a pack does not want to advertise (a secret, or an implementation detail of a
+     * multi-step recipe), not a way to disable one — use {@code enabled} for that.
+     *
+     * <p>Only reachable from {@code schema_version: 2}; the legacy loader always produces visible
+     * interactions.</p>
+     */
+    public boolean isHidden() {
+        return hidden;
+    }
+
     // Life Cycle
 
+    /** Visible interaction. Used by the legacy (schema 1) loader, which has no {@code hidden}. */
     public PtaInteraction(
             ResourceLocation id, PtaTypeEnum type,
             PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
@@ -109,6 +125,18 @@ public class PtaInteraction {
             Set<String> biomeWhitelist, Set<String> biomeBlackList,
             PtaExtras extras
     ) {
+        this(id, type, hurtPlayer, consumeFood, hand, block, transformation, rewards,
+                biomeWhitelist, biomeBlackList, extras, false);
+    }
+
+    public PtaInteraction(
+            ResourceLocation id, PtaTypeEnum type,
+            PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
+            PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaRewards rewards,
+            Set<String> biomeWhitelist, Set<String> biomeBlackList,
+            PtaExtras extras, boolean hidden
+    ) {
+        this.hidden = hidden;
         if (id == null) throw new IllegalArgumentException("Missing id for Interaction");
         if (type == null) throw new IllegalArgumentException("Missing type for Interaction");
         if (rewards == null) throw new IllegalArgumentException("Missing rewards for Interaction");

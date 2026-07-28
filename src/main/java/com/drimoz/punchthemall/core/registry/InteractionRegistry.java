@@ -349,13 +349,22 @@ public class InteractionRegistry {
         return true;
     }
 
+    /** Tallest drop grid across the interactions JEI actually shows (hidden ones are skipped). */
     public int getJEIRowCount() {
         int maxRows = 0;
 
         for (PtaInteraction interaction : interactions.values()) {
+            if (interaction.isHidden()) continue;
             maxRows = Math.max(maxRows, interaction.getRewards().getJeiRowCount());
         }
 
         return maxRows;
+    }
+
+    /** The interactions JEI should display. Hidden ones still load and still fire. */
+    public List<PtaInteraction> getVisibleInteractions() {
+        return interactions.values().stream()
+                .filter(interaction -> !interaction.isHidden())
+                .toList();
     }
 }

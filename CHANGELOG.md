@@ -8,6 +8,20 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [1.20.1-2.1.0]
+
+### Added
+- **`hidden`** on an interaction (`schema_version: 2`). `"hidden": true` keeps it out of JEI while it
+  loads, syncs and fires exactly as before — for secrets, and for the intermediate steps of a
+  multi-stage recipe. Distinct from `enabled: false`, which is the one that turns an interaction
+  *off*. Hidden interactions also stop stretching the category to fit their drop rows. Example:
+  `configExamples/interactions/v2/18_hidden_from_jei.json`.
+
+  Back-ported from the NeoForge 1.21.1 line so a pack can move between them without editing files.
+  The legacy (schema 1) loader ignores it, as it already ignores `enabled`.
+
+---
+
 ## [1.20.1-2.0.0]
 
 A large, **fully backward-compatible** update. Every existing interaction file keeps working; the

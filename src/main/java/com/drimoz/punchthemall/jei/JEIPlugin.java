@@ -40,7 +40,8 @@ public class JEIPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        registration.addRecipes(INTERACTION_RECIPE_TYPE, InteractionRegistry.getInstance().getInteractions().values().stream().toList());
+        // Interactions marked `hidden` still load and still fire; they are simply not advertised.
+        registration.addRecipes(INTERACTION_RECIPE_TYPE, InteractionRegistry.getInstance().getVisibleInteractions());
     }
 
     @Override
@@ -71,7 +72,7 @@ public class JEIPlugin implements IModPlugin {
             DYNAMIC_RECIPES.clear();
         }
 
-        List<PtaInteraction> current = new ArrayList<>(InteractionRegistry.getInstance().getInteractions().values());
+        List<PtaInteraction> current = new ArrayList<>(InteractionRegistry.getInstance().getVisibleInteractions());
         if (!current.isEmpty()) {
             runtime.getRecipeManager().addRecipes(INTERACTION_RECIPE_TYPE, current);
             DYNAMIC_RECIPES.addAll(current);

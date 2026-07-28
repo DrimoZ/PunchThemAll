@@ -336,6 +336,10 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
   Keep filenames lowercase with underscores.
 - **One interaction per file.** It keeps ids meaningful and JEI readable.
 - **Toggle without deleting.** Add `"enabled": false` to a file to skip it.
+- **Hide without disabling.** Add `"hidden": true` and the interaction still loads and still fires —
+  it just never appears in JEI. That is what you want for a secret, or for the middle steps of a
+  recipe chain where only the ends should be discoverable. Reach for `enabled: false` when you
+  actually want it *off*. Both need `"schema_version": 2`.
 - **Ship in a datapack (optional).** Set `Loader.load_from_datapacks = true` in
   `config/punchthemall/pta-common.toml`, then place files at
   `data/<namespace>/pta/interaction/*.json`. Datapack files override config files with the same id

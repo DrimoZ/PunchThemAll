@@ -38,6 +38,7 @@ means a tag; otherwise it is a registry id.
 {
   "schema_version": 2,
   "enabled": true,                       // default true
+  "hidden": false,                       // default false — hide from JEI without disabling it
   "type": "shift_left_click",            // right_click | shift_right_click | left_click | shift_left_click
 
   "hand": {
@@ -142,6 +143,8 @@ Everything is visible in the **Interaction** category:
 - `nbt_predicates` are listed in the tooltip of the hand / target slot.
 - Hovering the **arrow** shows a summary: `rolls`, Fortune bonus, `effects`, all `conditions`
   (time/weather/Y/light/sneaking/food/XP), and whether the interaction plays a sound / particles.
+- Interactions marked `hidden: true` are left out entirely — of the category, and of the height it
+  reserves for drop rows.
 
 The interaction id is shown in the click-type tooltip, which is handy when reporting an issue.
 
@@ -164,6 +167,10 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 
 - **Only `type` is required.** Every other section is optional; omit what you don't need.
 - **`type` values:** `left_click`, `right_click`, `shift_left_click`, `shift_right_click`.
+- **`hidden` is not `enabled: false`.** A hidden interaction loads, syncs and fires exactly like any
+  other; it is only left out of JEI. Use it for secrets and for the intermediate steps of a
+  multi-stage recipe. `enabled: false` is the one that turns an interaction off. Both are
+  `schema_version: 2` only — the legacy loader ignores them.
 - **Empty hand vs. any item.** Omit `hand`, or use `hand` with no `match`, to require an **empty**
   hand. Add `match` to require specific items/tags.
 - **`consume` only spends the item on success.** `durability` damages a damageable item;

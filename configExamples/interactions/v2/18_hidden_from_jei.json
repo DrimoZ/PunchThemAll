@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "hidden": true,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:bone_meal",
+    "consume": { "mode": "shrink" }
+  },
+  "target": {
+    "kind": "block",
+    "match": "minecraft:mossy_cobblestone"
+  },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:emerald" }
+    ]
+  }
+}
