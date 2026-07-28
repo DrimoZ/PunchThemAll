@@ -11,6 +11,8 @@ import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.List;
+
 /**
  * Server-side loading and syncing of interactions.
  *
@@ -43,7 +45,8 @@ public class PtaServerEvents {
 
     @SubscribeEvent
     public static void onDatapackSync(OnDatapackSyncEvent event) {
-        SyncInteractionsPayload payload = new SyncInteractionsPayload(InteractionReloadListener.getLoaded());
-        event.getRelevantPlayers().forEach(player -> PacketDistributor.sendToPlayer(player, payload));
+        List<SyncInteractionsPayload> payloads = SyncInteractionsPayload.split(InteractionReloadListener.getLoaded());
+        event.getRelevantPlayers().forEach(player ->
+                payloads.forEach(payload -> PacketDistributor.sendToPlayer(player, payload)));
     }
 }

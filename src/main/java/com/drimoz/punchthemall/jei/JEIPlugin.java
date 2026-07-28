@@ -58,12 +58,17 @@ public class JEIPlugin implements IModPlugin {
     private static synchronized void applyRegistryToRuntime() {
         if (runtime == null) return;
 
-        List<PtaInteraction> current = new ArrayList<>(InteractionRegistry.getInstance().getInteractions().values());
+        // Hidden interactions still load and still fire; they are simply not advertised here.
+        List<PtaInteraction> current = new ArrayList<>(InteractionRegistry.getInstance().getVisibleInteractions());
 
         // Diff rather than hide-everything-then-re-add. JEI remembers a hidden recipe permanently and
         // refuses to add it back ("Recipe not added because it is hidden"), so the blunt version wiped
         // the category the moment anything refreshed twice — which it does on every world join, where
         // onRuntimeAvailable and RecipesUpdatedEvent both land.
+        //
+        // The diff is only meaningful because PtaInteraction compares by (id, source JSON): the model
+        // is rebuilt from scratch on every reload, so under identity equality every entry would look
+        // new and the whole category would churn each time.
         List<PtaInteraction> stale = SHOWN.stream().filter(shown -> !current.contains(shown)).toList();
         List<PtaInteraction> added = current.stream().filter(recipe -> !SHOWN.contains(recipe)).toList();
         if (stale.isEmpty() && added.isEmpty()) return;

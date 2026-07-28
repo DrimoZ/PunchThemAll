@@ -46,7 +46,6 @@ import static com.drimoz.punchthemall.jei.JeiConstants.*;
 public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     private final IDrawable ICON;
-    private final IDrawable BACKGROUND;
 
     private final IDrawable SLOT;
     private final IDrawable SLOT_ROW;
@@ -73,7 +72,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     public JeiCategory(IGuiHelper guiHelper) {
         this.ICON = guiHelper.drawableBuilder(JEI_ICON_TEXTURE, 0, 0, 17, 17).setTextureSize(17, 17).build();
-        this.BACKGROUND = guiHelper.createBlankDrawable(WIDTH, categoryHeight());
 
         this.SLOT = guiHelper.getSlotDrawable();
         this.SLOT_ROW = guiHelper.createDrawable(JEI_TEXTURE, 0, 0, 162, 18);
@@ -111,11 +109,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     @Override
     public Component getTitle() {
         return Component.translatable(TranslationKeys.CATEGORY_TITLE);
-    }
-
-    @Override
-    public IDrawable getBackground() {
-        return BACKGROUND;
     }
 
     @Override

@@ -11,14 +11,21 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/** Registry lookups for blocks. A malformed id reports "does not exist"; see {@link ItemChecker}. */
 public class BlockChecker {
 
     public static boolean doesBlockExist(String blockName) {
-        return BuiltInRegistries.BLOCK.containsKey(ResourceLocation.parse(blockName));
+        ResourceLocation id = ItemChecker.tryParse(blockName);
+        return id != null && BuiltInRegistries.BLOCK.containsKey(id);
     }
 
+    /**
+     * @return the block, or {@code null} when the id is malformed or unregistered. Deliberately not
+     *         the registry default, which would answer an unknown id with {@code AIR}.
+     */
     public static Block getExistingBlock(String blockName) {
-        return BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockName));
+        ResourceLocation id = ItemChecker.tryParse(blockName);
+        return id == null || !BuiltInRegistries.BLOCK.containsKey(id) ? null : BuiltInRegistries.BLOCK.get(id);
     }
 
     public static Block getFirstBlockForTag(String blockTag) {
@@ -26,14 +33,20 @@ public class BlockChecker {
     }
 
     public static Set<Block> getBlocksForTag(String blockTag) {
-        TagKey<Block> tagKey = TagKey.create(Registries.BLOCK, ResourceLocation.parse(blockTag));
+        TagKey<Block> tagKey = blockTagKey(blockTag);
+        if (tagKey == null) return new HashSet<>();
         return BuiltInRegistries.BLOCK.getTag(tagKey)
                 .map(named -> named.stream().map(Holder::value).collect(Collectors.toCollection(HashSet::new)))
                 .orElseGet(HashSet::new);
     }
 
     public static boolean isBlockTagExisting(String blockTag) {
-        TagKey<Block> tagKey = TagKey.create(Registries.BLOCK, ResourceLocation.parse(blockTag));
-        return BuiltInRegistries.BLOCK.getTag(tagKey).isPresent();
+        TagKey<Block> tagKey = blockTagKey(blockTag);
+        return tagKey != null && BuiltInRegistries.BLOCK.getTag(tagKey).isPresent();
+    }
+
+    private static TagKey<Block> blockTagKey(String blockTag) {
+        ResourceLocation id = ItemChecker.tryParse(blockTag);
+        return id == null ? null : TagKey.create(Registries.BLOCK, id);
     }
 }

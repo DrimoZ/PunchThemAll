@@ -14,8 +14,13 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
 
     // Calculated Properties
 
+    /**
+     * Whether this entry can never yield anything. That is decided by {@code max}, not {@code min}:
+     * {@code {"min": 0, "max": 3}} is a legitimate "nothing to three" roll, and treating it as empty
+     * silently deleted the entry from both the drop roll and the viewers.
+     */
     public boolean isEmpty() {
-        return items.isEmpty() || min == 0 || items.stream().allMatch(item -> item.equals(Items.AIR));
+        return items.isEmpty() || max == 0 || items.stream().allMatch(item -> item.equals(Items.AIR));
     }
 
     // Life cycle
@@ -24,15 +29,20 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
         this.items = items == null ? new HashSet<>() : items;
 
         this.min = Math.max(0, min);
-        this.max = this.min == 0 ? 0 : Math.max(this.min, max);
-        this.nbt = this.min == 0 || nbt == null ? new CompoundTag() : nbt;
+        this.max = Math.max(this.min, max);
+        this.nbt = nbt == null ? new CompoundTag() : nbt;
     }
 
     // Interface
 
     public ItemStack getItemStack(RandomSource random) {
         if (isEmpty()) return ItemStack.EMPTY;
-        ItemStack stack = new ItemStack(pickRandomItem(random), calculateCount(random));
+        int count = calculateCount(random);
+        // A [0, n] range legitimately rolls a zero; ItemStack would otherwise be constructed empty
+        // but non-EMPTY, which callers do not expect.
+        if (count <= 0) return ItemStack.EMPTY;
+
+        ItemStack stack = new ItemStack(pickRandomItem(random), count);
         // Apply the authored (stable-view) NBT as 1.21 data components.
         ItemView.applyTo(stack, nbt);
         return stack;

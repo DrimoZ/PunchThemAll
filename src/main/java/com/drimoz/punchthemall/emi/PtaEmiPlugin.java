@@ -27,7 +27,8 @@ public class PtaEmiPlugin implements EmiPlugin {
     @Override
     public void register(EmiRegistry registry) {
         registry.addCategory(CATEGORY);
-        for (PtaInteraction interaction : InteractionRegistry.getInstance().getInteractions().values()) {
+        // Hidden interactions still load and still fire; they are simply not advertised here.
+        for (PtaInteraction interaction : InteractionRegistry.getInstance().getVisibleInteractions()) {
             registry.addRecipe(new PtaEmiRecipe(interaction));
         }
     }

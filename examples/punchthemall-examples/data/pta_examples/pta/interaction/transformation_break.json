@@ -6,7 +6,7 @@
   "transformation": {
     "chance": 1.0,
     "sound": "minecraft:block.wool.break",
-    "particles": "minecraft:cloud"
+    "particles": "minecraft:cobweb"
   },
   "rewards": {
     "guaranteed": [

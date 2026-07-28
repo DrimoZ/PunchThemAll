@@ -32,6 +32,7 @@ it in game.
 | --- | --- | --- |
 | `type` *(required)* | `left_click`, `right_click`, `shift_left_click`, `shift_right_click` | `minimal` |
 | `enabled` | `true` (default) / `false` | `enabled_false` |
+| `hidden` | `false` (default) / `true` — loads and fires, but JEI/EMI don't list it | `hidden_from_viewers` |
 | `hand.hand` | `any` (default), `main`, `off` | `hand_off_hand` |
 | `hand.match` | id, `#tag`, list, or `[]` for an empty hand | `hand_empty` |
 | `hand.consume.mode` | `none` (default), `shrink`, `durability` | `hand_item_and_consume` |
@@ -57,7 +58,7 @@ it in game.
 | `conditions.weather` | list of `clear`, `rain`, `thunder` | `conditions_time_weather` |
 | `conditions.y_range` | `[min, max]` | `conditions_y_light_player` |
 | `conditions.light` | `min` / `max` | `conditions_y_light_player` |
-| `conditions.requires_sneaking` | `true` / `false` | `conditions_sneaking` |
+| `conditions.requires_sneaking` | `true` / `false` — **redundant with `type`**, see below | `conditions_sneaking` |
 | `conditions.player_state` | `min_food`, `min_xp_levels` | `conditions_y_light_player` |
 | `effects` | `id` + `duration` + `amplifier` + `chance` | `effects_multiple` |
 | `sound` / `particles` | registry ids | `effects_and_feedback` |
@@ -79,6 +80,7 @@ means a tag; otherwise it is a registry id.
 {
   "schema_version": 2,
   "enabled": true,                       // default true
+  "hidden": false,                       // default false — hide from JEI/EMI without disabling it
   "type": "shift_left_click",            // right_click | shift_right_click | left_click | shift_left_click
 
   "hand": {
@@ -218,6 +220,8 @@ Everything is visible in the **Interaction** category:
   Enchantments are named and levelled (*Efficiency I - V*), not printed as raw tags.
 - Hovering the **arrow** shows a summary: `rolls`, Fortune bonus, `effects`, all `conditions`
   (time/weather/Y/light/sneaking/food/XP), and whether the interaction plays a sound / particles.
+- Interactions marked `hidden: true` are left out entirely — of the category, and of the height it
+  reserves for drop rows.
 
 The interaction id is shown in the click-type tooltip, which is handy when reporting an issue.
 
@@ -229,7 +233,13 @@ The interaction id is shown in the click-type tooltip, which is handy when repor
 - `{ "count": 3 }`
 - `{ "min": 1, "max": 3 }` (`max` defaults to `min`)
 
-Effective floor is `0` for reward pools and `1` for player costs.
+Effective floor is `0` for reward pools and `1` for player costs. So `{ "min": 0, "max": 3 }` on a
+drop is a genuine "nothing to three" roll — the entry keeps its slot in the viewers and its weight in
+the pool, and simply yields nothing on a zero. A cost written the same way is raised to `1`, since a
+cost of zero would read as configured while doing nothing.
+
+To make an entry that never drops, give it `minecraft:air` (the idiomatic "nothing" filler) rather
+than a zero count.
 
 ### NBT
 
@@ -240,6 +250,20 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 
 - **Only `type` is required.** Every other section is optional; omit what you don't need.
 - **`type` values:** `left_click`, `right_click`, `shift_left_click`, `shift_right_click`.
+- **`hidden` is not `enabled: false`.** A hidden interaction loads, syncs and fires exactly like any
+  other; it is only left out of JEI and EMI. Use it for secrets and for the intermediate steps of a
+  multi-stage recipe. `enabled: false` is the one that turns an interaction off.
+- **`type` already covers sneaking — `requires_sneaking` cannot add anything.** A sneaking player's
+  click always resolves to the `shift_` variant, so a `left_click` interaction never sees one and a
+  `shift_left_click` interaction never sees anything else. That leaves `requires_sneaking` either
+  redundant (it agrees with the type) or fatal (it disagrees, and the interaction can never match).
+  PTA logs a warning naming the file in the second case. **Choose the `type` and leave
+  `requires_sneaking` out.** It is kept only so existing files keep loading.
+  *(The shipped `conditions_sneaking` example got this wrong until 2.2.0 and could never fire.)*
+- **`kind: "any"` prefers blocks for `minecraft:water` and `minecraft:lava`,** because those ids exist
+  in both the block and the fluid registry, and a target cannot mix the two. That is harmless — a
+  water source really is `minecraft:water` as a block at that position — but if you specifically want
+  a fluid target, say `kind: "fluid"`.
 - **Empty hand vs. any item.** Omit `hand`, or use `hand` with no `match`, to require an **empty**
   hand. Add `match` to require specific items/tags.
 - **`consume` only spends the item on success.** `durability` damages a damageable item;

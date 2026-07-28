@@ -18,6 +18,7 @@ import java.util.Optional;
 public record InteractionSpec(
         int schemaVersion,
         boolean enabled,
+        boolean hidden,
         String type,
         Optional<HandSpec> hand,
         Optional<TargetSpec> target,
@@ -33,6 +34,9 @@ public record InteractionSpec(
     public static final Codec<InteractionSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.optionalFieldOf("schema_version", 2).forGetter(InteractionSpec::schemaVersion),
             Codec.BOOL.optionalFieldOf("enabled", true).forGetter(InteractionSpec::enabled),
+            // Loads and fires as usual, but JEI/EMI leave it out. Distinct from `enabled: false`,
+            // which does not load at all.
+            Codec.BOOL.optionalFieldOf("hidden", false).forGetter(InteractionSpec::hidden),
             Codec.STRING.fieldOf("type").forGetter(InteractionSpec::type),
             HandSpec.CODEC.optionalFieldOf("hand").forGetter(InteractionSpec::hand),
             TargetSpec.CODEC.optionalFieldOf("target").forGetter(InteractionSpec::target),

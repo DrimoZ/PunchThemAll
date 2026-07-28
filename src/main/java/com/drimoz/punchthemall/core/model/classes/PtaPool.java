@@ -3,7 +3,6 @@ package com.drimoz.punchthemall.core.model.classes;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import java.util.*;
 
@@ -15,8 +14,13 @@ public class PtaPool {
         return this.dropPool.values().stream().mapToInt(Integer::intValue).sum();
     }
 
+    /**
+     * How many entries the viewers draw a slot for. Must stay in step with the filter the JEI/EMI
+     * layouts apply ({@code !record.isEmpty()}): counting fewer entries than are laid out sized the
+     * background too small and pushed the last slots outside it.
+     */
     public int getTotalPoolSize() {
-        return (int) this.dropPool.keySet().stream().filter(a -> !a.isEmpty() && a.items().stream().noneMatch(item -> item.equals(Items.AIR))).count();
+        return (int) this.dropPool.keySet().stream().filter(record -> !record.isEmpty()).count();
     }
 
     public boolean isEmpty() {

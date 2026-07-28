@@ -1,60 +1,45 @@
 PunchThemAll changelog
 ======================
 
-Unreleased
-----------
+The full, maintained changelog is CHANGELOG.md in the repository. This file is the short version
+pasted onto the CurseForge/Modrinth release page.
 
-### Configuration
 
-* Replaced the original flat common config with modular sections:
-  `Interactions`, `Players`, `Drops`, `Loader`, and `Debug`.
-* Added global runtime gates for enabling/disabling all interactions, left-click
-  interactions, right-click interactions, block targets, air targets, fluid
-  targets, and transformations.
-* Replaced the cooldown key with `cooldown_ticks` and added support for `0` to
-  disable cooldowns.
-* Added `max_matches_per_click` to cap the number of interactions processed from
-  one click.
-* Added fake-player controls for enabling automation, applying cooldowns to fake
-  players, and applying player-only side effects to fake players.
-* Added controls for player damage and food consumption effects.
-* Added separate real-player and fake-player inventory insertion controls.
-* Added configurable world-drop offset and velocity.
-* Added loader controls for recursive discovery, fail-fast mode, and generated
-  ID lowercasing.
-* Added debug logging controls for loaded interactions and skipped runtime
-  interactions.
+1.21.1-2.2.0
+------------
 
-### Interaction loading
+New
 
-* Interaction JSON files are loaded deterministically by relative path.
-* Interaction JSON files can be organized recursively below
-  `config/punchthemall/interactions`.
-* Interaction IDs are generated from relative paths, for example
-  `interactions/early_game/flint.json` becomes `pta:early_game/flint`.
-* Invalid interaction files now log the source path and can optionally stop the
-  loader when `fail_fast` is enabled.
+* "hidden": true on an interaction keeps it out of JEI and EMI while it still loads and still fires.
+  For secrets, and for the middle steps of a multi-stage recipe. Not the same as "enabled": false,
+  which turns an interaction off.
+* 241 automated tests over the matching, drop and loading logic.
 
-### Gameplay behavior
+Fixed
 
-* Runtime interaction processing now honors the new config gates.
-* Fake-player behavior is more configurable for automation-heavy packs.
-* Transformations can be disabled globally without disabling drops.
-* Drops use configurable insertion and world-spawn behavior.
-* Direction fallback was improved to avoid null direction handling in edge cases.
+* A malformed id in sound, particles, effects or fortune no longer aborts the whole datapack load —
+  one typo used to cost the pack every interaction. Same for a malformed biome #tag, which threw on
+  every click.
+* count: {min: 0, max: 3} on a drop now means "nothing to three". It used to mean "never anything",
+  while still taking up its weight in the pool.
+* An nbt whitelist/blacklist that expects a different shape than the item has no longer crashes
+  mid-click.
+* When several interactions match one click, which ones run is now deterministic instead of varying
+  between runs.
+* Fortune can no longer produce a stack larger than the item allows.
+* JEI no longer churns its whole category on every /reload.
+* Leaving a server clears its interactions, instead of showing them on the main menu and in the next
+  world.
+* Cooldown bookkeeping for fake players no longer grows for the life of the server.
 
-### JEI
+Changed
 
-* JEI click tooltips now show the interaction ID.
-* Block-state blacklist tooltips now display blacklist entries correctly.
-* Unknown enchantment IDs in NBT tooltips no longer crash tooltip generation.
-* Out-of-range enchantment levels fall back to numeric display instead of
-  throwing during Roman numeral formatting.
+* Clients without PunchThemAll can now join a PunchThemAll server (they just see no PTA entries in
+  JEI/EMI). The network protocol version changed: a 2.1.0 client cannot talk to a 2.2.0 server.
+* The interaction sync is sent in batches, so a large pack no longer risks dropping clients at join.
 
-### Documentation
 
-* Replaced the Forge MDK README with a PunchThemAll-focused README.
-* Added `docs/configuration.md` with all config sections, defaults, examples,
-  presets, and migration notes.
-* Added `docs/interactions.md` with loader behavior, reload notes, runtime gates,
-  JEI display details, and pack organization tips.
+Older releases
+--------------
+
+See CHANGELOG.md.

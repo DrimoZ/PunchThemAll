@@ -142,11 +142,6 @@ public class PtaBlock {
         else return blockSet.stream().map(ItemStack::new).toList();
     }
 
-    public List<ItemStack> getFluidStacks() {
-        if (isAir() || isFluid()) return new ArrayList<>();
-        else return fluidSet.stream().map(fluid -> new ItemStack(fluid.getBucket())).toList();
-    }
-
     public Fluid getFluid() {
         return fluidSet.stream().findFirst().orElse(null);
     }

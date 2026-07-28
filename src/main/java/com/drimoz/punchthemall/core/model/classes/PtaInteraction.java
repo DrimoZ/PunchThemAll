@@ -26,6 +26,16 @@ public class PtaInteraction {
 
     private final PtaExtras extras;
 
+    /** Gameplay is unaffected; only JEI/EMI skip this interaction. See {@link #isHidden()}. */
+    private final boolean hidden;
+
+    /**
+     * Identity of the source JSON, carried so two resolutions of an unchanged file compare equal.
+     * The runtime model is rebuilt from scratch on every reload and sync, so without this the
+     * viewers would see an entirely new recipe set each time and churn their hidden-recipe state.
+     */
+    private final int contentHash;
+
     // Calculated Properties
 
     public boolean hasBiomeWhiteList() {
@@ -98,6 +108,15 @@ public class PtaInteraction {
         return extras.conditions();
     }
 
+    /**
+     * Whether the recipe viewers should leave this interaction out. It still loads and still fires:
+     * this is for interactions a pack does not want to advertise (a secret, or an implementation
+     * detail of a multi-step recipe), not a way to disable one — use {@code enabled} for that.
+     */
+    public boolean isHidden() {
+        return hidden;
+    }
+
     // Life Cycle
 
     public PtaInteraction(
@@ -107,10 +126,23 @@ public class PtaInteraction {
             Set<String> biomeWhitelist, Set<String> biomeBlackList,
             PtaExtras extras
     ) {
+        this(id, type, hurtPlayer, consumeFood, hand, block, transformation, rewards,
+                biomeWhitelist, biomeBlackList, extras, false, 0);
+    }
+
+    public PtaInteraction(
+            ResourceLocation id, PtaTypeEnum type,
+            PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
+            PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaRewards rewards,
+            Set<String> biomeWhitelist, Set<String> biomeBlackList,
+            PtaExtras extras, boolean hidden, int contentHash
+    ) {
         if (id == null) throw new IllegalArgumentException("Missing id for Interaction");
         if (type == null) throw new IllegalArgumentException("Missing type for Interaction");
         if (rewards == null) throw new IllegalArgumentException("Missing rewards for Interaction");
 
+        this.hidden = hidden;
+        this.contentHash = contentHash;
         this.id = id;
         this.type = type;
         this.hurtPlayer = hurtPlayer;
@@ -122,6 +154,23 @@ public class PtaInteraction {
         this.biomeWhitelist = biomeWhitelist == null ? new HashSet<>() : biomeWhitelist;
         this.biomeBlackList = biomeBlackList == null ? new HashSet<>() : biomeBlackList;
         this.extras = extras == null ? PtaExtras.EMPTY : extras;
+    }
+
+    /**
+     * Equality is (id, source JSON), not object identity. The recipe viewers diff the interaction set
+     * on every reload and sync; with identity equality every entry looked new, so JEI hid and re-added
+     * the whole category each time and its permanent hidden-recipe set grew without bound.
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof PtaInteraction that)) return false;
+        return contentHash == that.contentHash && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * id.hashCode() + contentHash;
     }
 
     @Override

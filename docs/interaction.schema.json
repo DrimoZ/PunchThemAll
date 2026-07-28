@@ -9,6 +9,7 @@
   "properties": {
     "schema_version": { "type": "integer", "const": 2, "description": "Must be 2." },
     "enabled": { "type": "boolean", "default": true, "description": "Set false to skip this interaction." },
+    "hidden": { "type": "boolean", "default": false, "description": "Set true to keep this interaction out of JEI/EMI. It still loads and still fires — use enabled:false to turn one off." },
     "type": {
       "description": "Which click triggers this interaction.",
       "enum": ["left_click", "right_click", "shift_left_click", "shift_right_click"]
@@ -37,7 +38,8 @@
         { "type": "integer", "minimum": 0 },
         { "type": "object", "additionalProperties": false, "required": ["count"], "properties": { "count": { "type": "integer", "minimum": 0 } } },
         { "type": "object", "additionalProperties": false, "properties": { "min": { "type": "integer", "minimum": 0 }, "max": { "type": "integer", "minimum": 0 } } }
-      ]
+      ],
+      "$comment": "In a reward pool the floor is 0, so {min:0,max:3} is a real 'nothing to three' roll. In a cost the floor is 1."
     },
     "nbtPair": {
       "type": "object",

@@ -30,6 +30,18 @@ public class PTAConfig {
         COMMON_CONFIG = BUILDER.build();
     }
 
+    /**
+     * Read a config value, falling back to its declared default when no config file is attached yet.
+     *
+     * <p>{@code ModConfigSpec.ConfigValue.get()} throws while the spec is unloaded. That is the right
+     * behaviour for gameplay switches — they are only ever read mid-game — but interaction loading
+     * also consults the debug flags, and it must not be possible for a logging toggle to abort a
+     * datapack reload. It is also what makes the config-reading code reachable from unit tests.</p>
+     */
+    public static <T> T valueOrDefault(ModConfigSpec.ConfigValue<T> value) {
+        return COMMON_CONFIG.isLoaded() ? value.get() : value.getDefault();
+    }
+
     public static class InteractionConfig {
         public final ModConfigSpec.BooleanValue enabled;
         public final ModConfigSpec.IntValue cooldownTicks;

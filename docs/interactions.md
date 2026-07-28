@@ -36,7 +36,12 @@ The server pushes its loaded set to clients over a small sync payload, on join a
 - gameplay always uses the **server's** interactions;
 - clients receive the same set on join and after `/reload`, so **JEI and EMI show exactly the
   server's interactions** — nothing to configure per client;
-- in single-player and on a LAN host it's the same shared data.
+- in single-player and on a LAN host it's the same shared data;
+- a client **without** PunchThemAll can still join — the channel is optional, every decision is made
+  server-side, and such a client simply sees no PTA entries in its recipe viewer.
+
+The set is sent in batches, so a pack with hundreds of interactions syncs without hitting the packet
+size limits.
 
 ## Runtime gates
 

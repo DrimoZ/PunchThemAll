@@ -8,5 +8,5 @@
       { "match": "minecraft:brown_mushroom", "count": 1 }
     ]
   },
-  "particles": "minecraft:happy_villager"
+  "particles": "minecraft:podzol"
 }

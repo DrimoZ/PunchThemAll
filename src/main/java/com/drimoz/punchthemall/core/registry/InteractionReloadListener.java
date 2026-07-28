@@ -86,7 +86,7 @@ public class InteractionReloadListener extends SimpleJsonResourceReloadListener 
         // TagsUpdatedEvent instead.
         loaded = Map.copyOf(specs);
 
-        if (PTAConfig.DEBUG.logLoadedInteractions.get()) {
+        if (PTAConfig.valueOrDefault(PTAConfig.DEBUG.logLoadedInteractions)) {
             PTALoggers.info("Read " + files.size() + " interaction file(s) from datapacks");
         }
     }

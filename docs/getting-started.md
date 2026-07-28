@@ -143,6 +143,10 @@ Everything about outputs lives in `rewards`.
 
 `count` accepts three shapes: `3`, `{ "count": 3 }`, or `{ "min": 1, "max": 3 }`.
 
+`{ "min": 0, "max": 2 }` is allowed and means what it says — the entry can roll nothing. It keeps its
+slot in JEI and its weight in the pool either way. To write "and sometimes nothing at all", the
+idiomatic form is still a `minecraft:air` entry with its own weight, as above.
+
 ### Guaranteed drops
 
 Items in `guaranteed` are **always** given, on top of the weighted picks:
@@ -300,7 +304,11 @@ you need.
 - `weather` — any of `clear`, `rain`, `thunder`. Omit for "any weather".
 - `y_range` — `[minY, maxY]`.
 - `light` — block light `min`/`max` (0–15).
-- `requires_sneaking` — `true`/`false`.
+- `requires_sneaking` — **don't use it.** `type` already encodes sneaking: `shift_right_click` *is*
+  "right-click while sneaking", and a sneaking player's click never reaches a plain `right_click`
+  interaction. So `requires_sneaking` is either redundant or contradictory, and in the second case
+  the interaction can never fire. PTA logs a warning naming the file when it spots that. The field
+  survives only so older files keep loading.
 - `player_state` — minimum food and XP levels the player must have.
 
 ---
@@ -354,6 +362,10 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
   `mypack:create/crushing/gravel`. Keep filenames lowercase with underscores.
 - **One interaction per file.** It keeps ids meaningful and the JEI/EMI list readable.
 - **Toggle without deleting.** Add `"enabled": false` to a file to skip it.
+- **Hide without disabling.** Add `"hidden": true` and the interaction still loads, syncs and fires —
+  it just never appears in JEI or EMI. That is what you want for a secret, or for the middle steps of
+  a recipe chain where only the ends should be discoverable. Reach for `enabled: false` when you
+  actually want it *off*.
 - **Override & gate.** Datapacks override each other by pack order (later packs win for the same id),
   and you can add `neoforge:conditions` to a file to load it only when, say, another mod is present.
 - **Dedicated servers just work.** The server syncs its interactions to every client on join

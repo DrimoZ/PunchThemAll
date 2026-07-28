@@ -1,7 +1,7 @@
 # PunchThemAll — example datapack
 
 Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 40 interactions, each kept small so it demonstrates one thing you can copy.
+ready-to-use one: 41 interactions, each kept small so it demonstrates one thing you can copy.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -127,7 +127,7 @@ not supported yet — see [the backlog](../../docs/backlog.md).
 | `costs_damage_and_hunger.json` | `costs.damage` and `costs.hunger`, each with a chance and an amount. | Right-click stone with flint. |
 | `conditions_time_weather.json` | `time` (`day`/`night`) and `weather` (`clear`/`rain`/`thunder`). | Sneak-right-click a hay bale at the right time. |
 | `conditions_y_light_player.json` | `y_range`, `light`, and `player_state` (food and XP floors). | Sneak-left-click deepslate, deep and dark, well fed. |
-| `conditions_sneaking.json` | `requires_sneaking` — separate from the shift click *types*. | Sneak and right-click soul sand with a torch. |
+| `conditions_sneaking.json` | Sneaking is the **`type`**, not a condition. Until 2.2.0 this file paired `right_click` with `conditions.requires_sneaking: true` and could never fire — the two are the same axis, and combining them contradicts. | Sneak and right-click soul sand with a torch. |
 | `conditions_biomes.json` | A biome whitelist. | Right-click sand in a desert with a bottle. |
 | `conditions_dimension_and_biome_tag.json` | A biome **`#tag`** and a **dimension** id in the same list. | Right-click leaves in any forest. |
 | `conditions_nether_only.json` | A biome **blacklist** used to restrict to one dimension. | Sneak-left-click netherrack in the Nether. |
@@ -142,6 +142,7 @@ click reaches the interaction, `requires_sneaking` is an extra gate on top.
 | File | What it shows | Try it |
 | --- | --- | --- |
 | `enabled_false.json` | `"enabled": false` — parsed, then skipped. Useful to disable an inherited file without deleting it. | Nothing happens (that is the point). |
+| `hidden_from_viewers.json` | `"hidden": true` — loads and fires normally, but JEI and EMI never list it. For secrets, and for the intermediate steps of a multi-stage recipe. | Sneak-right-click mossy cobblestone with bone meal → an emerald. You will not find it by searching JEI. |
 | `conditional_load_mod_present.json` | `neoforge:conditions` — the file only loads when another mod is present. | Right-click a bookshelf with a book (JEI installed). |
 | `hoe_in_the_air.json` | A demanding real-world filter: tag match + enchantment ranges + costs. | Needs a specifically enchanted hoe — read the file first. |
 | `sand.json` | A plain, shippable interaction with no tricks. | Sneak-left-click gravel with a shovel. |

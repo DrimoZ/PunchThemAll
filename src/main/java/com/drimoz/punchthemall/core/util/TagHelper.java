@@ -47,9 +47,14 @@ public class TagHelper {
             }
         }
         else if (compareTag instanceof ListTag) {
+            // A list is required, so anything that is not a list cannot satisfy it. The authored NBT
+            // and the value read from the world are independent, so a shape mismatch here is normal
+            // input (another mod's custom_data, a block entity that changed layout) — never a cast.
+            if (!(itemTag instanceof ListTag itemList)) return false;
+
             for (var compareVal : ((ListTag) compareTag).stream().toList()) {
                 boolean test = false;
-                for (var itemVal : ((ListTag) itemTag).stream().toList()) {
+                for (var itemVal : itemList.stream().toList()) {
                     if (containsRequiredTagsWithRange(itemVal, compareVal)) {
                         test = true;
                         break;
@@ -61,7 +66,7 @@ public class TagHelper {
             return true;
         }
         else {
-            return compareTag.getClass().equals(itemTag.getClass()) && compareTag.equals(itemTag);
+            return itemTag != null && compareTag.getClass().equals(itemTag.getClass()) && compareTag.equals(itemTag);
         }
     }
 
@@ -103,9 +108,13 @@ public class TagHelper {
                 return true;
             }
         } else if (compareTag instanceof ListTag) {
+            // Nothing that is not a list can hold a forbidden element, so it passes. Mirrors the
+            // whitelist guard above: a shape mismatch is input, not a cast failure.
+            if (!(itemTag instanceof ListTag itemList)) return true;
+
             for (var compareVal : ((ListTag) compareTag).stream().toList()) {
                 boolean test = true;
-                for (var itemVal : ((ListTag) itemTag).stream().toList()) {
+                for (var itemVal : itemList.stream().toList()) {
                     if (!containsRequiredTagsWithRangeBlacklist(itemVal, compareVal)) {
                         test = false;
                         break;
@@ -116,7 +125,7 @@ public class TagHelper {
 
             return true;
         } else {
-            return !compareTag.getClass().equals(itemTag.getClass()) || !compareTag.equals(itemTag);
+            return itemTag == null || !compareTag.getClass().equals(itemTag.getClass()) || !compareTag.equals(itemTag);
         }
     }
 }

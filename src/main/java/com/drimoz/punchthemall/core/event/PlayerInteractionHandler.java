@@ -42,10 +42,12 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE;
@@ -54,6 +56,11 @@ public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
     // Guards against handling both hands of the same right-click; see onRightClickItem.
     private static final Map<UUID, Long> LAST_ITEM_CLICK_TICK = new HashMap<>();
+
+    // Housekeeping for the two maps above; see pruneStaleEntries. Five minutes is far longer than
+    // the largest configurable cooldown (10000 ticks), so pruning can never cut one short.
+    private static final long STALE_ENTRY_TICKS = 20L * 60 * 5;
+    private static final int PRUNE_THRESHOLD = 256;
 
     // NeoForge's event bus refuses listeners on the abstract PlayerInteractEvent parent, so each
     // concrete sub-event gets its own listener; they all funnel into handlePlayerInteract.
@@ -113,6 +120,7 @@ public class PlayerInteractionHandler {
     private static boolean alreadyHandledThisTick(Player player) {
         long now = player.level().getGameTime();
         Long last = LAST_ITEM_CLICK_TICK.put(player.getUUID(), now);
+        pruneStaleEntries(now);
         return last != null && last == now;
     }
 
@@ -141,11 +149,11 @@ public class PlayerInteractionHandler {
     // `cancellable` is null when there is no event to cancel — the left-click-empty payload path.
     private static void handlePlayerInteract(PtaTypeEnum type, boolean clickOnBlock, Player player, Level level,
                                              BlockPos blockPos, ICancellableEvent cancellable) {
-        BlockHitResult hitResult = rayTrace(level, player, ClipContext.Fluid.SOURCE_ONLY);
-        Direction direction = getInteractionDirection(player, level, hitResult);
-
         if (level.isClientSide()) return;
         if (isCooldownEnabledFor(player) && isPlayerOnCooldown(player.getUUID(), level.getGameTime())) return;
+
+        BlockHitResult hitResult = rayTrace(level, player, ClipContext.Fluid.SOURCE_ONLY);
+        Direction direction = getInteractionDirection(player, level, hitResult);
 
         boolean interactionProcessed = false;
         boolean blockTransformed = false;
@@ -160,7 +168,7 @@ public class PlayerInteractionHandler {
             }
         }
 
-        Set<PtaInteraction> interactions;
+        List<PtaInteraction> interactions;
 
         if (fluidInteraction) {
             interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, hitResult.getBlockPos(), level);
@@ -493,6 +501,40 @@ public class PlayerInteractionHandler {
         LAST_ITEM_CLICK_TICK.remove(ev.getEntity().getUUID());
     }
 
+    /**
+     * Drop the per-player bookkeeping when the server goes away. These maps are static, so in
+     * singleplayer they would otherwise carry entries from one world into the next.
+     */
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        PLAYER_COOLDOWNS.clear();
+        LAST_ITEM_CLICK_TICK.clear();
+    }
+
+    /**
+     * Forget entries that can no longer matter.
+     *
+     * <p>{@code PlayerLoggedOutEvent} covers real players, but fake players never log out and every
+     * machine that clicks gets a UUID here, so on a long-running server the maps only ever grow.
+     * Anything untouched for {@link #STALE_ENTRY_TICKS} is far past any cooldown and past the
+     * same-tick dedupe window, so removing it cannot change a decision.</p>
+     */
+    private static void pruneStaleEntries(long currentTick) {
+        if (PLAYER_COOLDOWNS.size() + LAST_ITEM_CLICK_TICK.size() < PRUNE_THRESHOLD) return;
+
+        removeOlderThan(PLAYER_COOLDOWNS, currentTick);
+        removeOlderThan(LAST_ITEM_CLICK_TICK, currentTick);
+    }
+
+    private static void removeOlderThan(Map<UUID, Long> entries, long currentTick) {
+        Iterator<Map.Entry<UUID, Long>> iterator = entries.entrySet().iterator();
+        while (iterator.hasNext()) {
+            if (currentTick - iterator.next().getValue() > STALE_ENTRY_TICKS) {
+                iterator.remove();
+            }
+        }
+    }
+
     private static boolean isPlayerOnCooldown(UUID uuid, long currentTick) {
         int cooldownInterval = PTAConfig.INTERACTIONS.cooldownTicks.get();
         if (cooldownInterval <= 0) {
@@ -504,6 +546,7 @@ public class PlayerInteractionHandler {
     private static void setPlayerOnCooldown(UUID uuid, long currentTick) {
         if (PTAConfig.INTERACTIONS.cooldownTicks.get() > 0) {
             PLAYER_COOLDOWNS.put(uuid, currentTick);
+            pruneStaleEntries(currentTick);
         }
     }
 

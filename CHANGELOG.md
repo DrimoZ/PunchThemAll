@@ -8,6 +8,87 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [1.21.1-2.2.0] — NeoForge
+
+A correctness pass over 2.1.0, one new authoring field, and the first automated test suite.
+
+### Added
+- **`hidden`** on an interaction. `"hidden": true` keeps it out of JEI and EMI while it loads, syncs
+  and fires exactly as before — for secrets, and for the intermediate steps of a multi-stage recipe.
+  Distinct from `enabled: false`, which is the one that turns an interaction *off*. Hidden
+  interactions also stop stretching the category to fit their drop rows. Example:
+  `pta_examples:hidden_from_viewers`.
+- **A test suite**: 241 tests over the NBT matchers, the count/weight arithmetic, the codec, the
+  resolver, the registry and the sync batching. `./gradlew test`. It boots the game's registries in
+  process, so it covers real `ItemStack` and NBT behaviour rather than stand-ins.
+- **A warning when `type` and `conditions.requires_sneaking` contradict each other.** Pairing
+  `shift_left_click` with `requires_sneaking: false` yields an interaction that can never match; PTA
+  now names the file instead of leaving you to work it out. The warning immediately found one in our
+  own example datapack — see below. `requires_sneaking` is redundant with `type` in every case and is
+  now documented as such; prefer the `type`.
+- **Unresolvable `sound`, `particles` and biome entries are reported.** They were dropped silently,
+  which is indistinguishable from never having written them.
+
+### Fixed
+- **A malformed id no longer takes down the whole datapack load.** `sound`, `particles`,
+  `effects[].id` and `rewards.fortune.enchant` used to throw on an id that was not a valid resource
+  location — inside the reload, so a single typo cost the pack *every* interaction. Bad ids are now
+  reported per file and skipped, and one interaction failing to resolve no longer aborts the rest.
+  The same applied to a malformed biome `#tag`, which threw on every click for as long as the pack
+  was installed.
+- **`count: { "min": 0, "max": 3 }` on a drop now means "nothing to three".** It silently meant
+  "never anything": the entry produced no items, vanished from the viewers, and still consumed its
+  weight in the pool — while the schema and docs both advertised it as valid.
+- **A shape mismatch in `nbt.whitelist` / `nbt.blacklist` no longer crashes mid-click.** Requiring a
+  list where the item or block entity holds something else threw a `ClassCastException` from inside
+  the interaction filter. It now simply does not match.
+- **Which interaction wins is now deterministic.** Matches were collected into a hash set, so with
+  `max_matches_per_click`, or with several interactions competing to transform one block, the winner
+  varied between runs. Candidates are ordered by id.
+- **Fortune can no longer produce an over-sized stack.** The bonus is clamped to the item's maximum
+  stack size; the surplus used to disappear the moment the drop entered an inventory.
+- **The recipe viewers no longer churn on every reload.** An interaction now compares equal to itself
+  across a reload, so JEI hides and re-adds only what actually changed. Previously every entry looked
+  new, and JEI's permanent hidden-recipe set grew each time.
+- **A client leaving a server forgets its interactions**, instead of showing the previous server's set
+  in JEI on the main menu and into the next world.
+- **Cooldown bookkeeping no longer grows without bound.** Fake players never log out, so every machine
+  that clicked left an entry behind for the life of the server. Stale entries are pruned, and
+  everything is dropped when the server stops.
+- **The interaction registry is published as one immutable snapshot.** In singleplayer the client and
+  the server rebuild the same registry from two threads while a third reads it on every click; the
+  old clear-then-refill could be observed half-empty.
+- **A cost's maximum is clamped against its floored minimum**, so `amount: 0` no longer produces an
+  inverted range.
+- **Slot counting matches what the viewers lay out**, so a drop grid can no longer overflow the
+  category background.
+- **The `conditions_sneaking` example never worked.** It shipped `type: right_click` with
+  `requires_sneaking: true` — the same axis, contradicting — so it could not fire since 2.1.0. It is
+  now a plain `shift_right_click`, and the catalogue entry explains the trap instead of demonstrating
+  it.
+- **Four examples never showed their particles.** `hand_off_hand`, `left_click_air`,
+  `target_block_entity_nbt` and `transformation_break` passed particle-*type* ids
+  (`minecraft:happy_villager`, `minecraft:cloud`, …) where `particles` wants a **block** id. The docs
+  always said so; the examples did not follow, and the failure was silent. Both halves are fixed —
+  the ids, and the silence.
+
+### Changed
+- **A client without PunchThemAll can now join a PunchThemAll server.** The network channel is
+  optional: every gameplay decision is server-side, and the sync only feeds JEI/EMI. Such a client
+  simply sees no PTA entries. *(Protocol version bumped to `2`; a 2.1.0 client and a 2.2.0 server will
+  not talk to each other.)*
+- **The interaction sync is sent in batches.** The specs travel as NBT, which vanilla caps at 2 MiB
+  per tag — a large pack in one payload would have dropped clients at join with a decode error.
+- **Registry lookups answer an unknown id with `null`** rather than the registry default, so a typo
+  can no longer read as `minecraft:air`.
+- **Debug logging can no longer break loading.** Reading a config flag before the config file is
+  attached now falls back to its default instead of throwing.
+- `kind: "any"` on `minecraft:water` / `minecraft:lava` resolves to the **block**, since those ids
+  exist in both registries and a target cannot mix the two. Documented; use `kind: "fluid"` if you
+  want the fluid.
+
+---
+
 ## [1.21.1-2.1.0] — NeoForge
 
 The **NeoForge 1.21.1** release. The JSON you write is unchanged (`schema_version: 2`), but *where*

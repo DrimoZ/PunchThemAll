@@ -9,5 +9,5 @@
       { "match": "minecraft:air", "weight": 95 }
     ]
   },
-  "particles": "minecraft:cloud"
+  "particles": "minecraft:white_wool"
 }

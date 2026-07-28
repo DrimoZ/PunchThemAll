@@ -79,11 +79,34 @@ public final class InteractionSpecResolver {
             if (!biomeWhitelist.isEmpty() && !biomeBlacklist.isEmpty()) {
                 error(id, "conditions.biomes cannot define both whitelist and blacklist; whitelist will take precedence at runtime");
             }
+            validateBiomeEntries(id, biomeWhitelist, "conditions.biomes.whitelist");
+            validateBiomeEntries(id, biomeBlacklist, "conditions.biomes.blacklist");
         }
 
         PtaExtras extras = resolveExtras(id, spec);
 
-        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, rewards, biomeWhitelist, biomeBlacklist, extras);
+        warnOnSneakConflict(id, type, extras);
+
+        // The spec is a record of plain values, so its hashCode is a structural digest of the source
+        // JSON — exactly what PtaInteraction.equals needs to tell "reloaded unchanged" from "edited".
+        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, rewards,
+                biomeWhitelist, biomeBlacklist, extras, spec.hidden(), spec.hashCode());
+    }
+
+    /**
+     * {@code type} already encodes sneaking ({@code shift_left_click} / {@code shift_right_click}),
+     * so {@code conditions.requires_sneaking} is a second, independent gate on the same state. The
+     * two contradict each other more often than they combine usefully, and the result — an
+     * interaction that can never fire — looks like the mod is broken rather than the file.
+     */
+    private static void warnOnSneakConflict(ResourceLocation id, PtaTypeEnum type, PtaExtras extras) {
+        Boolean requiresSneaking = extras.conditions().requiresSneaking();
+        if (requiresSneaking == null || requiresSneaking == type.isShiftClick()) return;
+
+        PTALoggers.warn(id + " - conditions.requires_sneaking is " + requiresSneaking
+                + " but type " + type.name().toLowerCase(Locale.ROOT)
+                + (type.isShiftClick() ? " already requires sneaking" : " already requires not sneaking")
+                + "; this interaction can never match. Drop requires_sneaking, or switch the type.");
     }
 
     // Hand
@@ -177,8 +200,8 @@ public final class InteractionSpecResolver {
         double chance = spec.chance();
         if (chance <= 0) return PtaTransformation.createAir(0, null, null);
 
-        SoundEvent sound = resolveSound(spec.sound().orElse(null));
-        ParticleOptions particle = resolveParticles(spec.particles().orElse(null));
+        SoundEvent sound = resolveSound(id, spec.sound().orElse(null), "transformation.sound");
+        ParticleOptions particle = resolveParticles(id, spec.particles().orElse(null), "transformation.particles");
 
         IntoSpec into = spec.into().orElse(null);
         if (into == null) {
@@ -275,8 +298,9 @@ public final class InteractionSpecResolver {
 
         List<PtaEffect> effects = new ArrayList<>();
         for (EffectSpec effectSpec : spec.effects()) {
-            Holder<MobEffect> effect = BuiltInRegistries.MOB_EFFECT
-                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, ResourceLocation.parse(effectSpec.id())))
+            ResourceLocation effectId = tryParse(effectSpec.id());
+            Holder<MobEffect> effect = effectId == null ? null : BuiltInRegistries.MOB_EFFECT
+                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, effectId))
                     .orElse(null);
             if (effect == null) {
                 error(id, "effects - Unknown effect " + effectSpec.id());
@@ -285,8 +309,8 @@ public final class InteractionSpecResolver {
             effects.add(new PtaEffect(effect, effectSpec.duration(), effectSpec.amplifier(), effectSpec.chance()));
         }
 
-        SoundEvent sound = resolveSound(spec.sound().orElse(null));
-        ParticleOptions particles = resolveParticles(spec.particles().orElse(null));
+        SoundEvent sound = resolveSound(id, spec.sound().orElse(null), "sound");
+        ParticleOptions particles = resolveParticles(id, spec.particles().orElse(null), "particles");
 
         if (conditions.isEmpty() && effects.isEmpty() && sound == null && particles == null) {
             return PtaExtras.EMPTY;
@@ -329,22 +353,66 @@ public final class InteractionSpecResolver {
 
     // Registry resolution helpers
 
-    private static SoundEvent resolveSound(String name) {
+    // Feedback that cannot be resolved is dropped, but never silently: an interaction that plays no
+    // sound looks identical to one that was authored without a sound, so without a line in the log
+    // there is nothing for the author to go on.
+
+    private static SoundEvent resolveSound(ResourceLocation id, String name, String path) {
         if (name == null) return null;
-        return BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse(name));
+
+        ResourceLocation soundId = tryParse(name);
+        SoundEvent sound = soundId == null ? null : BuiltInRegistries.SOUND_EVENT.get(soundId);
+        if (sound == null) {
+            error(id, path + " - Unknown sound " + name);
+        }
+        return sound;
     }
 
-    private static ParticleOptions resolveParticles(String name) {
-        if (name == null || !BlockChecker.doesBlockExist(name)) return null;
+    private static ParticleOptions resolveParticles(ResourceLocation id, String name, String path) {
+        if (name == null) return null;
+
+        if (!BlockChecker.doesBlockExist(name)) {
+            // `particles` takes a block id (block-break particles), not a particle-type id — the
+            // single most common mistake here, so say which kind of id is expected.
+            error(id, path + " - Unknown block " + name + " (particles takes a block id, not a particle id)");
+            return null;
+        }
         return new BlockParticleOption(ParticleTypes.BLOCK, BlockChecker.getExistingBlock(name).defaultBlockState());
     }
 
+    /**
+     * Report biome/dimension entries that can never match. They are matched as plain strings at click
+     * time, so an unparseable tag or a typo is otherwise invisible — the interaction simply never
+     * fires, which reads as a mod bug rather than a file one.
+     */
+    private static void validateBiomeEntries(ResourceLocation id, Set<String> entries, String path) {
+        for (String entry : entries) {
+            if (entry.isEmpty()) {
+                error(id, path + " - empty biome entry");
+            } else if (entry.charAt(0) == '#' && tryParse(entry.substring(1)) == null) {
+                error(id, path + " - Malformed biome tag " + entry);
+            } else if (entry.charAt(0) != '#' && tryParse(entry) == null) {
+                error(id, path + " - Malformed biome/dimension id " + entry);
+            }
+        }
+    }
+
     private static Holder<Enchantment> resolveEnchantment(HolderLookup.Provider registries, String enchantId) {
-        if (registries == null) return null;
+        ResourceLocation parsed = tryParse(enchantId);
+        if (registries == null || parsed == null) return null;
         return registries.lookupOrThrow(Registries.ENCHANTMENT)
-                .get(ResourceKey.create(Registries.ENCHANTMENT, ResourceLocation.parse(enchantId)))
+                .get(ResourceKey.create(Registries.ENCHANTMENT, parsed))
                 .map(holder -> (Holder<Enchantment>) holder)
                 .orElse(null);
+    }
+
+    /**
+     * Every id in an interaction file is authored text, so a malformed one is expected input.
+     * {@code ResourceLocation.parse} throws, and these resolutions run inside the datapack reload —
+     * one typo would abort the load of every interaction rather than reporting that one file.
+     */
+    private static ResourceLocation tryParse(String id) {
+        return id == null ? null : ResourceLocation.tryParse(id);
     }
 
     // Costs

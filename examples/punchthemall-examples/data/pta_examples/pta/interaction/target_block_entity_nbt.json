@@ -12,5 +12,5 @@
     ]
   },
   "sound": "minecraft:block.fire.extinguish",
-  "particles": "minecraft:smoke"
+  "particles": "minecraft:furnace"
 }
