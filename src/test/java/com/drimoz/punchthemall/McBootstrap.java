@@ -3,10 +3,6 @@ package com.drimoz.punchthemall;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
 
-import java.lang.reflect.Method;
-import java.util.List;
-import java.util.Map;
-
 /**
  * One-time game setup shared by every test that touches registries, items or NBT.
  *
@@ -14,18 +10,30 @@ import java.util.Map;
  * null and anything building an {@code ItemStack} fails in a way that reads like a mod bug rather
  * than a missing fixture.</p>
  *
- * <p>On NeoForge, Bootstrap alone is not enough: {@code FeatureFlags.<clinit>} asks
- * {@code FeatureFlagLoader} for the flags mods declare, which reads {@code LoadingModList.get()} —
- * null outside the loader, so class initialisation of {@code Blocks} (and therefore {@code Items})
- * fails before any test runs. Publishing an empty mod list first is enough: no mod files means no
- * modded flags to scan. It has to be reflective because {@code net.neoforged.fml.loading} is a
- * runtime-only package, absent from the compile classpath.</p>
+ * <p>On 1.21.1 this class also had to publish an empty {@code LoadingModList} by reflection, and a
+ * {@code LauncherSessionListener} had to run it before JUnit loaded any test class. Both are gone:
+ * since 26.1 {@code SharedConstants} asks {@code FMLEnvironment} whether it is in production, which
+ * needs a current {@code FMLLoader}, so there is no longer any way to reach a usable Minecraft from
+ * a bare JVM. The build enables ModDevGradle's {@code unitTest} integration instead, which runs the
+ * suite through FML — the supported path, and the reason this class is now four lines.</p>
  *
  * <p>Two things are deliberately still absent. <b>Tags</b> need a running server, so tests cover
  * id-based matching only — which is also why production code resolves tags on
- * {@code TagsUpdatedEvent} rather than at parse time. <b>The config</b> cannot be bound from outside
- * the loader either, so config-reading code goes through {@link PTAConfig#valueOrDefault} and sees
- * the declared defaults here.</p>
+ * {@code TagsUpdatedEvent} rather than at parse time. <b>The config</b> is not bound here either, so
+ * config-reading code goes through {@link PTAConfig#valueOrDefault} and sees the declared defaults.</p>
+ *
+ * <p><b>Known gap on 26.1.</b> Anything that constructs an {@code ItemStack} still fails here with
+ * "Components not bound yet": {@code ItemStack}'s constructor reads
+ * {@code Holder.Reference#components()}, and 26.1 binds those lazily in
+ * {@code ReloadableServerResources#loadResources} rather than in {@link Bootstrap}. Running the two
+ * steps by hand —
+ * {@code BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(provider).forEach(PendingComponents::apply)}
+ * — gets further but then trips NeoForge's {@code CommonHooks.validateComponent}, because the
+ * provider from {@code VanillaRegistries.createLookup()} yields lazy {@code HolderSet}s with no
+ * {@code equals}. A real server's provider would not. The supported answer is
+ * {@code net.neoforged:testframework}'s {@code EphemeralTestServerProvider}, which boots a throwaway
+ * server for the classes that need real stacks; that is a deliberate decision, not a detail, so it
+ * is left for its own change. See docs/porting/neoforge-26.1-plan.md §6.</p>
  */
 public final class McBootstrap {
 
@@ -36,25 +44,9 @@ public final class McBootstrap {
     public static synchronized void ensure() {
         if (done) return;
 
-        publishEmptyModList();
-
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
 
         done = true;
-    }
-
-    private static void publishEmptyModList() {
-        try {
-            Class<?> loadingModList = Class.forName("net.neoforged.fml.loading.LoadingModList");
-            // of(plugins, modFiles, sortedList, modLoadingIssues, modDependencies) — every argument is
-            // a collection, so empty ones are correct whatever the parameter order turns out to be.
-            Method of = loadingModList.getMethod("of", List.class, List.class, List.class, List.class, Map.class);
-            of.invoke(null, List.of(), List.of(), List.of(), List.of(), Map.of());
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException(
-                    "Could not publish an empty FML mod list; NeoForge's internals have moved and the "
-                            + "test bootstrap needs updating.", e);
-        }
     }
 }

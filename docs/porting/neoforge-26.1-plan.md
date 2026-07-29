@@ -454,6 +454,47 @@ Also settled, all cheap:
 - `RecipesUpdatedEvent` → `RecipesReceivedEvent`, `PacketDistributor.sendToServer` →
   `ClientPacketDistributor.sendToServer`. Both one-liners.
 
+### 10.3 The test suite
+
+Main and test both compile. `./gradlew test`: **212 pass, 30 fail**, from 0 running at the start.
+
+The old harness is gone and was replaced, not repaired. Two things killed it:
+
+- `LoadingModList.of` gained a sixth parameter, so the reflective publish missed. `McBootstrap` now
+  matches the method by name and fills each parameter by shape, which is arity-proof.
+- That was not enough anyway: since 26.1 `SharedConstants.<clinit>` asks `FMLEnvironment` whether it
+  is in production, which needs a current `FMLLoader`. **There is no longer a route to a usable
+  Minecraft from a bare JVM.** So the build enables ModDevGradle's supported
+  `neoForge { unitTest { enable(); testedMod = … } }` and the suite runs under FML. The
+  `LauncherSessionListener` and its `META-INF/services` entry are deleted — MDG boots the game before
+  test classes load, which is exactly what that listener existed to guarantee.
+
+Mockito needed 5.20 (from 5.14.2): older Byte Buddy cannot instrument `Level` under Java 25 once
+FML's transformer has been through it. That alone fixed 12 failures.
+
+**The 30 remaining failures are all one cause**, in the six classes that build an `ItemStack`:
+`NullPointerException: Components not bound yet`. 26.1 binds default data components lazily in
+`ReloadableServerResources#loadResources`, not in `Bootstrap`, so `ItemStack`'s constructor throws.
+This is the concrete form of the §8 question about `ItemStack` requiring loaded registries — it does,
+and it bites tests rather than gameplay.
+
+Doing it by hand gets close but not home:
+
+```java
+BuiltInRegistries.DATA_COMPONENT_INITIALIZERS
+        .build(VanillaRegistries.createLookup())
+        .forEach(PendingComponents::apply);
+```
+
+runs the right two steps, then fails NeoForge's `CommonHooks.validateComponent` — datagen's lookup
+yields lazy `HolderSet`s with no `equals`, where a real server's provider yields named ones. Reading
+an item's own defaults instead is circular: `Item#components()` *is* a read of the holder being
+filled.
+
+The supported answer is `net.neoforged:testframework`'s `EphemeralTestServerProvider`, which boots a
+throwaway server for the classes that need real stacks. That changes what those tests are — they stop
+being pure unit tests — so it is a decision, not a detail, and it is left for its own change.
+
 ---
 
 ### Sources
