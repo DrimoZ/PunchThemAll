@@ -495,6 +495,41 @@ The supported answer is `net.neoforged:testframework`'s `EphemeralTestServerProv
 throwaway server for the classes that need real stacks. That changes what those tests are — they stop
 being pure unit tests — so it is a decision, not a detail, and it is left for its own change.
 
+### 10.4 First run in game
+
+`runClient`, new world, both example packs copied in, `/reload`:
+
+| Check | Result |
+| --- | --- |
+| FML loads the mod (`neoforge.mods.toml` with no `modLoader`, range `[26.1.2]`) | ✅ `pta` 2.2.0, entrypoint constructed |
+| `Read 45 interaction file(s)` — the rewritten reload listener | ✅ Server thread |
+| `Loaded 44 interaction(s)` — `enabled: false` correctly skipped | ✅ (`enabled_false`, verified by diffing loaded ids against disk) |
+| `Loaded 44` **again on the Render thread** — the client sync | ✅ |
+| Per-file errors in PTA's own format | ✅ all four `bad_ids` probes, each logged twice |
+| `sneak_conflict` warning | ✅ |
+| Exceptions | ✅ none, whole session |
+| A real interaction (flint on stone) | ✅ |
+
+That validates the three biggest bets in one go: the hand-rolled decode loop in the reload listener,
+`ContextAwareReloadListener` injection reaching a listener added via `addListener`, and the sync
+payload.
+
+**Two defects the build could not find**, both fixed:
+
+- Both example datapacks still declared `pack_format: 48`. The single `pack_format` field was
+  replaced by `min_format`/`max_format` in 1.21.9, and 26.1.2's data format is 101.1 — read from the
+  jar's `version.json`, not guessed. They would have loaded as incompatible.
+- **JEI tooltips rendered in the top-left corner.** `setTooltipForNextFrame` takes the same arguments
+  as the old `renderTooltip`, so it looked like a like-for-like swap — but it defers to the end of
+  the frame, when JEI's per-recipe transform is gone, and the `mouseX`/`mouseY` given to `draw` are
+  recipe-relative. `IRecipeCategory#getTooltip(ITooltipBuilder, …)` is the right hook; JEI positions
+  them. This is the §4 lesson in miniature: the API compiled, the arguments matched, and it was still
+  wrong.
+
+Still unverified in game: block transformations (the `TagValueInput` path has never executed),
+damage/hunger costs, effects, NBT drops, and day/night in the Nether — the one deliberate
+behavioural change.
+
 ---
 
 ### Sources
