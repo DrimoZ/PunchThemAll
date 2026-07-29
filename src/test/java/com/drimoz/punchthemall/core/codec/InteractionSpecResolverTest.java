@@ -6,7 +6,7 @@ import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.material.Fluids;
@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class InteractionSpecResolverTest {
 
-    private static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("pta_test", "example");
+    private static final Identifier ID = Identifier.fromNamespaceAndPath("pta_test", "example");
 
     private static PtaInteraction resolve(String json) {
         InteractionSpec spec = InteractionSpec.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json))
@@ -371,7 +371,7 @@ class InteractionSpecResolverTest {
     @Test
     @DisplayName("a malformed id is reported, never thrown")
     void malformedIdsDoNotThrow() {
-        // Every id in a file is authored text. ResourceLocation.parse throws, and this runs inside
+        // Every id in a file is authored text. Identifier.parse throws, and this runs inside
         // the datapack reload — one typo used to abort the load of every interaction in the pack.
         assertDoesNotThrow(() -> resolve("{\"type\": \"left_click\", \"sound\": \"NOT AN ID\"}"));
         assertDoesNotThrow(() -> resolve("{\"type\": \"left_click\", \"particles\": \"Bad Id!\"}"));

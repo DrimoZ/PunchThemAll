@@ -9,7 +9,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -63,7 +63,7 @@ class InteractionRegistryTest {
 
         Holder<Biome> biome = mock(Holder.class);
         lenient().when(biome.unwrapKey()).thenReturn(java.util.Optional.of(
-                ResourceKey.create(Registries.BIOME, ResourceLocation.parse("minecraft:plains"))));
+                ResourceKey.create(Registries.BIOME, Identifier.parse("minecraft:plains"))));
         lenient().when(biome.is(org.mockito.ArgumentMatchers.<net.minecraft.tags.TagKey<Biome>>any())).thenReturn(false);
         lenient().when(level.getBiome(POS)).thenReturn(biome);
 
@@ -82,12 +82,12 @@ class InteractionRegistryTest {
                 .getOrThrow(message -> new AssertionError(message));
     }
 
-    private static ResourceLocation id(String path) {
-        return ResourceLocation.fromNamespaceAndPath("pta_test", path);
+    private static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath("pta_test", path);
     }
 
     private void load(Map<String, String> files) {
-        Map<ResourceLocation, InteractionSpec> specs = new LinkedHashMap<>();
+        Map<Identifier, InteractionSpec> specs = new LinkedHashMap<>();
         files.forEach((path, json) -> specs.put(id(path), spec(json)));
         registry.rebuildFrom(specs, null);
     }
@@ -161,7 +161,7 @@ class InteractionRegistryTest {
         files.put("mike", "{\"type\": \"left_click\", \"target\": {\"match\": \"minecraft:stone\"}}");
         load(files);
 
-        List<ResourceLocation> order = registry.getInteractions().keySet().stream().toList();
+        List<Identifier> order = registry.getInteractions().keySet().stream().toList();
         assertEquals(List.of(id("alpha"), id("mike"), id("zulu")), order);
 
         List<PtaInteraction> matches =

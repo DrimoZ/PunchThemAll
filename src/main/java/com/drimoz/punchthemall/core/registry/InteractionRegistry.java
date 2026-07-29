@@ -16,7 +16,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.biome.Biome;
@@ -59,7 +59,7 @@ public class InteractionRegistry {
      * ones survive {@code max_matches_per_click} — is the same on every run and on every machine.
      */
     private record Snapshot(
-            Map<ResourceLocation, PtaInteraction> interactions,
+            Map<Identifier, PtaInteraction> interactions,
             Map<PtaTypeEnum, Map<Block, List<PtaInteraction>>> blockIndex,
             Map<PtaTypeEnum, Map<Fluid, List<PtaInteraction>>> fluidIndex,
             Map<PtaTypeEnum, List<PtaInteraction>> airIndex
@@ -67,7 +67,7 @@ public class InteractionRegistry {
         static final Snapshot EMPTY = new Snapshot(Map.of(), Map.of(), Map.of(), Map.of());
 
         static Snapshot of(List<PtaInteraction> resolved) {
-            Map<ResourceLocation, PtaInteraction> interactions = new LinkedHashMap<>();
+            Map<Identifier, PtaInteraction> interactions = new LinkedHashMap<>();
             Map<PtaTypeEnum, Map<Block, List<PtaInteraction>>> blockIndex = new EnumMap<>(PtaTypeEnum.class);
             Map<PtaTypeEnum, Map<Fluid, List<PtaInteraction>>> fluidIndex = new EnumMap<>(PtaTypeEnum.class);
             Map<PtaTypeEnum, List<PtaInteraction>> airIndex = new EnumMap<>(PtaTypeEnum.class);
@@ -126,7 +126,7 @@ public class InteractionRegistry {
     }
 
     /** The loaded interactions, in id order. Unmodifiable. */
-    public Map<ResourceLocation, PtaInteraction> getInteractions() {
+    public Map<Identifier, PtaInteraction> getInteractions() {
         return snapshot.interactions();
     }
 
@@ -140,13 +140,13 @@ public class InteractionRegistry {
      * to resolve is reported and skipped: one unlucky file must not cost the pack every other
      * interaction, and this runs inside datapack loading where an exception aborts the whole reload.</p>
      */
-    public void rebuildFrom(Map<ResourceLocation, InteractionSpec> specs, HolderLookup.Provider registries) {
+    public void rebuildFrom(Map<Identifier, InteractionSpec> specs, HolderLookup.Provider registries) {
         List<PtaInteraction> resolved = new ArrayList<>();
 
         specs.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey(Comparator.comparing(ResourceLocation::toString)))
+                .sorted(Map.Entry.comparingByKey(Comparator.comparing(Identifier::toString)))
                 .forEach(entry -> {
-                    ResourceLocation id = entry.getKey();
+                    Identifier id = entry.getKey();
                     InteractionSpec spec = entry.getValue();
 
                     if (spec.schemaVersion() < 2) {
@@ -177,7 +177,7 @@ public class InteractionRegistry {
         PTALoggers.info("Loaded " + resolved.size() + " interaction(s)");
     }
 
-    public PtaInteraction getInteractionById(ResourceLocation id) {
+    public PtaInteraction getInteractionById(Identifier id) {
         return snapshot.interactions().get(id);
     }
 
@@ -266,15 +266,15 @@ public class InteractionRegistry {
 
     // Matches an entry set against the current dimension/biome. A '#' prefix means a biome tag.
     private boolean biomeOrDimensionMatches(Set<String> entries, Level level, BlockPos pos) {
-        String dimensionId = level.dimension().location().toString();
+        String dimensionId = level.dimension().identifier().toString();
         var biomeHolder = level.getBiome(pos);
-        String biomeId = biomeHolder.unwrapKey().map(key -> key.location().toString()).orElse("");
+        String biomeId = biomeHolder.unwrapKey().map(key -> key.identifier().toString()).orElse("");
 
         for (String entry : entries) {
             if (!entry.isEmpty() && entry.charAt(0) == '#') {
                 // tryParse, not parse: this runs on every click, and a malformed tag in one file
                 // would otherwise throw for as long as the pack is installed.
-                ResourceLocation tagId = ResourceLocation.tryParse(entry.substring(1));
+                Identifier tagId = Identifier.tryParse(entry.substring(1));
                 if (tagId == null) continue;
                 if (biomeHolder.is(TagKey.create(Registries.BIOME, tagId))) return true;
             } else if (entry.equals(dimensionId) || entry.equals(biomeId)) {

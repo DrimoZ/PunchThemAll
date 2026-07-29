@@ -3,14 +3,14 @@ package com.drimoz.punchthemall.core.model.classes;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaInteractionRecord;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class PtaInteraction {
 
-    private final ResourceLocation id;
+    private final Identifier id;
     private final PtaTypeEnum type;
 
     private final PtaInteractionRecord hurtPlayer;
@@ -56,7 +56,7 @@ public class PtaInteraction {
 
     // Getters
 
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return id;
     }
 
@@ -120,7 +120,7 @@ public class PtaInteraction {
     // Life Cycle
 
     public PtaInteraction(
-            ResourceLocation id, PtaTypeEnum type,
+            Identifier id, PtaTypeEnum type,
             PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
             PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaRewards rewards,
             Set<String> biomeWhitelist, Set<String> biomeBlackList,
@@ -131,7 +131,7 @@ public class PtaInteraction {
     }
 
     public PtaInteraction(
-            ResourceLocation id, PtaTypeEnum type,
+            Identifier id, PtaTypeEnum type,
             PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
             PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaRewards rewards,
             Set<String> biomeWhitelist, Set<String> biomeBlackList,

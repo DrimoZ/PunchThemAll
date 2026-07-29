@@ -1,12 +1,12 @@
 package com.drimoz.punchthemall.jei;
 
 import com.drimoz.punchthemall.PunchThemAll;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class JeiConstants {
-    public static final ResourceLocation JEI_TEXTURE = ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "textures/gui/jei.png");
-    public static final ResourceLocation JEI_ICON_TEXTURE = ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "textures/gui/punch.png");
-    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "interactions");
+    public static final Identifier JEI_TEXTURE = Identifier.fromNamespaceAndPath(PunchThemAll.MOD_ID, "textures/gui/jei.png");
+    public static final Identifier JEI_ICON_TEXTURE = Identifier.fromNamespaceAndPath(PunchThemAll.MOD_ID, "textures/gui/punch.png");
+    public static final Identifier UID = Identifier.fromNamespaceAndPath(PunchThemAll.MOD_ID, "interactions");
 
     public static final int WIDTH = 162;
     public static final int HEIGHT_START = 44;

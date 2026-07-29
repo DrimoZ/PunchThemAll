@@ -3,7 +3,7 @@ package com.drimoz.punchthemall.core.network;
 import com.drimoz.punchthemall.core.codec.InteractionSpec;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,10 +29,10 @@ class SyncInteractionsPayloadTest {
                 .getOrThrow(message -> new AssertionError(message));
     }
 
-    private static Map<ResourceLocation, InteractionSpec> specs(int count) {
-        Map<ResourceLocation, InteractionSpec> specs = new LinkedHashMap<>();
+    private static Map<Identifier, InteractionSpec> specs(int count) {
+        Map<Identifier, InteractionSpec> specs = new LinkedHashMap<>();
         for (int i = 0; i < count; i++) {
-            specs.put(ResourceLocation.fromNamespaceAndPath("pta_test", "interaction_" + i), spec());
+            specs.put(Identifier.fromNamespaceAndPath("pta_test", "interaction_" + i), spec());
         }
         return specs;
     }
@@ -104,12 +104,12 @@ class SyncInteractionsPayloadTest {
     @Test
     @DisplayName("splitting loses nothing: every id arrives exactly once")
     void splitIsLossless() {
-        Map<ResourceLocation, InteractionSpec> original = specs(SyncInteractionsPayload.BATCH_SIZE * 2 + 13);
+        Map<Identifier, InteractionSpec> original = specs(SyncInteractionsPayload.BATCH_SIZE * 2 + 13);
         List<SyncInteractionsPayload> payloads = SyncInteractionsPayload.split(original);
 
         assertEquals(original.size(), totalSize(payloads));
 
-        Map<ResourceLocation, InteractionSpec> reassembled = new LinkedHashMap<>();
+        Map<Identifier, InteractionSpec> reassembled = new LinkedHashMap<>();
         payloads.forEach(payload -> reassembled.putAll(payload.specs()));
 
         assertEquals(original.keySet(), reassembled.keySet());

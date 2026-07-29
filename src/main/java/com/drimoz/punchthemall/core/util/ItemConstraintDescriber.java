@@ -8,7 +8,7 @@ import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -206,7 +206,7 @@ public final class ItemConstraintDescriber {
     }
 
     private static String enchantmentName(String enchantmentId) {
-        ResourceLocation rl = ResourceLocation.tryParse(enchantmentId);
+        Identifier rl = Identifier.tryParse(enchantmentId);
         if (rl == null) return enchantmentId;
         return Component.translatable("enchantment." + rl.getNamespace() + "." + rl.getPath()).getString();
     }

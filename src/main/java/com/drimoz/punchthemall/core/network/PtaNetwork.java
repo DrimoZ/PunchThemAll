@@ -5,7 +5,7 @@ import com.drimoz.punchthemall.core.codec.InteractionSpec;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.event.PlayerInteractionHandler;
 import com.drimoz.punchthemall.core.util.PTALoggers;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -33,7 +33,7 @@ public class PtaNetwork {
     private static final String PROTOCOL_VERSION = "2";
 
     /** Batches accumulated since the last {@code first} payload, awaiting the {@code last} one. */
-    private static final Map<ResourceLocation, InteractionSpec> PENDING = new HashMap<>();
+    private static final Map<Identifier, InteractionSpec> PENDING = new HashMap<>();
 
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
@@ -66,7 +66,7 @@ public class PtaNetwork {
             // set and the viewers are not refreshed once per batch.
             if (!payload.last()) return;
 
-            Map<ResourceLocation, InteractionSpec> received = Map.copyOf(PENDING);
+            Map<Identifier, InteractionSpec> received = Map.copyOf(PENDING);
             PENDING.clear();
 
             InteractionRegistry.getInstance().rebuildFrom(received, context.player().registryAccess());

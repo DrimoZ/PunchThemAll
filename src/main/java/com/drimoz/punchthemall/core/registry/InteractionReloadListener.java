@@ -11,7 +11,7 @@ import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -40,7 +40,7 @@ public class InteractionReloadListener extends SimpleJsonResourceReloadListener 
     private static final Gson GSON = new Gson();
 
     // Last successfully loaded set, kept so the sync payload can be rebuilt for any joining player.
-    private static Map<ResourceLocation, InteractionSpec> loaded = Map.of();
+    private static Map<Identifier, InteractionSpec> loaded = Map.of();
 
     private final HolderLookup.Provider registries;
     private final ICondition.IContext conditionContext;
@@ -52,21 +52,21 @@ public class InteractionReloadListener extends SimpleJsonResourceReloadListener 
     }
 
     /** The specs loaded by the most recent reload, for syncing to clients. */
-    public static Map<ResourceLocation, InteractionSpec> getLoaded() {
+    public static Map<Identifier, InteractionSpec> getLoaded() {
         return loaded;
     }
 
     @Override
-    protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager resourceManager, ProfilerFiller profiler) {
+    protected void apply(Map<Identifier, JsonElement> files, ResourceManager resourceManager, ProfilerFiller profiler) {
         // ConditionalOps gives files access to neoforge:conditions; RegistryOps lets specs reference
         // registry contents. Both are lost if we fall back to plain JsonOps, hence the wrapping here.
         DynamicOps<JsonElement> ops = new ConditionalOps<>(RegistryOps.create(JsonOps.INSTANCE, registries), conditionContext);
         Codec<Optional<InteractionSpec>> codec = ConditionalOps.createConditionalCodec(InteractionSpec.CODEC);
 
-        Map<ResourceLocation, InteractionSpec> specs = new HashMap<>();
+        Map<Identifier, InteractionSpec> specs = new HashMap<>();
 
-        for (Map.Entry<ResourceLocation, JsonElement> file : files.entrySet()) {
-            ResourceLocation id = file.getKey();
+        for (Map.Entry<Identifier, JsonElement> file : files.entrySet()) {
+            Identifier id = file.getKey();
             DataResult<Optional<InteractionSpec>> result = codec.parse(ops, file.getValue());
 
             Optional<Optional<InteractionSpec>> parsed = result.result();

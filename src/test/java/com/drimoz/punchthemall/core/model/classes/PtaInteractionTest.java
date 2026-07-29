@@ -6,7 +6,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.level.block.Blocks;
@@ -28,9 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The assembled interaction: its invariants, its identity, and the effects it can apply. */
 class PtaInteractionTest {
 
-    private static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("pta_test", "one");
+    private static final Identifier ID = Identifier.fromNamespaceAndPath("pta_test", "one");
 
-    private static PtaInteraction interaction(ResourceLocation id, boolean hidden, int contentHash) {
+    private static PtaInteraction interaction(Identifier id, boolean hidden, int contentHash) {
         return new PtaInteraction(id, PtaTypeEnum.LEFT_CLICK, null, null,
                 null, null, null, PtaRewards.of(PtaPool.create(null)),
                 null, null, null, hidden, contentHash);
@@ -152,7 +152,7 @@ class PtaInteractionTest {
         @DisplayName("a different id makes it a different recipe")
         void differsById() {
             assertNotEquals(interaction(ID, false, 1234),
-                    interaction(ResourceLocation.fromNamespaceAndPath("pta_test", "two"), false, 1234));
+                    interaction(Identifier.fromNamespaceAndPath("pta_test", "two"), false, 1234));
         }
 
         @Test
@@ -176,7 +176,7 @@ class PtaInteractionTest {
 
         private Holder<MobEffect> haste() {
             return BuiltInRegistries.MOB_EFFECT
-                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, ResourceLocation.parse("minecraft:haste")))
+                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, Identifier.parse("minecraft:haste")))
                     .orElseThrow();
         }
 

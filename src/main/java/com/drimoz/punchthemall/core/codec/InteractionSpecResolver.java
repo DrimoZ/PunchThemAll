@@ -20,7 +20,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.Item;
@@ -48,7 +48,7 @@ public final class InteractionSpecResolver {
 
     private InteractionSpecResolver() {}
 
-    public static PtaInteraction resolve(ResourceLocation id, InteractionSpec spec, HolderLookup.Provider registries) {
+    public static PtaInteraction resolve(Identifier id, InteractionSpec spec, HolderLookup.Provider registries) {
         PtaTypeEnum type;
         try {
             type = PtaTypeEnum.fromString(spec.type());
@@ -99,7 +99,7 @@ public final class InteractionSpecResolver {
      * two contradict each other more often than they combine usefully, and the result — an
      * interaction that can never fire — looks like the mod is broken rather than the file.
      */
-    private static void warnOnSneakConflict(ResourceLocation id, PtaTypeEnum type, PtaExtras extras) {
+    private static void warnOnSneakConflict(Identifier id, PtaTypeEnum type, PtaExtras extras) {
         Boolean requiresSneaking = extras.conditions().requiresSneaking();
         if (requiresSneaking == null || requiresSneaking == type.isShiftClick()) return;
 
@@ -111,7 +111,7 @@ public final class InteractionSpecResolver {
 
     // Hand
 
-    private static PtaHand resolveHand(ResourceLocation id, HandSpec spec) {
+    private static PtaHand resolveHand(Identifier id, HandSpec spec) {
         if (spec == null) return PtaHand.createEmpty(PtaHandEnum.ANY_HAND);
 
         PtaHandEnum handEnum;
@@ -141,7 +141,7 @@ public final class InteractionSpecResolver {
 
     // Target (block / fluid / air)
 
-    private static PtaBlock resolveTarget(ResourceLocation id, TargetSpec spec) {
+    private static PtaBlock resolveTarget(Identifier id, TargetSpec spec) {
         if (spec == null || spec.kind().equalsIgnoreCase("air")) {
             return PtaBlock.createAir();
         }
@@ -194,7 +194,7 @@ public final class InteractionSpecResolver {
 
     // Transformation
 
-    private static PtaTransformation resolveTransformation(ResourceLocation id, TransformationSpec spec) {
+    private static PtaTransformation resolveTransformation(Identifier id, TransformationSpec spec) {
         if (spec == null) return PtaTransformation.createAir(0, null, null);
 
         double chance = spec.chance();
@@ -244,7 +244,7 @@ public final class InteractionSpecResolver {
 
     // Rewards / pool
 
-    private static PtaRewards resolveRewards(ResourceLocation id, RewardsSpec spec, HolderLookup.Provider registries) {
+    private static PtaRewards resolveRewards(Identifier id, RewardsSpec spec, HolderLookup.Provider registries) {
         if (spec == null) return PtaRewards.of(PtaPool.create(new HashMap<>()));
 
         Map<PtaDropRecord, Integer> pool = new HashMap<>();
@@ -284,7 +284,7 @@ public final class InteractionSpecResolver {
         return PtaRewards.create(PtaPool.create(pool), guaranteed, spec.rolls(), fortuneEnchant, fortuneFactor);
     }
 
-    private static PtaDropRecord toDropRecord(ResourceLocation id, RewardEntrySpec entry, String path) {
+    private static PtaDropRecord toDropRecord(Identifier id, RewardEntrySpec entry, String path) {
         Set<Item> items = resolveItems(id, entry.match(), path + ".match");
         CountSpec.Range range = entry.count().resolve(0);
         CompoundTag nbt = items.isEmpty() ? null : entry.nbt().orElse(null);
@@ -293,12 +293,12 @@ public final class InteractionSpecResolver {
 
     // Extras: conditions (non-biome) + player effects + interaction sound/particles
 
-    private static PtaExtras resolveExtras(ResourceLocation id, InteractionSpec spec) {
+    private static PtaExtras resolveExtras(Identifier id, InteractionSpec spec) {
         PtaConditions conditions = spec.conditions().map(InteractionSpecResolver::resolveConditions).orElse(PtaConditions.EMPTY);
 
         List<PtaEffect> effects = new ArrayList<>();
         for (EffectSpec effectSpec : spec.effects()) {
-            ResourceLocation effectId = tryParse(effectSpec.id());
+            Identifier effectId = tryParse(effectSpec.id());
             Holder<MobEffect> effect = effectId == null ? null : BuiltInRegistries.MOB_EFFECT
                     .getHolder(ResourceKey.create(Registries.MOB_EFFECT, effectId))
                     .orElse(null);
@@ -357,10 +357,10 @@ public final class InteractionSpecResolver {
     // sound looks identical to one that was authored without a sound, so without a line in the log
     // there is nothing for the author to go on.
 
-    private static SoundEvent resolveSound(ResourceLocation id, String name, String path) {
+    private static SoundEvent resolveSound(Identifier id, String name, String path) {
         if (name == null) return null;
 
-        ResourceLocation soundId = tryParse(name);
+        Identifier soundId = tryParse(name);
         SoundEvent sound = soundId == null ? null : BuiltInRegistries.SOUND_EVENT.get(soundId);
         if (sound == null) {
             error(id, path + " - Unknown sound " + name);
@@ -368,7 +368,7 @@ public final class InteractionSpecResolver {
         return sound;
     }
 
-    private static ParticleOptions resolveParticles(ResourceLocation id, String name, String path) {
+    private static ParticleOptions resolveParticles(Identifier id, String name, String path) {
         if (name == null) return null;
 
         if (!BlockChecker.doesBlockExist(name)) {
@@ -385,7 +385,7 @@ public final class InteractionSpecResolver {
      * time, so an unparseable tag or a typo is otherwise invisible — the interaction simply never
      * fires, which reads as a mod bug rather than a file one.
      */
-    private static void validateBiomeEntries(ResourceLocation id, Set<String> entries, String path) {
+    private static void validateBiomeEntries(Identifier id, Set<String> entries, String path) {
         for (String entry : entries) {
             if (entry.isEmpty()) {
                 error(id, path + " - empty biome entry");
@@ -398,7 +398,7 @@ public final class InteractionSpecResolver {
     }
 
     private static Holder<Enchantment> resolveEnchantment(HolderLookup.Provider registries, String enchantId) {
-        ResourceLocation parsed = tryParse(enchantId);
+        Identifier parsed = tryParse(enchantId);
         if (registries == null || parsed == null) return null;
         return registries.lookupOrThrow(Registries.ENCHANTMENT)
                 .get(ResourceKey.create(Registries.ENCHANTMENT, parsed))
@@ -408,11 +408,11 @@ public final class InteractionSpecResolver {
 
     /**
      * Every id in an interaction file is authored text, so a malformed one is expected input.
-     * {@code ResourceLocation.parse} throws, and these resolutions run inside the datapack reload —
+     * {@code Identifier.parse} throws, and these resolutions run inside the datapack reload —
      * one typo would abort the load of every interaction rather than reporting that one file.
      */
-    private static ResourceLocation tryParse(String id) {
-        return id == null ? null : ResourceLocation.tryParse(id);
+    private static Identifier tryParse(String id) {
+        return id == null ? null : Identifier.tryParse(id);
     }
 
     // Costs
@@ -442,7 +442,7 @@ public final class InteractionSpecResolver {
 
     // Selector resolution
 
-    private static Set<Item> resolveItems(ResourceLocation id, List<String> entries, String path) {
+    private static Set<Item> resolveItems(Identifier id, List<String> entries, String path) {
         Set<Item> items = new HashSet<>();
         for (String entry : entries) {
             boolean isTag = !entry.isEmpty() && entry.charAt(0) == TAG_PREFIX;
@@ -467,7 +467,7 @@ public final class InteractionSpecResolver {
         return items;
     }
 
-    private static boolean addBlock(ResourceLocation id, Set<Block> blocks, String name, boolean isTag, String path, boolean reportMissing) {
+    private static boolean addBlock(Identifier id, Set<Block> blocks, String name, boolean isTag, String path, boolean reportMissing) {
         try {
             if (isTag) {
                 if (!BlockChecker.isBlockTagExisting(name)) return false;
@@ -487,7 +487,7 @@ public final class InteractionSpecResolver {
         }
     }
 
-    private static boolean addFluid(ResourceLocation id, Set<Fluid> fluids, String name, boolean isTag, String path, boolean reportMissing) {
+    private static boolean addFluid(Identifier id, Set<Fluid> fluids, String name, boolean isTag, String path, boolean reportMissing) {
         try {
             if (isTag) {
                 if (!FluidChecker.isFluidTagExisting(name)) return false;
@@ -509,7 +509,7 @@ public final class InteractionSpecResolver {
 
     // State resolution
 
-    private static Set<PtaStateRecord<?>> buildStates(ResourceLocation id, Map<String, String> states, Set<?> entries) {
+    private static Set<PtaStateRecord<?>> buildStates(Identifier id, Map<String, String> states, Set<?> entries) {
         Set<PtaStateRecord<?>> result = new HashSet<>();
         for (Map.Entry<String, String> stateEntry : states.entrySet()) {
             Property<?> property = null;
@@ -528,7 +528,7 @@ public final class InteractionSpecResolver {
         return result;
     }
 
-    private static <T extends Comparable<T>> void addStateEntry(ResourceLocation id, Set<PtaStateRecord<?>> states, Property<T> property, String value) {
+    private static <T extends Comparable<T>> void addStateEntry(Identifier id, Set<PtaStateRecord<?>> states, Property<T> property, String value) {
         T parsed = parsePropertyValue(property, value);
         if (value.equalsIgnoreCase(SAME_STATE) || parsed != null) {
             states.add(new PtaStateRecord<>(property, value));
@@ -560,7 +560,7 @@ public final class InteractionSpecResolver {
         return null;
     }
 
-    private static void error(ResourceLocation id, String message) {
+    private static void error(Identifier id, String message) {
         PTALoggers.error(INCORRECT_FORMAT + " - " + id.getPath() + " - " + message);
     }
 }

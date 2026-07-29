@@ -4,7 +4,7 @@ import com.drimoz.punchthemall.PunchThemAll;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Client → server notice that the player left-clicked nothing.
@@ -20,7 +20,7 @@ public record LeftClickEmptyPayload() implements CustomPacketPayload {
     public static final LeftClickEmptyPayload INSTANCE = new LeftClickEmptyPayload();
 
     public static final Type<LeftClickEmptyPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "left_click_empty"));
+            new Type<>(Identifier.fromNamespaceAndPath(PunchThemAll.MOD_ID, "left_click_empty"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, LeftClickEmptyPayload> STREAM_CODEC =
             StreamCodec.unit(INSTANCE);

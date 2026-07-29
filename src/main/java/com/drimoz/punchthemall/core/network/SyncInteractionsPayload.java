@@ -6,7 +6,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +28,7 @@ import java.util.Map;
  * start a fresh set and {@code last} tells it the set is complete, so a rebuild only ever happens on
  * a whole, consistent batch series.</p>
  */
-public record SyncInteractionsPayload(boolean first, boolean last, Map<ResourceLocation, InteractionSpec> specs)
+public record SyncInteractionsPayload(boolean first, boolean last, Map<Identifier, InteractionSpec> specs)
         implements CustomPacketPayload {
 
     /**
@@ -39,7 +39,7 @@ public record SyncInteractionsPayload(boolean first, boolean last, Map<ResourceL
     public static final int BATCH_SIZE = 64;
 
     public static final Type<SyncInteractionsPayload> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(PunchThemAll.MOD_ID, "sync_interactions"));
+            new Type<>(Identifier.fromNamespaceAndPath(PunchThemAll.MOD_ID, "sync_interactions"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncInteractionsPayload> STREAM_CODEC =
             StreamCodec.composite(
@@ -49,7 +49,7 @@ public record SyncInteractionsPayload(boolean first, boolean last, Map<ResourceL
                     SyncInteractionsPayload::last,
                     ByteBufCodecs.map(
                             HashMap::new,
-                            ResourceLocation.STREAM_CODEC,
+                            Identifier.STREAM_CODEC,
                             ByteBufCodecs.fromCodecWithRegistries(InteractionSpec.CODEC)
                     ),
                     SyncInteractionsPayload::specs,
@@ -60,7 +60,7 @@ public record SyncInteractionsPayload(boolean first, boolean last, Map<ResourceL
      * Split a full interaction set into the payloads to send, in order. An empty set still produces
      * one payload, so a client that had interactions and now should have none is told so.
      */
-    public static List<SyncInteractionsPayload> split(Map<ResourceLocation, InteractionSpec> specs) {
+    public static List<SyncInteractionsPayload> split(Map<Identifier, InteractionSpec> specs) {
         List<SyncInteractionsPayload> payloads = new ArrayList<>();
 
         if (specs.isEmpty()) {
@@ -68,10 +68,10 @@ public record SyncInteractionsPayload(boolean first, boolean last, Map<ResourceL
             return payloads;
         }
 
-        List<Map.Entry<ResourceLocation, InteractionSpec>> entries = new ArrayList<>(specs.entrySet());
+        List<Map.Entry<Identifier, InteractionSpec>> entries = new ArrayList<>(specs.entrySet());
         for (int start = 0; start < entries.size(); start += BATCH_SIZE) {
             int end = Math.min(entries.size(), start + BATCH_SIZE);
-            Map<ResourceLocation, InteractionSpec> batch = new LinkedHashMap<>();
+            Map<Identifier, InteractionSpec> batch = new LinkedHashMap<>();
             entries.subList(start, end).forEach(entry -> batch.put(entry.getKey(), entry.getValue()));
             payloads.add(new SyncInteractionsPayload(start == 0, end == entries.size(), batch));
         }

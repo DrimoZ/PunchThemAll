@@ -17,14 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The important property is that a malformed id is ordinary input, not an exception. These
  * lookups run inside the datapack reload and, for biome tags, on every click — {@code
- * ResourceLocation.parse} throwing meant one typo could abort a pack's whole load.</p>
+ * Identifier.parse} throwing meant one typo could abort a pack's whole load.</p>
  *
  * <p>Tag lookups return empty here because tags need a running server; that is the same reason
  * production resolves them on {@code TagsUpdatedEvent} rather than at parse time.</p>
  */
 class CheckersTest {
 
-    /** Ids that {@code ResourceLocation} refuses: spaces, capitals, punctuation, empty namespace. */
+    /** Ids that {@code Identifier} refuses: spaces, capitals, punctuation, empty namespace. */
     private static final String[] MALFORMED = {
             "NOT AN ID", "Upper:Case", "a b c", "???", "minecraft:bad path", "минкрафт:стоун", ":", ""
     };

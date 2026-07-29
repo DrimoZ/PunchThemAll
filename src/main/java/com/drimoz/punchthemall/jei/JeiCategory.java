@@ -33,7 +33,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -130,7 +130,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     // appends a "Recipe By: PunchThemAll" line to every drop's tooltip — noise here, since the
     // interaction id is already shown on the arrow tooltip.
     @Override
-    public ResourceLocation getRegistryName(PtaInteraction recipe) {
+    public Identifier getRegistryName(PtaInteraction recipe) {
         return null;
     }
 
@@ -422,7 +422,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             lines.add(Component.literal("§6" + Component.translatable(TranslationKeys.INTERACTION_EFFECTS_TITLE).getString() + " :"));
             for (PtaEffect effect : extras.effects()) {
                 String name = effect.effect().unwrapKey()
-                        .map(key -> Component.translatable("effect." + key.location().getNamespace() + "." + key.location().getPath()).getString())
+                        .map(key -> Component.translatable("effect." + key.identifier().getNamespace() + "." + key.identifier().getPath()).getString())
                         .orElse("effect");
                 lines.add(Component.literal("§8 - §d" + name + " §5" + (effect.amplifier() + 1) + " §7(" + (int) (effect.chance() * 100) + "%)"));
             }

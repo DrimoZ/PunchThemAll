@@ -3,7 +3,7 @@ package com.drimoz.punchthemall.core.checker;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class BlockChecker {
 
     public static boolean doesBlockExist(String blockName) {
-        ResourceLocation id = ItemChecker.tryParse(blockName);
+        Identifier id = ItemChecker.tryParse(blockName);
         return id != null && BuiltInRegistries.BLOCK.containsKey(id);
     }
 
@@ -24,7 +24,7 @@ public class BlockChecker {
      *         the registry default, which would answer an unknown id with {@code AIR}.
      */
     public static Block getExistingBlock(String blockName) {
-        ResourceLocation id = ItemChecker.tryParse(blockName);
+        Identifier id = ItemChecker.tryParse(blockName);
         return id == null || !BuiltInRegistries.BLOCK.containsKey(id) ? null : BuiltInRegistries.BLOCK.get(id);
     }
 
@@ -46,7 +46,7 @@ public class BlockChecker {
     }
 
     private static TagKey<Block> blockTagKey(String blockTag) {
-        ResourceLocation id = ItemChecker.tryParse(blockTag);
+        Identifier id = ItemChecker.tryParse(blockTag);
         return id == null ? null : TagKey.create(Registries.BLOCK, id);
     }
 }

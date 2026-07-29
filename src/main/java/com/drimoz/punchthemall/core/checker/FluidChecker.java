@@ -3,7 +3,7 @@ package com.drimoz.punchthemall.core.checker;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.material.Fluid;
 
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class FluidChecker {
 
     public static boolean doesFluidExist(String fluidName) {
-        ResourceLocation id = ItemChecker.tryParse(fluidName);
+        Identifier id = ItemChecker.tryParse(fluidName);
         return id != null && BuiltInRegistries.FLUID.containsKey(id);
     }
 
@@ -24,7 +24,7 @@ public class FluidChecker {
      *         the registry default, which would answer an unknown id with {@code EMPTY}.
      */
     public static Fluid getExistingFluid(String fluidName) {
-        ResourceLocation id = ItemChecker.tryParse(fluidName);
+        Identifier id = ItemChecker.tryParse(fluidName);
         return id == null || !BuiltInRegistries.FLUID.containsKey(id) ? null : BuiltInRegistries.FLUID.get(id);
     }
 
@@ -46,7 +46,7 @@ public class FluidChecker {
     }
 
     private static TagKey<Fluid> fluidTagKey(String fluidTag) {
-        ResourceLocation id = ItemChecker.tryParse(fluidTag);
+        Identifier id = ItemChecker.tryParse(fluidTag);
         return id == null ? null : TagKey.create(Registries.FLUID, id);
     }
 }
