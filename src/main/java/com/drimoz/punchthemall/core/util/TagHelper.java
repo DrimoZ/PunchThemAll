@@ -15,7 +15,7 @@ public class TagHelper {
                 (compareTag instanceof CompoundTag && ((CompoundTag) compareTag).isEmpty())) return true;
 
         if (compareTag instanceof CompoundTag) {
-            Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
+            Set<String> compareKeys = ((CompoundTag) compareTag).keySet();
 
             // Special-case the RangeTag convention. Compare numerically rather than by tag class:
             // authored SNBT freely mixes `[0,500]` (int) and `[2s,7s]` (short), and the value read
@@ -26,14 +26,14 @@ public class TagHelper {
                 if (!(((CompoundTag) compareTag).get("RangeTag") instanceof ListTag listRangeTag) || listRangeTag.size() != 2) return false;
                 if (!(listRangeTag.get(0) instanceof NumericTag minTag) || !(listRangeTag.get(1) instanceof NumericTag maxTag)) return false;
 
-                long value = itemNumeric.getAsLong();
-                return minTag.getAsLong() <= value && value <= maxTag.getAsLong();
+                long value = itemNumeric.longValue();
+                return minTag.longValue() <= value && value <= maxTag.longValue();
             }
             // Otherwise recurse on each field.
             else {
                 if (!(itemTag instanceof CompoundTag)) return false;
 
-                Set<String> itemKeys = ((CompoundTag) itemTag).getAllKeys();
+                Set<String> itemKeys = ((CompoundTag) itemTag).keySet();
                 for (String compareKey : compareKeys) {
                     if (!itemKeys.contains(compareKey)) return false;
 
@@ -75,7 +75,7 @@ public class TagHelper {
                 (compareTag instanceof CompoundTag && ((CompoundTag) compareTag).isEmpty())) return true;
 
         if (compareTag instanceof CompoundTag) {
-            Set<String> compareKeys = ((CompoundTag) compareTag).getAllKeys();
+            Set<String> compareKeys = ((CompoundTag) compareTag).keySet();
 
             if (compareKeys.size() == 1 && compareKeys.contains("RangeTag")) {
                 // A RangeTag in a blacklist forbids values inside [min, max]; everything else passes.
@@ -88,13 +88,13 @@ public class TagHelper {
                     return true;
                 }
 
-                long value = itemNumeric.getAsLong();
-                return value < minTag.getAsLong() || value > maxTag.getAsLong();
+                long value = itemNumeric.longValue();
+                return value < minTag.longValue() || value > maxTag.longValue();
             }
             else {
                 if (!(itemTag instanceof CompoundTag)) return true;
 
-                Set<String> itemKeys = ((CompoundTag) itemTag).getAllKeys();
+                Set<String> itemKeys = ((CompoundTag) itemTag).keySet();
                 for (String compareKey : compareKeys) {
                     if (itemKeys.contains(compareKey)) {
                         if (!containsRequiredTagsWithRangeBlacklist(

@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -33,6 +34,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -454,7 +456,12 @@ public class PlayerInteractionHandler {
     private static void applyNBTs(Level level, BlockPos pos, CompoundTag customNBT) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity != null) {
-            blockEntity.loadWithComponents(customNBT, level.registryAccess());
+            // Since 1.21.6 block entities read through a ValueInput rather than a raw CompoundTag.
+            // DISCARDING keeps today's behaviour: the old CompoundTag overload reported nothing
+            // either. Swap in a logging reporter if authored transformation NBT ever needs
+            // diagnosing — that would be a change, so it is not made here.
+            blockEntity.loadWithComponents(
+                    TagValueInput.create(ProblemReporter.DISCARDING, level.registryAccess(), customNBT));
             blockEntity.setChanged();
         }
     }

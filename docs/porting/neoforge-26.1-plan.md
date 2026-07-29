@@ -393,6 +393,35 @@ Nothing yet from NBT, `hurtServer`, `ValueInput`/`ValueOutput` or `getDayTime` �
 first error per expression, so those surface only once the rename lands. Expect the count to rise
 before it falls.
 
+### 10.1 After the rename, and after the NBT/registry leaves
+
+100 → 57 (rename, EMI out) → **16** (NBT + registry). Every remaining error is a later phase:
+`GuiGraphics` ×5 (JEI), `RecipesUpdatedEvent` ×3 + `sendToServer` (§3i/§3h), `AddReloadListenerEvent`
+×2 + `getRegistryAccess` (§3b), `InteractionReloadListener` ×3 (§3a), `getDayTime` (§3f). Test
+sources are still unverified — Gradle skips `compileTestJava` while `compileJava` fails.
+
+**Four corrections to §3, all found by checking the 26.1 jar rather than the primers:**
+
+- **§3d was half wrong.** `BlockEntity#saveWithoutMetadata(HolderLookup.Provider)` still exists and
+  still returns a `CompoundTag`, so `InteractionRegistry` needed **no change at all**. Only the
+  *read* side moved: `loadWithComponents` now takes a `ValueInput`, so just the one site in
+  `PlayerInteractionHandler` needed `TagValueInput.create(ProblemReporter.DISCARDING, …)`.
+  `DISCARDING` is deliberate — the old `CompoundTag` overload reported nothing either.
+- **§3g was wrong about `hurt`.** `Entity#hurt(DamageSource, float)` still exists in 26.1 as a
+  `final void` that dispatches to `hurtServer`/`hurtClient`. PTA ignores the return value, so the
+  call site compiles and behaves as before. No edit needed.
+- **§3e had the wrong method.** `Registry#get(Identifier)` returning `Optional<Holder.Reference<T>>`
+  is real, and the direct accessor is `getValue` — but what actually broke was `getTag(TagKey)`,
+  which is now `get(TagKey)` (from `HolderGetter`), same `Optional<HolderSet.Named<T>>` return. The
+  checkers' surrounding code was unaffected.
+- **The NBT accessors were understated.** Not just `getAllKeys` → `keySet`: `NumericTag#getAsLong`
+  → `longValue()`, `getAsInt` → `intValue()`, and `Tag#TAG_ANY_NUMERIC` is gone (the typed
+  `contains` with it). The subtle one is **`Tag#getAsString` → `asString()` returning
+  `Optional<String>`, empty for non-string tags** — where the old method fell back to the SNBT
+  form. Two sites compared or rendered arbitrary tags that way, so both needed
+  `asString().orElseGet(tag::toString)`; calling `asString()` alone would have made every
+  non-string `where`-filter comparison trivially equal, and silently so.
+
 ---
 
 ### Sources

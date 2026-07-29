@@ -101,14 +101,14 @@ public final class ItemConstraintDescriber {
 
     private static Optional<String> enchantmentIdFrom(CompoundTag where) {
         if (where == null || where.isEmpty() || !where.contains("id")) return Optional.empty();
-        String id = where.getString("id");
+        String id = where.getStringOr("id", "");
         return id.isEmpty() ? Optional.empty() : Optional.of(id);
     }
 
     // SNBT whitelist / blacklist ---------------------------------------------------------------
 
     private static void describeCompound(CompoundTag tag, List<Component> out) {
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             Tag value = tag.get(key);
 
             if (ENCHANTMENTS.equals(key) && value instanceof ListTag list) {
@@ -117,7 +117,7 @@ public final class ItemConstraintDescriber {
                 out.add(Component.translatable(TranslationKeys.INTERACTION_NBT_DAMAGE)
                         .append(Component.literal(" " + valueOrRange(value))));
             } else if ("custom".equals(key) && value instanceof CompoundTag custom) {
-                for (String customKey : custom.getAllKeys()) {
+                for (String customKey : custom.keySet()) {
                     out.add(Component.literal(customKey + " " + valueOrRange(custom.get(customKey))));
                 }
             } else {
@@ -130,7 +130,7 @@ public final class ItemConstraintDescriber {
         for (Tag element : list) {
             if (!(element instanceof CompoundTag entry)) continue;
 
-            String id = entry.getString("id");
+            String id = entry.getStringOr("id", "");
             String name = id.isEmpty()
                     ? Component.translatable(TranslationKeys.INTERACTION_NBT_ANY_ENCHANT).getString()
                     : enchantmentName(id);
@@ -145,7 +145,7 @@ public final class ItemConstraintDescriber {
                     range -> out.add(Component.literal(name + " " + roman((int) range[0]) + " - " + roman((int) range[1]))),
                     () -> {
                         if (level instanceof NumericTag numeric) {
-                            out.add(Component.literal(name + " " + roman(numeric.getAsInt())));
+                            out.add(Component.literal(name + " " + roman(numeric.intValue())));
                         } else {
                             out.add(Component.literal(name));
                         }
@@ -162,7 +162,7 @@ public final class ItemConstraintDescriber {
             return Optional.empty();
         }
         if (!(range.get(0) instanceof NumericTag min) || !(range.get(1) instanceof NumericTag max)) return Optional.empty();
-        return Optional.of(new long[]{min.getAsLong(), max.getAsLong()});
+        return Optional.of(new long[]{min.longValue(), max.longValue()});
     }
 
     private static String valueOrRange(Tag tag) {
@@ -173,8 +173,10 @@ public final class ItemConstraintDescriber {
                     ? "= " + bounds[0]
                     : Component.translatable(TranslationKeys.INTERACTION_NBT_BETWEEN, bounds[0], bounds[1]).getString();
         }
-        if (tag instanceof NumericTag numeric) return "= " + numeric.getAsLong();
-        return tag == null ? "" : "= " + tag.getAsString();
+        if (tag instanceof NumericTag numeric) return "= " + numeric.longValue();
+        // asString is empty for non-string tags, where the old getAsString fell back to the SNBT
+        // form — keep that, or every non-string constraint would render as "= ".
+        return tag == null ? "" : "= " + tag.asString().orElseGet(tag::toString);
     }
 
     private static String numericRange(Optional<Integer> min, Optional<Integer> max) {

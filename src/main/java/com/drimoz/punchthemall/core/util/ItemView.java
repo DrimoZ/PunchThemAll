@@ -74,12 +74,12 @@ public final class ItemView {
         if (stack == null || view == null || view.isEmpty()) return;
 
         CompoundTag custom = new CompoundTag();
-        for (String key : view.getAllKeys()) {
+        for (String key : view.keySet()) {
             switch (key) {
                 case "Damage" -> {
-                    if (view.contains("Damage", Tag.TAG_ANY_NUMERIC)) {
-                        stack.setDamageValue(view.getInt("Damage"));
-                    }
+                    // getInt is empty unless the tag is numeric, so it carries the type check the
+                    // old contains(key, TAG_ANY_NUMERIC) did.
+                    view.getInt("Damage").ifPresent(stack::setDamageValue);
                 }
                 case "Enchantments" -> {
                     // Enchanted drops require the dynamic enchantment registry; not supported here.

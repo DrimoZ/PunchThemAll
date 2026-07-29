@@ -25,7 +25,7 @@ public class BlockChecker {
      */
     public static Block getExistingBlock(String blockName) {
         Identifier id = ItemChecker.tryParse(blockName);
-        return id == null || !BuiltInRegistries.BLOCK.containsKey(id) ? null : BuiltInRegistries.BLOCK.get(id);
+        return id == null || !BuiltInRegistries.BLOCK.containsKey(id) ? null : BuiltInRegistries.BLOCK.getValue(id);
     }
 
     public static Block getFirstBlockForTag(String blockTag) {
@@ -35,14 +35,14 @@ public class BlockChecker {
     public static Set<Block> getBlocksForTag(String blockTag) {
         TagKey<Block> tagKey = blockTagKey(blockTag);
         if (tagKey == null) return new HashSet<>();
-        return BuiltInRegistries.BLOCK.getTag(tagKey)
+        return BuiltInRegistries.BLOCK.get(tagKey)
                 .map(named -> named.stream().map(Holder::value).collect(Collectors.toCollection(HashSet::new)))
                 .orElseGet(HashSet::new);
     }
 
     public static boolean isBlockTagExisting(String blockTag) {
         TagKey<Block> tagKey = blockTagKey(blockTag);
-        return tagKey != null && BuiltInRegistries.BLOCK.getTag(tagKey).isPresent();
+        return tagKey != null && BuiltInRegistries.BLOCK.get(tagKey).isPresent();
     }
 
     private static TagKey<Block> blockTagKey(String blockTag) {

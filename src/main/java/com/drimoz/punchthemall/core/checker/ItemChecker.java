@@ -33,7 +33,7 @@ public class ItemChecker {
      */
     public static Item getExistingItem(String itemName) {
         Identifier id = tryParse(itemName);
-        return id == null || !BuiltInRegistries.ITEM.containsKey(id) ? null : BuiltInRegistries.ITEM.get(id);
+        return id == null || !BuiltInRegistries.ITEM.containsKey(id) ? null : BuiltInRegistries.ITEM.getValue(id);
     }
 
     public static Item getFirstItemFromTag(String itemTag) {
@@ -43,14 +43,14 @@ public class ItemChecker {
     public static Set<Item> getItemsForTag(String itemTag) {
         TagKey<Item> tagKey = itemTagKey(itemTag);
         if (tagKey == null) return new HashSet<>();
-        return BuiltInRegistries.ITEM.getTag(tagKey)
+        return BuiltInRegistries.ITEM.get(tagKey)
                 .map(named -> named.stream().map(Holder::value).collect(Collectors.toCollection(HashSet::new)))
                 .orElseGet(HashSet::new);
     }
 
     public static boolean isItemTagExisting(String itemTag) {
         TagKey<Item> tagKey = itemTagKey(itemTag);
-        return tagKey != null && BuiltInRegistries.ITEM.getTag(tagKey).isPresent();
+        return tagKey != null && BuiltInRegistries.ITEM.get(tagKey).isPresent();
     }
 
     private static TagKey<Item> itemTagKey(String itemTag) {

@@ -25,7 +25,7 @@ public class FluidChecker {
      */
     public static Fluid getExistingFluid(String fluidName) {
         Identifier id = ItemChecker.tryParse(fluidName);
-        return id == null || !BuiltInRegistries.FLUID.containsKey(id) ? null : BuiltInRegistries.FLUID.get(id);
+        return id == null || !BuiltInRegistries.FLUID.containsKey(id) ? null : BuiltInRegistries.FLUID.getValue(id);
     }
 
     public static Fluid getFirstFluidForTag(String fluidTag) {
@@ -35,14 +35,14 @@ public class FluidChecker {
     public static Set<Fluid> getFluidsForTag(String fluidTag) {
         TagKey<Fluid> tagKey = fluidTagKey(fluidTag);
         if (tagKey == null) return new HashSet<>();
-        return BuiltInRegistries.FLUID.getTag(tagKey)
+        return BuiltInRegistries.FLUID.get(tagKey)
                 .map(named -> named.stream().map(Holder::value).collect(Collectors.toCollection(HashSet::new)))
                 .orElseGet(HashSet::new);
     }
 
     public static boolean isFluidTagExisting(String fluidTag) {
         TagKey<Fluid> tagKey = fluidTagKey(fluidTag);
-        return tagKey != null && BuiltInRegistries.FLUID.getTag(tagKey).isPresent();
+        return tagKey != null && BuiltInRegistries.FLUID.get(tagKey).isPresent();
     }
 
     private static TagKey<Fluid> fluidTagKey(String fluidTag) {

@@ -300,7 +300,7 @@ public final class InteractionSpecResolver {
         for (EffectSpec effectSpec : spec.effects()) {
             Identifier effectId = tryParse(effectSpec.id());
             Holder<MobEffect> effect = effectId == null ? null : BuiltInRegistries.MOB_EFFECT
-                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, effectId))
+                    .get(ResourceKey.create(Registries.MOB_EFFECT, effectId))
                     .orElse(null);
             if (effect == null) {
                 error(id, "effects - Unknown effect " + effectSpec.id());
@@ -361,7 +361,7 @@ public final class InteractionSpecResolver {
         if (name == null) return null;
 
         Identifier soundId = tryParse(name);
-        SoundEvent sound = soundId == null ? null : BuiltInRegistries.SOUND_EVENT.get(soundId);
+        SoundEvent sound = soundId == null ? null : BuiltInRegistries.SOUND_EVENT.getValue(soundId);
         if (sound == null) {
             error(id, path + " - Unknown sound " + name);
         }

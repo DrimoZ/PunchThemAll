@@ -40,7 +40,7 @@ public record PtaNbtPredicate(String path, Optional<Integer> intMin, Optional<In
                 if (!rangeGiven) return true; // presence-only predicate
                 continue;
             }
-            long value = numeric.getAsLong();
+            long value = numeric.longValue();
             if (intMin.isPresent() && value < intMin.get()) continue;
             if (intMax.isPresent() && value > intMax.get()) continue;
             return true;
@@ -78,17 +78,26 @@ public record PtaNbtPredicate(String path, Optional<Integer> intMin, Optional<In
         if (where.isEmpty()) return true;
         if (!(element instanceof CompoundTag compound)) return false;
 
-        for (String key : where.getAllKeys()) {
+        for (String key : where.keySet()) {
             Tag expected = where.get(key);
             Tag actual = compound.get(key);
             if (actual == null) return false;
 
             if (expected instanceof NumericTag expectedNumber && actual instanceof NumericTag actualNumber) {
-                if (expectedNumber.getAsLong() != actualNumber.getAsLong()) return false;
-            } else if (!expected.getAsString().equals(actual.getAsString())) {
+                if (expectedNumber.longValue() != actualNumber.longValue()) return false;
+            } else if (!asText(expected).equals(asText(actual))) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * The old {@code Tag#getAsString}: the raw value for a string tag, the SNBT form for anything
+     * else. {@code Tag#asString} replaced it in 1.21.5 and is empty for non-string tags, so calling
+     * it alone would make every non-string comparison here trivially equal.
+     */
+    private static String asText(Tag tag) {
+        return tag.asString().orElseGet(tag::toString);
     }
 }

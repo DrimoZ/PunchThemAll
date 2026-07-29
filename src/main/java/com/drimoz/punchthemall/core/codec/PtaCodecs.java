@@ -39,7 +39,7 @@ public final class PtaCodecs {
     public static final Codec<CompoundTag> SNBT = Codec.STRING.comapFlatMap(
             string -> {
                 try {
-                    return DataResult.success(TagParser.parseTag(string));
+                    return DataResult.success(TagParser.parseCompoundFully(string));
                 } catch (CommandSyntaxException e) {
                     return DataResult.error(() -> "Invalid SNBT string \"" + string + "\": " + e.getMessage());
                 }
