@@ -5,6 +5,37 @@ The full, maintained changelog is CHANGELOG.md in the repository. This file is t
 pasted onto the CurseForge/Modrinth release page.
 
 
+26.1.2-2.3.0
+------------
+
+A port to Minecraft 26.1. Nothing about authoring changes: same interaction files, same config,
+same behaviour.
+
+Changed
+
+* Targets Minecraft 26.1.2 / NeoForge 26.1 on Java 25. Minecraft ships Java 25 to players, so there
+  is nothing extra to install.
+* JEI 29 replaces JEI 19.
+* Datapacks need the new pack.mcmeta header. Minecraft 1.21.9 replaced "pack_format" with a
+  "min_format"/"max_format" pair; for 26.1.2 the data pack format is 101. A pack still declaring
+  "pack_format": 48 loads as incompatible:
+      { "pack": { "min_format": 101, "max_format": 101, "description": "..." } }
+* "time": "day"/"night" now reads the overworld clock, because 26.1 removed the per-level day time.
+  No change in the Overworld; in the Nether and the End the condition follows the Overworld's time,
+  which is what it already did in practice.
+
+Removed
+
+* The EMI integration, for this Minecraft version only. EMI has no 26.1 build yet, so there is no
+  API to build against. JEI is unaffected and "hidden" still works. Your datapacks need no change
+  either way.
+
+Fixed
+
+* JEI tooltips on the category's own icons rendered in the corner of the screen instead of at the
+  cursor. Caught during the port; never shipped.
+
+
 1.21.1-2.2.0
 ------------
 

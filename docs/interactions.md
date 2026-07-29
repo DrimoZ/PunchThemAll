@@ -1,5 +1,9 @@
 # Datapacks, loading & the JEI/EMI display
 
+> **On Minecraft 26.1, only JEI is available.** EMI has no 26.1 release, so that plugin is not in
+> this build and the "EMI" half of every mention below does not apply yet. Nothing else differs, and
+> nothing in your datapack changes either way.
+
 PunchThemAll interactions are **datapack** data. Files live at:
 
 ```text

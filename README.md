@@ -1,19 +1,18 @@
 # PunchThemAll
 
-**Turn any click into a recipe.** PunchThemAll is a Minecraft **NeoForge 1.21.1** mod that lets modpack
+**Turn any click into a recipe.** PunchThemAll is a Minecraft **NeoForge 26.1** mod that lets modpack
 authors define what happens when a player left/right-clicks (with or without sneaking) on a block, a
 fluid, or the air — optionally with a specific item in hand. Everything is plain **JSON** shipped in a
 **datapack**. No Java, no scripting.
 
 Each interaction can produce weighted **and** guaranteed drops, transform the clicked block/fluid,
 cost the player health or hunger, grant potion effects, play sounds and particles, and be gated by
-biome, dimension, time, weather, altitude, light, or player state — and it all shows up in **JEI** and
-**EMI**.
+biome, dimension, time, weather, altitude, light, or player state — and it all shows up in **JEI**.
 
-> **New in 2.1.0 (NeoForge 1.21.1):** ported to NeoForge/Java 21; interactions move from the config
-> folder into **datapacks**, so they reload with `/reload` and the server syncs them to clients;
-> native **EMI** support alongside JEI; item conditions now read as plain sentences in both viewers;
-> `left_click` on **air** finally works. The JSON format is unchanged from `schema_version: 2`.
+> **New in 2.3.0 (NeoForge 26.1):** a port, with no change to authoring — the same
+> `schema_version: 2` files, the same config, the same behaviour. Your datapack needs one edit: the
+> `pack.mcmeta` header, which Minecraft changed in 1.21.9. **EMI support is not in this build** —
+> EMI has no 26.1 release yet, so there is nothing to build against; it returns when it does.
 > See the [changelog](CHANGELOG.md).
 
 ---
@@ -31,25 +30,26 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
   light level, sneaking, food, and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, plus interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
-- 📖 **JEI & EMI integration** — players browse every interaction, its inputs, drops and conditions,
+- 📖 **JEI integration** — players browse every interaction, its inputs, drops and conditions,
   with item requirements written as plain sentences ("The item must have: Efficiency I - V") rather
   than raw tag structure.
 - 🖥️ **Server-friendly** — interactions live in datapacks and the server syncs them to clients, so
-  JEI/EMI are correct on dedicated servers with no extra setup.
+  JEI is correct on dedicated servers with no extra setup.
 - 🤖 **Automation-aware** — fake players / machines are supported with dedicated config gates.
 
 ## Requirements
 
 | | |
 | --- | --- |
-| Minecraft | 1.21.1 |
-| NeoForge | 21.1.x (built against 21.1.241) |
-| Recipe viewer | [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) **or** [EMI](https://modrinth.com/mod/emi) (optional, for the recipe browser) |
+| Minecraft | 26.1.2 |
+| NeoForge | 26.1.x (built against 26.1.2.92) |
+| Java | 25 — shipped with Minecraft 26.1, nothing to install |
+| Recipe viewer | [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) 29.x (optional, for the recipe browser) |
 
 ## Install
 
-1. Install NeoForge for 1.21.1 and (optionally) JEI or EMI.
-2. Drop `pta-1.21.1-2.1.0.jar` into your `mods` folder.
+1. Install NeoForge for 26.1 and (optionally) JEI.
+2. Drop `pta-26.1.2-2.3.0.jar` into your `mods` folder.
 3. Provide interactions with a datapack (below).
 
 ## Quick start
@@ -75,7 +75,7 @@ To author your own, create `data/mypack/pta/interaction/flint_from_gravel.json` 
 }
 ```
 
-Run `/reload`. Sneak-left-click gravel with a shovel and you'll sometimes get flint. Open JEI/EMI and
+Run `/reload`. Sneak-left-click gravel with a shovel and you'll sometimes get flint. Open JEI and
 search the **Interaction** category to see it.
 
 ## How it works
@@ -83,7 +83,7 @@ search the **Interaction** category to see it.
 - Interactions are datapack data: files go in
   `data/<namespace>/pta/interaction/**/*.json`. The path becomes the id
   (e.g. `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`).
-- The server **syncs its loaded set to clients** on join and after `/reload`, so gameplay and JEI/EMI
+- The server **syncs its loaded set to clients** on join and after `/reload`, so gameplay and JEI
   match on dedicated servers.
 - Edit files and run `/reload` to apply changes live. Datapacks override each other by pack order, and
   you can gate a file with `neoforge:conditions` (e.g. only if another mod is present).
@@ -96,7 +96,7 @@ search the **Interaction** category to see it.
 | --- | --- |
 | [docs/getting-started.md](docs/getting-started.md) | **Start here.** A step-by-step guide that builds an interaction from scratch, with a cookbook and troubleshooting. |
 | [docs/interaction-format.md](docs/interaction-format.md) | **Full JSON reference** for the `schema_version: 2` format. |
-| [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
+| [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
 | [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
 | [example catalogue](examples/punchthemall-examples/README.md) | **40 runnable examples**, one per feature, each with what it shows and how to trigger it. |
@@ -105,7 +105,7 @@ search the **Interaction** category to see it.
 
 ## Building from source
 
-Standard NeoForge / ModDevGradle workflow (Java 21). There is no CI; builds are run locally.
+Standard NeoForge / ModDevGradle workflow (Java 25). There is no CI; builds are run locally.
 
 ```bash
 ./gradlew build            # build the mod jar (into build/libs), tests included
@@ -115,11 +115,17 @@ Standard NeoForge / ModDevGradle workflow (Java 21). There is no CI; builds are 
 ./gradlew --refresh-dependencies   # if dependencies fail to resolve
 ```
 
-The unit suite boots the game's registries in process, so it exercises real `ItemStack` and NBT
-behaviour. It covers the logic below the game — NBT matching, drop and weight arithmetic, the codec,
-the resolver, the registry, sync batching. It does **not** cover anything that needs a live world
-(the click path, rendering) or tags, which need a running server; `docs/backlog.md` lists what that
-leaves untested.
+The unit suite runs under FML (ModDevGradle's `unitTest` integration), because since 26.1 there is no
+way to reach a usable Minecraft from a bare JVM. It covers the logic below the game — NBT matching,
+drop and weight arithmetic, the codec, the resolver, the registry, sync batching. It does **not**
+cover anything needing a live world (the click path, rendering), nor tags, which need a running
+server.
+
+**30 of the 242 tests currently fail**, all for one reason: 26.1 binds an item's default data
+components when a server loads its datapacks, not in `Bootstrap`, so constructing an `ItemStack`
+outside a server throws. That leaves the reward pipeline without unit coverage until the suite adopts
+`testframework`'s `EphemeralTestServerProvider`. See `docs/porting/neoforge-26.1-plan.md` §10.3 and
+`docs/backlog.md`.
 
 For that layer, [`examples/dev-probe-pack`](examples/dev-probe-pack) is a by-hand harness: drop it
 into a dev world, `/reload`, and read `run/logs/latest.log`. A green build has repeatedly not
@@ -128,7 +134,7 @@ predicted correctness on this mod — run the client.
 ## Compatibility
 
 Works with any resource/tech mod, since interactions can require specific items/tags and target
-specific blocks/fluids. JEI and EMI are both supported natively.
+specific blocks/fluids. JEI is supported natively.
 
 ## License & credits
 

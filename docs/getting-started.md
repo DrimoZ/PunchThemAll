@@ -7,6 +7,9 @@ copy-paste-ready.
 > Prefer to read the exhaustive field list instead? See [interaction-format.md](interaction-format.md).
 > Prefer to copy finished files? See the [example datapack](../examples/punchthemall-examples).
 
+> **On Minecraft 26.1, only JEI is available** — EMI has no 26.1 release yet, so mentions of it below
+> do not apply. Note also that `pack.mcmeta` changed shape in 1.21.9; §1 has the current header.
+
 **Contents**
 
 1. [Setup](#1-setup)
@@ -29,8 +32,8 @@ copy-paste-ready.
 
 Interactions are **datapack** data. So you author them in a datapack, not a config folder.
 
-1. Install NeoForge 1.21.1, a recipe viewer ([JEI](https://www.curseforge.com/minecraft/mc-mods/jei)
-   or [EMI](https://modrinth.com/mod/emi)), and PunchThemAll.
+1. Install NeoForge 26.1, a recipe viewer ([JEI](https://www.curseforge.com/minecraft/mc-mods/jei)),
+   and PunchThemAll.
 2. Make a datapack. In a world's `datapacks/` folder, create:
 
    ```text
@@ -41,7 +44,7 @@ Interactions are **datapack** data. So you author them in a datapack, not a conf
 
    `pack.mcmeta`:
    ```json
-   { "pack": { "pack_format": 48, "description": "My interactions" } }
+   { "pack": { "min_format": 101, "max_format": 101, "description": "My interactions" } }
    ```
 
 3. Put `.json` files in `data/mypack/pta/interaction/` (subfolders are fine). Each file is one

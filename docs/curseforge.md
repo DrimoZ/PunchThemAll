@@ -7,7 +7,7 @@ specific item in hand. No Java, no KubeJS: just JSON files in a **datapack**
 
 Every interaction can produce weighted or guaranteed drops, transform the clicked block/fluid, cost
 the player health or hunger, grant potion effects, play sounds and particles, and be gated by biome,
-dimension, time, weather, altitude, light or player state. Everything shows up in **JEI** and **EMI**.
+dimension, time, weather, altitude, light or player state. Everything shows up in **JEI**.
 
 ---
 
@@ -25,11 +25,11 @@ dimension, time, weather, altitude, light or player state. Everything shows up i
   sneaking, food and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, and interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
-- 📖 **JEI & EMI integration** — players can browse every interaction, its inputs, drops and
+- 📖 **JEI integration** — players can browse every interaction, its inputs, drops and
   conditions. Item requirements are written as plain sentences ("The item must have: Efficiency
   I - V"), not raw NBT.
 - 🖥️ **Server-friendly** — interactions live in datapacks and the server syncs them to clients, so
-  JEI/EMI are correct on dedicated servers with zero setup. Datapacks also override and can be gated
+  JEI is correct on dedicated servers with zero setup. Datapacks also override and can be gated
   with `neoforge:conditions`.
 
 ---
@@ -92,7 +92,7 @@ cobblestone, a chance at iron nuggets (doubled per Fortune level), a Haste buff 
 
 - **Getting started (step-by-step):** [getting-started.md](getting-started.md)
 - **Full JSON reference:** [interaction-format.md](interaction-format.md)
-- **Datapacks, loading & JEI/EMI:** [interactions.md](interactions.md)
+- **Datapacks, loading & JEI:** [interactions.md](interactions.md)
 - **Config options:** [configuration.md](configuration.md)
 - **Editor schema:** [interaction.schema.json](interaction.schema.json)
 - **Changelog:** [CHANGELOG.md](../CHANGELOG.md)
@@ -100,6 +100,6 @@ cobblestone, a chance at iron nuggets (doubled per Fortune level), a Haste buff 
 
 ## Compatibility
 
-- Minecraft **1.21.1**, NeoForge **21.1.x**.
-- **JEI** or **EMI** (optional) for the recipe browser — both are supported natively.
+- Minecraft **26.1.2**, NeoForge **26.1.x**.
+- **JEI** 29.x (optional) for the recipe browser. EMI has no 26.1 build yet, so it is not supported in this version.
 - Pairs well with resource/tech mods (Create, AE2, Ex Deorum, Thermal, Click Machine, …).

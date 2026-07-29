@@ -8,6 +8,42 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [26.1.2-2.3.0] — NeoForge
+
+A port to Minecraft 26.1. **Nothing about authoring changes**: the same `schema_version: 2` files,
+the same config keys, the same behaviour. If you have a PunchThemAll datapack, the only edit it needs
+is its `pack.mcmeta` (see below).
+
+### Changed
+- **Targets Minecraft 26.1.2 / NeoForge 26.1, on Java 25** (was 1.21.1 / NeoForge 21.1 / Java 21).
+  Minecraft ships Java 25 to players in 26.1, so no separate install is needed.
+- **JEI 29** replaces JEI 19.
+- **Datapacks need the new `pack.mcmeta` format.** Minecraft 1.21.9 replaced the single
+  `pack_format` field with a `min_format`/`max_format` pair, and the data pack format for 26.1.2 is
+  `101`. A pack still declaring `pack_format: 48` loads as incompatible. The shipped examples have
+  been updated — copy their header:
+  ```json
+  { "pack": { "min_format": 101, "max_format": 101, "description": "…" } }
+  ```
+- **The `time: day` / `time: night` condition reads the overworld clock.** Minecraft 26.1 removed the
+  per-level day time in favour of datapack world clocks, and this is the nearest equivalent. In the
+  Overworld nothing changes. In the Nether and the End the condition now follows the Overworld's
+  time rather than that dimension's own — which is what it already did in practice, since vanilla
+  kept them in step.
+
+### Removed
+- **The EMI integration**, for this Minecraft version only. EMI has no 26.1 build — its newest
+  NeoForge release targets 1.21.1 — so there is no API to build against. JEI is unaffected, and
+  `hidden` still does what it says. The plugin returns if and when EMI ships for 26.1; nothing in
+  your datapacks needs to change either way.
+
+### Fixed
+- **JEI tooltips on the category's own icons** (the mouse, hand, biome, damage, hunger and arrow
+  hints) rendered in the corner of the screen instead of at the cursor. Found and fixed during the
+  port; it never shipped.
+
+---
+
 ## [1.21.1-2.2.0] — NeoForge
 
 A correctness pass over 2.1.0, one new authoring field, and the first automated test suite.
