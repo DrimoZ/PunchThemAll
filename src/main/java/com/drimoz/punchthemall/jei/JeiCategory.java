@@ -25,7 +25,6 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -144,7 +143,57 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
     public void draw(PtaInteraction interaction, IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor graphics, double mouseX, double mouseY) {
         drawIcons(interaction, graphics);
         drawSlots(interaction, graphics);
-        drawTooltips(interaction, mouseX, mouseY, graphics);
+    }
+
+    /**
+     * The hover text for the icons this category draws itself (slots carry their own callbacks).
+     *
+     * <p>Deliberately not drawn from {@link #draw}. Rendering a tooltip inline stopped working in
+     * 1.21.6, when the GUI became a two-phase submit/render pass: the replacement,
+     * {@code setTooltipForNextFrame}, defers to the end of the frame, by which point JEI's transform
+     * for this recipe is gone — and {@code mouseX}/{@code mouseY} here are recipe-relative, so the
+     * tooltip landed in the top-left corner of the screen. Handing the lines to JEI instead lets it
+     * position them, which is what this hook is for.</p>
+     */
+    @Override
+    public void getTooltip(ITooltipBuilder tooltip, PtaInteraction interaction, IRecipeSlotsView recipeSlotsView, double mouseX, double mouseY) {
+        if (isMouseOver(mouseX, mouseY, X_MOUSE_ICON + 1, Y_MOUSE_ICON + 1, 16, 16)) {
+            tooltip.add(Component.translatable(interaction.getType().isLeftClick() ? TranslationKeys.INTERACTION_CLICK_LEFT : TranslationKeys.INTERACTION_CLICK_RIGHT));
+            tooltip.add(Component.literal("§8" + interaction.getId()));
+        }
+
+        if (isMouseOver(mouseX, mouseY, X_SNEAK_ICON + 1, Y_SNEAK_ICON + 1, 16, 16)) {
+            tooltip.add(Component.translatable(interaction.getType().isShiftClick() ? TranslationKeys.INTERACTION_POSITION_SNEAK : TranslationKeys.INTERACTION_POSITION_UP));
+        }
+
+        if (!interaction.getHand().isEmpty() && isMouseOver(mouseX, mouseY, X_HAND_ICON + 1, Y_HAND_ICON + 1, 16, 16)) {
+            tooltip.add(Component.translatable(getHandTranslationKey(interaction.getHand().getHand())));
+        }
+
+        if ((interaction.hasBiomeWhiteList() || interaction.hasBiomeBlackList()) && isMouseOver(mouseX, mouseY, X_BIOMES + 1, Y_BIOMES + 1, 16, 16)) {
+            tooltip.add(Component.literal("§7" + Component.translatable(interaction.hasBiomeWhiteList() ? TranslationKeys.INTERACTION_BIOME_WHITELIST : TranslationKeys.INTERACTION_BIOME_BLACKLIST).getString() + " : "));
+            for (String biome : (interaction.hasBiomeWhiteList() ? interaction.getBiomeWhitelist() : interaction.getBiomeBlackList())) {
+                tooltip.add(Component.literal("§6- " + biome.toLowerCase()));
+            }
+        }
+
+        if (interaction.hasHurtPlayer() && isMouseOver(mouseX, mouseY, X_DAMAGE + 1, Y_DAMAGE + 1, 8, 8)) {
+            tooltip.add(Component.literal(Component.translatable(TranslationKeys.INTERACTION_DAMAGE_TITLE).getString()));
+            tooltip.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_DAMAGE_CHANCE).getString() + " : §5" + Math.floor((interaction.getHurtPlayer().chance() * 100) * 1_000_000) / 1_000_000 + "%"));
+            tooltip.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_DAMAGE_HEART).getString() + " : §5"
+                    + (interaction.getHurtPlayer().min() == interaction.getHurtPlayer().max() ? ((double) interaction.getHurtPlayer().min() / 2) : ((double) interaction.getHurtPlayer().min() / 2) + " - " + ((double) interaction.getHurtPlayer().max() / 2))));
+        }
+
+        if (interaction.hasConsumeFood() && isMouseOver(mouseX, mouseY, X_HUNGER + 1 + (interaction.hasHurtPlayer() ? 0 : -11), Y_HUNGER + 1, 8, 8)) {
+            tooltip.add(Component.literal(Component.translatable(TranslationKeys.INTERACTION_HUNGER_TITLE).getString()));
+            tooltip.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_HUNGER_CHANCE).getString() + " : §5" + Math.floor((interaction.getConsumeFood().chance() * 100) * 1_000_000) / 1_000_000 + "%"));
+            tooltip.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_HUNGER_HUNGER).getString() + " : §5"
+                    + (interaction.getConsumeFood().min() == interaction.getConsumeFood().max() ? ((double) interaction.getConsumeFood().min() / 2) : ((double) interaction.getConsumeFood().min() / 2) + " - " + ((double) interaction.getConsumeFood().max() / 2))));
+        }
+
+        if (hasArrowInfo(interaction) && isMouseOver(mouseX, mouseY, X_ARROW + 1, Y_ARROW + 1, 16, 16)) {
+            tooltip.addAll(buildArrowTooltip(interaction));
+        }
     }
 
     // Inner Work ( Slot )
@@ -340,56 +389,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
         for (int i = 0; i < interaction.getRewards().getJeiRowCount(); i++) {
             SLOT_ROW.draw(graphics, 0, HEIGHT_START + i * 18);
-        }
-    }
-
-    private void drawTooltips(PtaInteraction interaction, double mouseX, double mouseY, GuiGraphicsExtractor graphics) {
-        if (isMouseOver(mouseX, mouseY, X_MOUSE_ICON + 1, Y_MOUSE_ICON + 1, 16, 16)) {
-            List<Component> tooltipComponents = new ArrayList<>();
-            tooltipComponents.add(Component.translatable(interaction.getType().isLeftClick() ? TranslationKeys.INTERACTION_CLICK_LEFT : TranslationKeys.INTERACTION_CLICK_RIGHT));
-            tooltipComponents.add(Component.literal("§8" + interaction.getId()));
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font, tooltipComponents, Optional.empty(), (int) mouseX, (int) mouseY);
-        }
-
-        if (isMouseOver(mouseX, mouseY, X_SNEAK_ICON + 1, Y_SNEAK_ICON + 1, 16, 16)) {
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font,
-                    Component.translatable(interaction.getType().isShiftClick() ? TranslationKeys.INTERACTION_POSITION_SNEAK : TranslationKeys.INTERACTION_POSITION_UP),
-                    (int) mouseX, (int) mouseY);
-        }
-
-        if (!interaction.getHand().isEmpty() && isMouseOver(mouseX, mouseY, X_HAND_ICON + 1, Y_HAND_ICON + 1, 16, 16)) {
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font, Component.translatable(getHandTranslationKey(interaction.getHand().getHand())), (int) mouseX, (int) mouseY);
-        }
-
-        if ((interaction.hasBiomeWhiteList() || interaction.hasBiomeBlackList()) && isMouseOver(mouseX, mouseY, X_BIOMES + 1, Y_BIOMES + 1, 16, 16)) {
-            List<Component> tooltipComponents = new ArrayList<>();
-            tooltipComponents.add(Component.literal("§7" + Component.translatable(interaction.hasBiomeWhiteList() ? TranslationKeys.INTERACTION_BIOME_WHITELIST : TranslationKeys.INTERACTION_BIOME_BLACKLIST).getString() + " : "));
-            for (String biome : (interaction.hasBiomeWhiteList() ? interaction.getBiomeWhitelist() : interaction.getBiomeBlackList())) {
-                tooltipComponents.add(Component.literal("§6- " + biome.toLowerCase()));
-            }
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font, tooltipComponents, Optional.empty(), (int) mouseX, (int) mouseY);
-        }
-
-        if (interaction.hasHurtPlayer() && isMouseOver(mouseX, mouseY, X_DAMAGE + 1, Y_DAMAGE + 1, 8, 8)) {
-            List<Component> t = new ArrayList<>();
-            t.add(Component.literal(Component.translatable(TranslationKeys.INTERACTION_DAMAGE_TITLE).getString()));
-            t.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_DAMAGE_CHANCE).getString() + " : §5" + Math.floor((interaction.getHurtPlayer().chance() * 100) * 1_000_000) / 1_000_000 + "%"));
-            t.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_DAMAGE_HEART).getString() + " : §5"
-                    + (interaction.getHurtPlayer().min() == interaction.getHurtPlayer().max() ? ((double) interaction.getHurtPlayer().min() / 2) : ((double) interaction.getHurtPlayer().min() / 2) + " - " + ((double) interaction.getHurtPlayer().max() / 2))));
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font, t, Optional.empty(), (int) mouseX, (int) mouseY);
-        }
-
-        if (interaction.hasConsumeFood() && isMouseOver(mouseX, mouseY, X_HUNGER + 1 + (interaction.hasHurtPlayer() ? 0 : -11), Y_HUNGER + 1, 8, 8)) {
-            List<Component> t = new ArrayList<>();
-            t.add(Component.literal(Component.translatable(TranslationKeys.INTERACTION_HUNGER_TITLE).getString()));
-            t.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_HUNGER_CHANCE).getString() + " : §5" + Math.floor((interaction.getConsumeFood().chance() * 100) * 1_000_000) / 1_000_000 + "%"));
-            t.add(Component.literal("§7 - " + Component.translatable(TranslationKeys.INTERACTION_HUNGER_HUNGER).getString() + " : §5"
-                    + (interaction.getConsumeFood().min() == interaction.getConsumeFood().max() ? ((double) interaction.getConsumeFood().min() / 2) : ((double) interaction.getConsumeFood().min() / 2) + " - " + ((double) interaction.getConsumeFood().max() / 2))));
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font, t, Optional.empty(), (int) mouseX, (int) mouseY);
-        }
-
-        if (hasArrowInfo(interaction) && isMouseOver(mouseX, mouseY, X_ARROW + 1, Y_ARROW + 1, 16, 16)) {
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font, buildArrowTooltip(interaction), Optional.empty(), (int) mouseX, (int) mouseY);
         }
     }
 
