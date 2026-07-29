@@ -546,12 +546,31 @@ wired with `ProblemReporter.DISCARDING` (deliberately, to match the old overload
 failure there would have produced a correctly-transformed block, no name, and **nothing in the log**.
 "No exceptions" would have looked like success. The custom name is the only observable proof.
 
+### 10.6 Dedicated server
+
+`runServer`, with both packs staged into `run/world/datapacks/`:
+
+- `Read 45` / `Loaded 44` — **once**, which is the point: no client, so no second pass. Two would
+  have meant something was resolving twice.
+- Per-file errors reported as on the client.
+- **No client-only class loaded**: no `PtaClientEvents`, `JEIPlugin` or `ClientPacketDistributor`, no
+  `NoClassDefFoundError`. The `Dist.CLIENT` subscriber and the `ModList.isLoaded("jei")` guard around
+  `refreshViewers` both hold on a server with no viewer present.
+- `Done (26.967s)!`
+
+Note ModDevGradle accepts the EULA for dev runs, so `run/eula.txt` is never written and the server
+does not stop on it.
+
+One cosmetic warning worth remembering: `Class version 69 required is higher than the class version
+supported by the current version of Mixin (JAVA_21 supports class version 65)`. Class 69 is Java 25.
+Harmless here — PTA uses no mixins — but it is the kind of line that becomes a real failure with a
+third-party mod that does.
+
 **Still open**, and none of it deducible from the above:
 
 - The 30 unit tests around the reward pipeline remain dark (§10.3). In-game checks touched drops but
   not Fortune, `rolls`, or NBT drops systematically.
 - EMI is not shipped on this branch (§4).
-- A dedicated server has never been started.
 - `hidden` was verified as loading but not visually confirmed absent from JEI.
 - JEI's deprecated `RecipeType` / `getRegistryName` / `addFluidStack` still in use — works, but on
   borrowed time.
