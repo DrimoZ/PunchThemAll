@@ -3,21 +3,21 @@ package com.drimoz.punchthemall.core.registry;
 import com.drimoz.punchthemall.PTAConfig;
 import com.drimoz.punchthemall.core.codec.InteractionSpec;
 import com.drimoz.punchthemall.core.util.PTALoggers;
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
-import com.mojang.serialization.JsonOps;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
+import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.neoforged.neoforge.common.conditions.ConditionalOps;
-import net.neoforged.neoforge.common.conditions.ICondition;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -33,41 +33,57 @@ import java.util.Optional;
  * "edit the JSON, {@code /reload}, test" loop; clients are kept in step by an explicit sync payload
  * sent from {@code PtaServerEvents} on {@code OnDatapackSyncEvent} (which fires both on join and
  * after a reload).</p>
+ *
+ * <p>This extends {@link SimplePreparableReloadListener} rather than
+ * {@code SimpleJsonResourceReloadListener}, which since 1.21.4 decodes every file itself using a
+ * codec fixed at construction. That would be shorter, but a bad file is then reported in vanilla's
+ * words and dropped — and per-file error reporting in PTA's own format is a feature the 2.2.0 audit
+ * added deliberately and verified in game. Decoding here keeps it. NeoForge makes
+ * {@link SimplePreparableReloadListener} a {@code ContextAwareReloadListener}, so the registry
+ * lookup and the condition context arrive by injection and {@link #makeConditionalOps()} builds
+ * exactly the ops this needs — no constructor plumbing.</p>
  */
-public class InteractionReloadListener extends SimpleJsonResourceReloadListener {
+public class InteractionReloadListener extends SimplePreparableReloadListener<Map<Identifier, InteractionSpec>> {
 
     public static final String DIRECTORY = "pta/interaction";
-    private static final Gson GSON = new Gson();
+
+    private static final FileToIdConverter FINDER = FileToIdConverter.json(DIRECTORY);
 
     // Last successfully loaded set, kept so the sync payload can be rebuilt for any joining player.
     private static Map<Identifier, InteractionSpec> loaded = Map.of();
-
-    private final HolderLookup.Provider registries;
-    private final ICondition.IContext conditionContext;
-
-    public InteractionReloadListener(HolderLookup.Provider registries, ICondition.IContext conditionContext) {
-        super(GSON, DIRECTORY);
-        this.registries = registries;
-        this.conditionContext = conditionContext;
-    }
 
     /** The specs loaded by the most recent reload, for syncing to clients. */
     public static Map<Identifier, InteractionSpec> getLoaded() {
         return loaded;
     }
 
+    /**
+     * Read and decode every interaction file. This runs off the main thread, so it only builds the
+     * map; publishing it is {@link #apply}'s job.
+     */
     @Override
-    protected void apply(Map<Identifier, JsonElement> files, ResourceManager resourceManager, ProfilerFiller profiler) {
-        // ConditionalOps gives files access to neoforge:conditions; RegistryOps lets specs reference
-        // registry contents. Both are lost if we fall back to plain JsonOps, hence the wrapping here.
-        DynamicOps<JsonElement> ops = new ConditionalOps<>(RegistryOps.create(JsonOps.INSTANCE, registries), conditionContext);
+    protected Map<Identifier, InteractionSpec> prepare(ResourceManager resourceManager, ProfilerFiller profiler) {
+        // ConditionalOps gives files access to neoforge:conditions; the RegistryOps it wraps lets
+        // specs reference registry contents. Both are lost if we fall back to plain JsonOps.
+        DynamicOps<JsonElement> ops = makeConditionalOps();
         Codec<Optional<InteractionSpec>> codec = ConditionalOps.createConditionalCodec(InteractionSpec.CODEC);
 
         Map<Identifier, InteractionSpec> specs = new HashMap<>();
 
-        for (Map.Entry<Identifier, JsonElement> file : files.entrySet()) {
-            Identifier id = file.getKey();
-            DataResult<Optional<InteractionSpec>> result = codec.parse(ops, file.getValue());
+        for (Map.Entry<Identifier, Resource> file : FINDER.listMatchingResources(resourceManager).entrySet()) {
+            Identifier id = FINDER.fileToId(file.getKey());
+
+            JsonElement json;
+            try (BufferedReader reader = file.getValue().openAsReader()) {
+                json = JsonParser.parseReader(reader);
+            } catch (IOException | RuntimeException e) {
+                // Unreadable or syntactically broken: report and skip, exactly as a failed decode
+                // does. One bad file must not cost the pack every other interaction.
+                PTALoggers.error(RegistryConstants.INCORRECT_FORMAT + " - " + id + " - " + e);
+                continue;
+            }
+
+            DataResult<Optional<InteractionSpec>> result = codec.parse(ops, json);
 
             Optional<Optional<InteractionSpec>> parsed = result.result();
             if (parsed.isEmpty()) {
@@ -80,14 +96,19 @@ public class InteractionReloadListener extends SimpleJsonResourceReloadListener 
             parsed.get().ifPresent(spec -> specs.put(id, spec));
         }
 
-        // Only the specs are produced here. Resolving them into the runtime model looks tags up in
+        return specs;
+    }
+
+    @Override
+    protected void apply(Map<Identifier, InteractionSpec> specs, ResourceManager resourceManager, ProfilerFiller profiler) {
+        // Only the specs are published here. Resolving them into the runtime model looks tags up in
         // BuiltInRegistries, and reload listeners run before tags are bound — resolving now would
         // silently give every #tag an empty item/block set. PtaServerEvents finishes the job on
         // TagsUpdatedEvent instead.
         loaded = Map.copyOf(specs);
 
         if (PTAConfig.valueOrDefault(PTAConfig.DEBUG.logLoadedInteractions)) {
-            PTALoggers.info("Read " + files.size() + " interaction file(s) from datapacks");
+            PTALoggers.info("Read " + specs.size() + " interaction file(s) from datapacks");
         }
     }
 }

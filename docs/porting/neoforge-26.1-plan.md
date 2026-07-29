@@ -422,6 +422,38 @@ sources are still unverified — Gradle skips `compileTestJava` while `compileJa
   `asString().orElseGet(tag::toString)`; calling `asString()` alone would have made every
   non-string `where`-filter comparison trivially equal, and silently so.
 
+### 10.2 After the events and the reload listener
+
+16 → **7**: `GuiGraphics` ×5 (JEI) and `getDayTime` ×1. Everything else in main compiles.
+
+**§3a was far too pessimistic — the single biggest correction in this survey.** The claim was that
+the ops-taking constructor being `private` forced a hand-rolled scan. The constructor is indeed
+private, but it does not matter: NeoForge patches `SimplePreparableReloadListener` to **extend
+`ContextAwareReloadListener`**, which supplies
+
+```java
+protected final HolderLookup.Provider getRegistryLookup();
+protected final ICondition.IContext getContext();
+protected final ConditionalOps<JsonElement> makeConditionalOps();
+```
+
+`makeConditionalOps()` builds precisely the `ConditionalOps(RegistryOps(JsonOps))` stack PTA
+assembled by hand on 1.21.1. So the listener keeps its own decode loop only to preserve PTA's
+per-file error message — not because the ops were unreachable — and the constructor plumbing
+(`registries`, `conditionContext`) **disappears entirely**, since NeoForge injects both. The listener
+came out shorter than it was on 1.21.1.
+
+Also settled, all cheap:
+
+- `AddReloadListenerEvent` → `AddServerReloadListenersEvent`. `addListener` now takes an
+  `Identifier` name (`SortedReloadListenerEvent#addListener(Identifier, listener)`), so listeners can
+  be ordered against each other. `addRetainedListener(ListenerKey, …)` is for listeners that need to
+  be fetched back later — PTA's does not.
+- `TagsUpdatedEvent#getRegistryAccess` → `getRegistries()` / **`getLookupProvider()`**; the latter is
+  the direct fit for `rebuildFrom`.
+- `RecipesUpdatedEvent` → `RecipesReceivedEvent`, `PacketDistributor.sendToServer` →
+  `ClientPacketDistributor.sendToServer`. Both one-liners.
+
 ---
 
 ### Sources

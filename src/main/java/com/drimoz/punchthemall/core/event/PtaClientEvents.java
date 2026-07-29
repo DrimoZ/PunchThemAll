@@ -8,16 +8,16 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.RecipesUpdatedEvent;
+import net.neoforged.neoforge.client.event.RecipesReceivedEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /** Client-only hooks: keeping the viewers in step, and reporting clicks the server cannot see. */
 @EventBusSubscriber(modid = PunchThemAll.MOD_ID, value = Dist.CLIENT)
 public class PtaClientEvents {
 
     @SubscribeEvent
-    public static void onRecipesUpdated(RecipesUpdatedEvent event) {
+    public static void onRecipesReceived(RecipesReceivedEvent event) {
         PtaNetwork.refreshViewers();
     }
 
@@ -44,7 +44,7 @@ public class PtaClientEvents {
     @SubscribeEvent
     public static void onLeftClickEmpty(PlayerInteractEvent.LeftClickEmpty event) {
         if (InteractionRegistry.getInstance().hasLeftClickAirInteraction()) {
-            PacketDistributor.sendToServer(LeftClickEmptyPayload.INSTANCE);
+            ClientPacketDistributor.sendToServer(LeftClickEmptyPayload.INSTANCE);
         }
     }
 }

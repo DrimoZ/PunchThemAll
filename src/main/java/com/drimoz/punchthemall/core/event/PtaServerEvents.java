@@ -6,7 +6,8 @@ import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.registry.InteractionReloadListener;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -16,7 +17,7 @@ import java.util.List;
 /**
  * Server-side loading and syncing of interactions.
  *
- * <p>{@link AddReloadListenerEvent} fires both at server start and on {@code /reload}, so one
+ * <p>{@link AddServerReloadListenersEvent} fires both at server start and on {@code /reload}, so one
  * listener covers both. {@link OnDatapackSyncEvent} then fires for the joining player, or for every
  * player after a reload — {@code getRelevantPlayers()} already encodes that distinction, so a single
  * handler serves both cases.</p>
@@ -24,9 +25,16 @@ import java.util.List;
 @EventBusSubscriber(modid = PunchThemAll.MOD_ID)
 public class PtaServerEvents {
 
+    /**
+     * Listeners are named now, and the listener no longer takes the registries and the condition
+     * context by constructor: NeoForge injects both, so {@code InteractionReloadListener} reads them
+     * off itself.
+     */
     @SubscribeEvent
-    public static void onAddReloadListener(AddReloadListenerEvent event) {
-        event.addListener(new InteractionReloadListener(event.getRegistryAccess(), event.getConditionContext()));
+    public static void onAddReloadListener(AddServerReloadListenersEvent event) {
+        event.addListener(
+                Identifier.fromNamespaceAndPath(PunchThemAll.MOD_ID, "interactions"),
+                new InteractionReloadListener());
     }
 
     /**
@@ -40,7 +48,7 @@ public class PtaServerEvents {
         if (event.getUpdateCause() != TagsUpdatedEvent.UpdateCause.SERVER_DATA_LOAD) {
             return; // The client rebuilds from the sync payload, not from its own tag update.
         }
-        InteractionRegistry.getInstance().rebuildFrom(InteractionReloadListener.getLoaded(), event.getRegistryAccess());
+        InteractionRegistry.getInstance().rebuildFrom(InteractionReloadListener.getLoaded(), event.getLookupProvider());
     }
 
     @SubscribeEvent
