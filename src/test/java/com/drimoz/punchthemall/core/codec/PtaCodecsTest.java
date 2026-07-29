@@ -76,8 +76,8 @@ class PtaCodecsTest {
     void snbtParses() {
         CompoundTag tag = parse(PtaCodecs.SNBT, "\"{Damage:5,custom:{tier:2}}\"");
 
-        assertEquals(5, tag.getInt("Damage"));
-        assertEquals(2, tag.getCompound("custom").getInt("tier"));
+        assertEquals(5, tag.getIntOr("Damage", -1));
+        assertEquals(2, tag.getCompoundOrEmpty("custom").getIntOr("tier", -1));
     }
 
     @Test

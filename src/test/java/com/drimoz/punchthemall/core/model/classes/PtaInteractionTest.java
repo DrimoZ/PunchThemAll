@@ -176,7 +176,7 @@ class PtaInteractionTest {
 
         private Holder<MobEffect> haste() {
             return BuiltInRegistries.MOB_EFFECT
-                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, Identifier.parse("minecraft:haste")))
+                    .get(ResourceKey.create(Registries.MOB_EFFECT, Identifier.parse("minecraft:haste")))
                     .orElseThrow();
         }
 

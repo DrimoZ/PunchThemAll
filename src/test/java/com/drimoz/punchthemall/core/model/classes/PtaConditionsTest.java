@@ -28,7 +28,7 @@ class PtaConditionsTest {
     private final FoodData foodData = mock(FoodData.class);
 
     PtaConditionsTest() {
-        lenient().when(level.getDayTime()).thenReturn(1000L);       // day
+        lenient().when(level.getOverworldClockTime()).thenReturn(1000L);       // day
         lenient().when(level.isRaining()).thenReturn(false);
         lenient().when(level.isThundering()).thenReturn(false);
         lenient().when(level.getMaxLocalRawBrightness(POS)).thenReturn(15);
@@ -71,11 +71,11 @@ class PtaConditionsTest {
     @Test
     @DisplayName("day and night split at 12000 ticks")
     void dayNight() {
-        when(level.getDayTime()).thenReturn(1000L);
+        when(level.getOverworldClockTime()).thenReturn(1000L);
         assertTrue(time(PtaConditions.Time.DAY).matches(level, player, POS));
         assertFalse(time(PtaConditions.Time.NIGHT).matches(level, player, POS));
 
-        when(level.getDayTime()).thenReturn(13000L);
+        when(level.getOverworldClockTime()).thenReturn(13000L);
         assertFalse(time(PtaConditions.Time.DAY).matches(level, player, POS));
         assertTrue(time(PtaConditions.Time.NIGHT).matches(level, player, POS));
     }
@@ -84,7 +84,7 @@ class PtaConditionsTest {
     @DisplayName("the day/night test uses the time of day, not the total elapsed time")
     void dayTimeWrapsPerDay() {
         // Day 40, mid-morning. Without the modulo this would read as night forever after day 1.
-        when(level.getDayTime()).thenReturn(24000L * 40 + 1000L);
+        when(level.getOverworldClockTime()).thenReturn(24000L * 40 + 1000L);
         assertTrue(time(PtaConditions.Time.DAY).matches(level, player, POS));
     }
 
@@ -189,7 +189,7 @@ class PtaConditionsTest {
         PtaConditions dayAndSneaking =
                 with(PtaConditions.Time.DAY, Set.of(), null, null, null, null, true, 0, 0);
 
-        when(level.getDayTime()).thenReturn(1000L);   // day: passes
+        when(level.getOverworldClockTime()).thenReturn(1000L);   // day: passes
         when(player.isShiftKeyDown()).thenReturn(false); // sneaking: fails
         assertFalse(dayAndSneaking.matches(level, player, POS));
 

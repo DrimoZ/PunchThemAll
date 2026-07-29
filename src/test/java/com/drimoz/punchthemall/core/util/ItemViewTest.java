@@ -42,10 +42,10 @@ class ItemViewTest {
     @DisplayName("a damageable item exposes Damage, even at zero")
     void damageIsExposed() {
         ItemStack pickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
-        assertEquals(0, ItemView.of(pickaxe).getInt("Damage"));
+        assertEquals(0, ItemView.of(pickaxe).getIntOr("Damage", -1));
 
         pickaxe.setDamageValue(42);
-        assertEquals(42, ItemView.of(pickaxe).getInt("Damage"));
+        assertEquals(42, ItemView.of(pickaxe).getIntOr("Damage", -1));
     }
 
     @Test
@@ -61,8 +61,8 @@ class ItemViewTest {
         CompoundTag view = ItemView.of(stack);
 
         assertTrue(view.contains("custom"));
-        assertEquals(3, view.getCompound("custom").getInt("tier"));
-        assertEquals("theo", view.getCompound("custom").getString("owner"));
+        assertEquals(3, view.getCompoundOrEmpty("custom").getIntOr("tier", -1));
+        assertEquals("theo", view.getCompoundOrEmpty("custom").getStringOr("owner", ""));
     }
 
     @Test
@@ -103,7 +103,7 @@ class ItemViewTest {
         ItemStack stack = new ItemStack(Items.DIAMOND);
         ItemView.applyTo(stack, view);
 
-        assertEquals(7, stack.get(DataComponents.CUSTOM_DATA).copyTag().getInt("tier"));
+        assertEquals(7, stack.get(DataComponents.CUSTOM_DATA).copyTag().getIntOr("tier", -1));
     }
 
     @Test
@@ -115,7 +115,7 @@ class ItemViewTest {
         ItemStack stack = new ItemStack(Items.DIAMOND);
         ItemView.applyTo(stack, view);
 
-        assertEquals("value", stack.get(DataComponents.CUSTOM_DATA).copyTag().getString("SomeModKey"));
+        assertEquals("value", stack.get(DataComponents.CUSTOM_DATA).copyTag().getStringOr("SomeModKey", ""));
     }
 
     @Test
@@ -142,8 +142,8 @@ class ItemViewTest {
         ItemView.applyTo(stack, view);
 
         CompoundTag readBack = ItemView.of(stack);
-        assertEquals(5, readBack.getInt("Damage"));
-        assertEquals(2, readBack.getCompound("custom").getInt("tier"));
+        assertEquals(5, readBack.getIntOr("Damage", -1));
+        assertEquals(2, readBack.getCompoundOrEmpty("custom").getIntOr("tier", -1));
     }
 
     @Test
