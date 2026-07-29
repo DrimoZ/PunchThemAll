@@ -526,9 +526,35 @@ payload.
   them. This is the §4 lesson in miniature: the API compiled, the arguments matched, and it was still
   wrong.
 
-Still unverified in game: block transformations (the `TagValueInput` path has never executed),
-damage/hunger costs, effects, NBT drops, and day/night in the Nether — the one deliberate
-behavioural change.
+### 10.5 Second run — gameplay
+
+With the tooltip fix in: tooltips render at the cursor, and a further pass covered
+
+| Check | Path it exercises | Result |
+| --- | --- | --- |
+| `transformation_break` (cobweb → air, guaranteed string) | air transform + guaranteed drop | ✅ |
+| `zero_min_drop` probe, repeated | the `count: {min:0}` roll | ✅ |
+| `/time set day` / `night`, Overworld **and Nether** | `getOverworldClockTime()` — the deliberate change | ✅ |
+| `costs_damage_and_hunger` | `hurt` + `FoodData` | ✅ |
+| `transformation_block_entity_nbt` (chest → trapped chest named "Rigged") | **`TagValueInput`** | ✅ |
+| Exceptions, whole session | | ✅ none |
+
+The last row was the one that mattered, and the first attempt at it was a bad test on my part:
+`transformation_break` has no `into` and no `nbt`, so it takes the `createAir` branch and never
+reaches `applyNBTs`. Only a transformation carrying NBT touches `TagValueInput` — and because it is
+wired with `ProblemReporter.DISCARDING` (deliberately, to match the old overload's silence), a
+failure there would have produced a correctly-transformed block, no name, and **nothing in the log**.
+"No exceptions" would have looked like success. The custom name is the only observable proof.
+
+**Still open**, and none of it deducible from the above:
+
+- The 30 unit tests around the reward pipeline remain dark (§10.3). In-game checks touched drops but
+  not Fortune, `rolls`, or NBT drops systematically.
+- EMI is not shipped on this branch (§4).
+- A dedicated server has never been started.
+- `hidden` was verified as loading but not visually confirmed absent from JEI.
+- JEI's deprecated `RecipeType` / `getRegistryName` / `addFluidStack` still in use — works, but on
+  borrowed time.
 
 ---
 
