@@ -1,0 +1,380 @@
+# Porting plan — PunchThemAll → NeoForge 26.1
+
+Status: **analysis only**. Nothing has been changed. This is the survey that decides whether the
+port is worth starting, and in what order.
+
+Scope, stated up front: **no behaviour change**. Same JSON format (`schema_version: 2`), same
+config keys, same gameplay, same log lines. Everything below is either a forced API migration or a
+consequence of one.
+
+Base: `master` @ `f063e3c` (`1.21.1-2.2.0`), NeoForge 21.1.241, Java 21, JEI 19, EMI 1.1.22.
+Target: NeoForge **26.1.2.92** (latest release at time of writing), Minecraft 26.1.2, Java 25.
+
+---
+
+## 0. The shape of the problem
+
+1.21.1 → 26.1 is **ten** intermediate versions, not one:
+
+```
+1.21.1 → 1.21.2/3 → 1.21.4 → 1.21.5 → 1.21.6 → 1.21.7 → 1.21.8 → 1.21.9 → 1.21.10 → 1.21.11 → 26.1
+```
+
+Each has its own NeoForged primer. The damage to PTA is concentrated in five of them:
+
+| Version | What it breaks in PTA |
+| --- | --- |
+| **1.21.2** | `Registry#get` now returns `Optional<Holder>`; `getValue` is the direct accessor |
+| **1.21.4** | `SimpleJsonResourceReloadListener` becomes codec-driven — the reload listener is rewritten |
+| **1.21.5** | NBT API overhaul (`Optional` getters, `keySet`, `TagParser`); `Entity#hurt` split |
+| **1.21.6** | `CompoundTag` removed from serialisation — `ValueInput`/`ValueOutput` |
+| **1.21.11** | `ResourceLocation` → `Identifier`, `ResourceKey#location` → `identifier` |
+| **26.1** | Java 25, deobfuscation, `Level#getDayTime` removed, `ItemStackTemplate` |
+
+The good news, established by reading the 26.1 sources rather than guessing: **the event surface PTA
+actually stands on is nearly intact**. `PlayerInteractEvent` and all four sub-events PTA listens to
+still exist with the same accessors and the same `ICancellableEvent` behaviour. `TagsUpdatedEvent`,
+`OnDatapackSyncEvent`, `RegisterPayloadHandlersEvent`, `ConditionalOps`/`ICondition` and the whole
+payload registrar API survive. The architecture from the 1.21.1 port — reload listener, resolve on
+`TagsUpdatedEvent`, explicit batched sync — carries over unchanged in *design*. It is the plumbing
+underneath that has moved.
+
+---
+
+## 1. Toolchain and build
+
+| Item | Now | 26.1 |
+| --- | --- | --- |
+| Java toolchain | 21 | **25** |
+| Gradle wrapper | 8.8 | **9.1+** |
+| ModDevGradle | 2.0.142 | ≥ 2.0.141 — already fine, bump anyway |
+| `neo_version` | `21.1.241` | `26.1.2.92` (four components now: `MC.MC.MC.neo`) |
+| `neo_version_range` | `[21.1,)` | `[26.1,)` |
+| `minecraft_version_range` | `[1.21.1,1.22)` | `[26.1,27)` — **verify the convention** |
+| `loader_version_range` | `[4,)` | **verify** — FML major bumped at some point |
+| Parchment | 1.21.1 / 2024.11.17 | **drop it** — vanilla is deobfuscated, names are official |
+| `pack_format` | 48 | **verify** the 26.1 value |
+
+Local JDK is 26.0.1; the foojay resolver will pull a JDK 25 for the toolchain. Not a blocker.
+
+Deobfuscation is the one piece of genuinely free good news: no more mapping layer, and parameter
+names come from Mojang directly.
+
+---
+
+## 2. The mechanical rename: `ResourceLocation` → `Identifier`
+
+**21 of 43 main-source files, 120 occurrences.** Plus:
+
+- `ResourceKey#location()` → `identifier()` — 5 call sites (`InteractionRegistry`,
+  `InteractionSpecResolver`, `ItemView`, `JeiCategory`, `PtaEmiRecipe`).
+- `ResourceLocation.fromNamespaceAndPath` / `tryParse` / `STREAM_CODEC` all move to `Identifier`.
+- `ResourceLocationException` → `IdentifierException`.
+
+This is a find-and-replace, but it touches nearly every file, so it should be its own commit — done
+first, alone, so the real migrations that follow have a readable diff.
+
+---
+
+## 3. Where the port actually hurts
+
+### 3a. `InteractionReloadListener` — rewrite (highest risk)
+
+`SimpleJsonResourceReloadListener` is no longer a Gson-and-`JsonElement` class. As of 1.21.11:
+
+```java
+public abstract class SimpleJsonResourceReloadListener<T>
+        extends SimplePreparableReloadListener<Map<Identifier, T>>
+
+protected SimpleJsonResourceReloadListener(HolderLookup.Provider registries,
+                                           Codec<T> codec,
+                                           ResourceKey<? extends Registry<T>> registryRef)
+protected SimpleJsonResourceReloadListener(Codec<T> codec, FileToIdConverter finder)
+```
+
+Decoding now happens in `prepare()`, before `apply()` ever sees the data. Two consequences PTA
+cannot ignore:
+
+1. **The `DynamicOps` are chosen by the constructor.** PTA needs
+   `new ConditionalOps<>(RegistryOps.create(JsonOps.INSTANCE, registries), conditionContext)` —
+   neither public constructor lets you supply that. The ops-taking constructor is `private`.
+2. **Per-file error reporting is lost.** Vanilla logs and silently drops a bad file. PTA's
+   `"Incorrect Json format - <id> - <error>"` line, which the 2.2.0 audit added on purpose and
+   verified in game, would disappear.
+
+**Recommended answer:** stop extending `SimpleJsonResourceReloadListener`. Extend
+`SimplePreparableReloadListener<Map<Identifier, InteractionSpec>>` directly and call the *public
+static* helper in `prepare()`:
+
+```java
+public static <T> void scanDirectory(ResourceManager resourceManager, FileToIdConverter finder,
+                                     DynamicOps<JsonElement> ops, Codec<T> codec,
+                                     Map<Identifier, T> results)
+```
+
+That takes the ops explicitly. But it also swallows errors, so for byte-identical logging PTA should
+most likely keep its own scan loop (`FileToIdConverter.json("pta/interaction")` +
+`finder.listMatchingResources(resourceManager)`), decode per file, and report as today. That keeps
+the current behaviour exactly and costs maybe 30 lines.
+
+Also: the `Gson` field goes away, and the directory string becomes a `FileToIdConverter`.
+
+### 3b. `PtaServerEvents` — the reload event was replaced
+
+`AddReloadListenerEvent` **no longer exists**. In 26.1 it is `AddServerReloadListenersEvent`:
+
+- `addListener(listener)` → `addRetainedListener(ListenerKey<T> key, T listener)` — PTA now needs a
+  `ListenerKey`.
+- `getConditionContext()` — still there. ✔
+- `getRegistryAccess()` — **deprecated for removal since 26.1.2**, replaced by
+  `ContextAwareReloadListener#getRegistryLookup()`. Use the replacement, not the deprecated getter.
+- New: `getServerResources()`.
+
+`TagsUpdatedEvent` (with `UpdateCause.SERVER_DATA_LOAD`) and `OnDatapackSyncEvent`
+(`getRelevantPlayers()`) are unchanged. The resolve-on-tags-updated trick still works.
+
+### 3c. NBT — the widest blast radius after the rename
+
+From 1.21.5:
+
+| Old | New |
+| --- | --- |
+| `CompoundTag#getAllKeys()` | `keySet()` — **8 call sites** (`TagHelper` ×4, `ItemView`, …) |
+| `tag.getInt("k")` → `int` | `Optional<Integer>`; use `getIntOr("k", 0)` |
+| `tag.contains("k", TAG_ANY_NUMERIC)` | typed `contains` gone — use the optional getter |
+| `TagParser.parseTag(s)` | `TagParser.parseCompoundFully(s)` |
+
+Affected:
+
+- **`PtaCodecs.SNBT`** — one line, `parseTag` → `parseCompoundFully`. The codec itself is pure
+  Mojang serialisation and otherwise untouched.
+- **`TagHelper`** — `getAllKeys` ×4. The `NumericTag#getAsLong()` calls need checking: numeric tag
+  accessors were touched in the same pass. *(unverified — check at port time)*
+- **`ItemView`** — `getAllKeys`, and `view.contains("Damage", Tag.TAG_ANY_NUMERIC)` must become
+  `view.getInt("Damage").ifPresent(...)`. `merge`, `put*`, `copyTag` survive.
+
+`ItemView` is worth calling out as vindicated design: because the authoring format is PTA's own
+pseudo-NBT view and not the real item structure, **no example datapack and no user JSON changes**.
+The version fragility is exactly where the class docs said it would be.
+
+### 3d. Block-entity NBT — `ValueInput` / `ValueOutput` (1.21.6)
+
+Direct `CompoundTag` serialisation is gone.
+
+- `InteractionRegistry.passesBlockEntityNBTFilter` —
+  `blockEntity.saveWithoutMetadata(registryAccess)` must go through
+  `TagValueOutput.createWithContext(...)` and read the built tag back.
+- `PlayerInteractionHandler.applyNBTs` — `blockEntity.loadWithComponents(tag, registryAccess)` must
+  go through `TagValueInput.create(problemReporter, registries, tag)`.
+
+Both now want a `ProblemReporter`. PTA has no natural one; a `ProblemReporter.Collector` that logs
+through `PTALoggers` is the honest choice. *(exact helper signatures unverified)*
+
+### 3e. Registry lookups — `get` → `getValue` (1.21.2)
+
+`Registry#get(Identifier)` returns `Optional<Holder.Reference<T>>`; the direct value accessor is
+`getValue`. Affects all three checkers plus the resolver:
+
+- `BlockChecker` / `ItemChecker` / `FluidChecker`: `BuiltInRegistries.X.get(id)` → `getValue(id)`.
+  `containsKey` and `getTag(TagKey) → Optional<HolderSet.Named<T>>` are unchanged, so the
+  null-instead-of-default contract these classes deliberately keep is preserved as-is. ✔
+- `InteractionSpecResolver.resolveSound`: `SOUND_EVENT.get(id)` → `getValue(id)`.
+- `InteractionSpecResolver.resolveExtras`: `MOB_EFFECT.getHolder(ResourceKey)` → `get(ResourceKey)`
+  returning `Optional<Holder.Reference<MobEffect>>`.
+- `registries.lookupOrThrow(Registries.ENCHANTMENT).get(key)` — likely unchanged. *(verify)*
+
+### 3f. `PtaConditions` — day/night is a real semantic change
+
+**`Level#getDayTime()` was removed in 26.1.** The fixed day-time system is replaced by datapack
+`WorldClock` objects and a `ClockManager`; the nearest equivalent is
+`Level#getOverworldClockTime()`, and the primer says explicitly it is **not one-to-one**.
+
+`PtaConditions.matches` does:
+
+```java
+long dayTime = level.getDayTime() % 24000L;
+boolean isDay = dayTime < 12000L;
+```
+
+This is the one place in the mod where "no behaviour change" needs actual thought rather than a
+mechanical substitution. It must be verified in game (a `time: day` example fired at noon and at
+midnight), not just compiled. Everything else in `PtaConditions` — weather, Y, light, sneaking,
+food, XP — is expected to carry over, though `getMaxLocalRawBrightness` should be checked.
+
+### 3g. `PlayerInteractionHandler` — mostly survives, three real edits
+
+The event plumbing is fine. What changes:
+
+- `player.hurt(source, amount)` → **`hurtServer(ServerLevel, DamageSource, float)`** (1.21.5 split
+  into `hurtServer`/`hurtClient`). The call site is already server-only, so this is a signature fix,
+  not a logic change.
+- `applyNBTs` → `ValueInput` (see §3d).
+- `Level#random` is now `protected` — PTA already uses `player.getRandom()` everywhere. ✔
+
+To verify but expected intact: `ServerLevel#sendParticles`, `Level#playSound`,
+`ItemStack#hurtAndBreak(int, ServerLevel, ServerPlayer, Consumer)`, `FoodData` setters
+(`FoodData#tick` changed in 1.21.2 — the setters probably did not), `player.blockInteractionRange()`
+(1.21.11 renamed the *predicates* `canInteractWithBlock` → `isWithinBlockInteractionRange`; the
+range accessor is a different method), `ClipContext`, `FakePlayer`.
+
+### 3h. Networking — small
+
+- `PacketDistributor.sendToServer` → **`ClientPacketDistributor.sendToServer`** (`PtaClientEvents`).
+- `PacketDistributor.sendToPlayer` — unchanged. ✔
+- `RegisterPayloadHandlersEvent`, `registrar(v).optional().playToClient(...).playToServer(...)`,
+  `IPayloadContext#enqueueWork/player` — all unchanged. ✔
+- `ByteBufCodecs.fromCodecWithRegistries` — *verify still present*.
+- Bump `PROTOCOL_VERSION` from `"2"` to `"3"`: the payload shape is the same, but the NBT encoding
+  underneath it changed enough between 1.21.1 and 26.1 that letting an old client believe it agrees
+  is worse than refusing it.
+- Note the documented ceilings: 1 MiB clientbound, <32 KiB serverbound. `BATCH_SIZE = 64` is
+  comfortably inside both; the 2 MiB-tag reasoning in the class javadoc should be updated to cite
+  the payload limit instead.
+
+### 3i. `PtaClientEvents` — one rename
+
+`RecipesUpdatedEvent` → **`RecipesReceivedEvent`**. `ClientPlayerNetworkEvent.LoggingOut` is
+unchanged. ✔
+
+---
+
+## 4. The viewers — the largest single work package
+
+### JEI: 19 → 29
+
+JEI **29.5.0.28 for NeoForge 26.1.2** exists, so the target is real. But 19 → 29 is ten major
+versions and `JeiCategory` is a 529-line class built on the JEI 19 drawing model:
+
+- `IDrawable` + `guiHelper.createDrawable(...)` for every icon and slot row.
+- `draw(recipe, slotsView, GuiGraphics, mouseX, mouseY)` with manual `isMouseOver` hit-testing.
+- `graphics.renderTooltip(font, lines, Optional.empty(), x, y)` — **this pattern is gone**. Since
+  1.21.6, immediate-mode tooltip calls were replaced by `setTooltipForNextFrame(...)` +
+  a deferred render pass, because GUI rendering became a two-phase submit/render system.
+- `IRecipeCategory#getWidth/getHeight`, `getRegistryName`, `addRichTooltipCallback` — all need
+  re-checking against the JEI 29 API.
+
+The category's *content* (what is drawn, which tooltips, the arrow summary) is PTA logic and ports
+directly. The *drawing layer* under it does not. Budget this as its own phase and read the JEI 29
+API for real; nothing in the primers covers it.
+
+`JEIPlugin` itself — runtime push, the `SHOWN` diff, `hideRecipes`/`addRecipes` — is small and
+should survive, subject to `IJeiRuntime` still exposing the same recipe-manager methods.
+
+### EMI: no 26.1 build exists
+
+Modrinth's newest EMI for NeoForge is **1.1.22+1.21.1**. There is no 26.1 API to compile against.
+So the 26.1 branch has three options:
+
+1. **Ship without EMI.** Delete `emi/` on the branch, drop the `compileOnly` dependency. Lowest
+   risk. PTA's EMI plugin has *never been loaded once* even on 1.21.1 (see the backlog), so nothing
+   verified is being lost.
+2. Keep the source, exclude it from compilation until an EMI 26.1 API appears.
+3. Block the port on EMI. Not justifiable for an unverified integration.
+
+**Recommendation: option 1**, and record it in the changelog so it is a stated decision rather than
+a silent regression. Re-verify EMI's version list at port time — that page may simply be stale.
+
+---
+
+## 5. What ports essentially unchanged
+
+Worth stating, because it is most of the mod's actual value:
+
+- **The whole codec layer.** `InteractionSpec` (+ 15 nested records), `CountSpec`, `PtaCodecs`.
+  `RecordCodecBuilder`, `Codec.either/listOf/optionalFieldOf`, `JsonOps`, `DataResult` are
+  unchanged. Only `TagParser.parseTag` moves.
+- **The runtime model.** `PtaBlock`, `PtaHand`, `PtaPool`, `PtaRewards` (weighting, rolls, the
+  Fortune clamp), `PtaDropRecord` (count maths), `PtaNbtPredicate`, `PtaStateRecord`, both enums.
+  Pure logic.
+- **`InteractionRegistry`'s index and filter pipeline** — the `Snapshot` design, the id-ordered
+  candidate lists, the waterlogged merge. Only the registry/NBT leaf calls change.
+- **`PTAConfig`** — `ModConfigSpec` is expected unchanged. *(verify)*
+- **`PunchThemAll`** — `@Mod(IEventBus, ModContainer)`, `registerConfig`. *(verify)*
+- **Every JSON file.** The 41-file example pack, the probe pack, `interaction.schema.json`,
+  `docs/interaction-format.md`. Nothing in the authoring format is version-coupled — which was the
+  point of `ItemView`.
+
+---
+
+## 6. The test suite is a genuine unknown
+
+`McBootstrap` publishes an empty `LoadingModList` **by reflection** before `Bootstrap.bootStrap()`,
+because `FeatureFlags.<clinit>` NPEs otherwise. That is a hook into NeoForge internals across ten
+versions *and* a JDK jump from 21 to 25, where reflective access into other modules has tightened
+further.
+
+Assume the harness breaks and needs re-derivation. The 241 tests themselves are mostly pure logic
+and should survive once the game boots. Do not treat "the tests compile" as a signal here — get
+`McBootstrap` green early, because without it every other change loses its safety net.
+
+---
+
+## 7. Suggested order
+
+1. **Toolchain.** `gradle.properties`, wrapper 9.1+, Java 25, drop Parchment. Nothing compiles yet;
+   that is expected.
+2. **`Identifier` rename.** Alone, one commit, no other edits mixed in.
+3. **Registries + NBT leaves.** Checkers, `PtaCodecs`, `TagHelper`, `ItemView`, resolver lookups.
+4. **`ValueInput`/`ValueOutput`.** The two block-entity sites.
+5. **Events and loading.** `AddServerReloadListenersEvent`, the reload-listener rewrite,
+   `RecipesReceivedEvent`, `ClientPacketDistributor`, `hurtServer`.
+6. **`getDayTime`.** Deliberately last of the logic work, because it is the only one that needs a
+   behaviour decision.
+7. **Get `McBootstrap` and `./gradlew test` green.**
+8. **JEI 29.** Its own phase.
+9. **EMI decision** (recommend: drop on this branch).
+10. **In-game verification.** `runClient`, the probe pack, the same checklist as 2.2.0: load,
+    `/reload`, the double-logged sync round-trip, per-file error reporting, `hidden` absent from the
+    viewer, `count: {min:0}`. Plus a new one: **day/night conditions**.
+
+Compiling clean means nothing here. Six of the 1.21.1 port's bugs compiled clean and were only found
+by `runClient` — the same trap applies, more so.
+
+---
+
+## 8. Open questions to resolve before starting
+
+- `loader_version_range`, `minecraft_version_range` convention, `pack_format` for 26.1.
+- Does NeoForge patch `SimpleJsonResourceReloadListener` to accept custom ops, or is the
+  hand-rolled scan (§3a) required?
+- `ProblemReporter` — what is the intended lightweight implementation for a mod that just wants to
+  log?
+- `NumericTag` accessors, `ByteBufCodecs.fromCodecWithRegistries`, `FoodData` setters,
+  `sendParticles`, `hurtAndBreak`, `blockInteractionRange`, `getMaxLocalRawBrightness`,
+  `BlockParticleOption` after the 1.21.9 particle rework.
+- The JEI 29 category API — needs reading, not guessing.
+- Does `ItemStack` "requiring loaded registries" in 26.1 affect the display stacks PTA builds in
+  `PtaBlock.getBlockStacks` / `PtaHand.getStacks`? Resolution runs on `TagsUpdatedEvent` with
+  registries bound, so probably not — but confirm rather than assume.
+
+---
+
+## 9. Verdict
+
+The port is **feasible and the architecture survives intact** — that is the important finding. No
+design decision from the 1.21.1 port is invalidated by 26.1.
+
+But it is not a weekend. Realistically three distinct efforts:
+
+- **Core migration** (§1–§3, §5): mechanical but wide, ~20 files, one genuine semantic decision
+  (day/night).
+- **Test harness**: unknown, possibly nasty, and it gates everything else's safety.
+- **JEI 29**: a rewrite of the drawing layer of a 529-line class.
+
+Plus one product decision: **EMI ships or it does not**.
+
+---
+
+### Sources
+
+Primers: [1.21.2](https://docs.neoforged.net/primer/docs/1.21.2/),
+[1.21.4](https://docs.neoforged.net/primer/docs/1.21.4/),
+[1.21.5](https://docs.neoforged.net/primer/docs/1.21.5/),
+[1.21.6](https://docs.neoforged.net/primer/docs/1.21.6/),
+[1.21.9](https://docs.neoforged.net/primer/docs/1.21.9/),
+[1.21.11](https://github.com/neoforged/.github/blob/main/primers/1.21.11/index.md),
+[26.1](https://docs.neoforged.net/primer/docs/26.1/).
+Release notes: [NeoForge for Minecraft 26.1](https://neoforged.net/news/26.1release/).
+Sources read directly: [NeoForge 26.1.x branch](https://github.com/neoforged/NeoForge/tree/26.1.x),
+[payload docs](https://docs.neoforged.net/docs/networking/payload/),
+[SimpleJsonResourceReloadListener @ 1.21.11](https://mappings.dev/1.21.11/net/minecraft/server/packs/resources/SimpleJsonResourceReloadListener.html).
