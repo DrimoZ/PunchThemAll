@@ -1,6 +1,7 @@
 {
   "pack": {
-    "pack_format": 48,
+    "min_format": 101,
+    "max_format": 101,
     "description": "PTA 2.2.0 probe — exercises the fixes, not a shipping pack"
   }
 }
