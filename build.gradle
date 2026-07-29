@@ -1,7 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'net.neoforged.moddev' version '2.0.142'
+    id 'net.neoforged.moddev' version '2.0.143'
     id 'idea'
 }
 
@@ -9,22 +9,20 @@ version = mod_version
 group = mod_group_id
 
 base {
-    // pta-1.21.1-2.1.0.jar — the Minecraft version belongs in the file name, since the same mod
+    // pta-26.1.2-2.2.0.jar — the Minecraft version belongs in the file name, since the same mod
     // version can ship for several of them.
     archivesName = "${mod_id}-${minecraft_version}"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+// Mojang ships Java 25 to end users in 26.1, so that is what mods target.
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 
 neoForge {
     version = project.neo_version
 
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
+    // No parchment block: Minecraft is deobfuscated from 26.1 onwards.
 
     runs {
         client {
@@ -73,10 +71,7 @@ repositories {
         name = "ModMaven"
         url = "https://modmaven.dev"
     }
-    maven {
-        name = "TerraformersMC"
-        url = "https://maven.terraformersmc.com/releases"
-    }
+    // The TerraformersMC repo (EMI) is gone with the EMI plugin; restore both together.
 }
 
 dependencies {
@@ -85,12 +80,8 @@ dependencies {
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     runtimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
-    // EMI (NeoForge). API only at compile time; add the runtimeOnly line below to test EMI in-dev.
-    compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
-    // Uncomment to test the EMI plugin in dev. The full jar currently fails to download from
-    // TerraformersMC (the transfer truncates; the api and sources jars are fine), so it has to be
-    // dropped into run/mods by hand for now.
-    // runtimeOnly "dev.emi:emi-neoforge:${emi_version}"
+    // No EMI: its newest NeoForge artifact is 1.1.24+1.21.1, so there is nothing to compile the
+    // emi/ plugin against on 26.1. See gradle.properties and the porting plan §4.
 
     // Unit tests. Most exercise pure logic, but anything touching ItemStack/NBT needs the vanilla
     // registries, so the suite boots Minecraft's Bootstrap once (see McBootstrap).
@@ -119,7 +110,6 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             minecraft_version_range: minecraft_version_range,
             neo_version            : neo_version,
             neo_version_range      : neo_version_range,
-            loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

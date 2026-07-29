@@ -365,6 +365,36 @@ Plus one product decision: **EMI ships or it does not**.
 
 ---
 
+## 10. First contact — what the compiler actually said
+
+Toolchain done (branch `neoforge_26.1`). `./gradlew compileJava` against NeoForge 26.1.2.92:
+Gradle 9.2.1 runs, the JDK 25 toolchain provisions, NeoForge and JEI 29.20.0.60 both resolve, the
+mod metadata expands. **100 errors, 18 files** — which is the survey above, confirmed empirically:
+
+| Missing symbol | Count | Matches |
+| --- | --- | --- |
+| `ResourceLocation` | 64 | §2 |
+| EMI classes (`EmiStack`, `EmiRecipe`, …) | 28 | §4 — no 26.1 build |
+| `GuiGraphics` | 5 | §4 — renamed in 26.1 |
+| `getTag` | 4 | §3e — the three checkers |
+| `RecipesUpdatedEvent` | 2 | §3i |
+| `AddReloadListenerEvent` | 2 | §3b |
+
+Two corrections to the survey:
+
+- **JEI 29 is gentler than feared.** `IRecipeCategory`, `RecipeType`, `getRegistryName`,
+  `addFluidStack` all still exist — they compile, with `[removal]` deprecation warnings. So §4 is a
+  staged migration off deprecated API, not the from-scratch rewrite assumed. The `GuiGraphics`
+  errors are the real work there.
+- **`Registry#get` was not flagged, `getTag` was.** The checkers' `.get(id)` still resolves; it is
+  `getTag(TagKey)` that moved. §3e needs re-checking against the actual 26.1 signatures.
+
+Nothing yet from NBT, `hurtServer`, `ValueInput`/`ValueOutput` or `getDayTime` — javac stops at the
+first error per expression, so those surface only once the rename lands. Expect the count to rise
+before it falls.
+
+---
+
 ### Sources
 
 Primers: [1.21.2](https://docs.neoforged.net/primer/docs/1.21.2/),
