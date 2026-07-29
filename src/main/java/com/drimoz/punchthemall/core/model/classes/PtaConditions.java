@@ -37,7 +37,18 @@ public record PtaConditions(
         if (isEmpty()) return true;
 
         if (time != Time.ANY) {
-            long dayTime = level.getDayTime() % 24000L;
+            // 26.1 replaced the fixed day-time field with datapack world clocks; getDayTime is gone
+            // and getOverworldClockTime is the nearest reading. Same 24000-tick scale, so the
+            // arithmetic is unchanged.
+            //
+            // Not isBrightOutside(): that folds in weather and dimension, which PTA gates separately
+            // through `weather`, so a `time: day` interaction would silently stop firing in rain.
+            //
+            // One real difference: this is explicitly the *overworld* clock, so in the Nether and the
+            // End it no longer reads that dimension's own time. Vanilla kept them in step, so this
+            // should be invisible — but it is the one behavioural unknown in the port, and it is
+            // verified in game rather than assumed.
+            long dayTime = level.getOverworldClockTime() % 24000L;
             boolean isDay = dayTime < 12000L;
             if (time == Time.DAY && !isDay) return false;
             if (time == Time.NIGHT && isDay) return false;
