@@ -1,7 +1,7 @@
 # PunchThemAll — example datapack
 
 Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 41 interactions, each kept small so it demonstrates one thing you can copy.
+ready-to-use one: 42 interactions, each kept small so it demonstrates one thing you can copy.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -65,6 +65,7 @@ The server syncs its interactions to clients, so JEI/EMI show the server's set w
 | `hand_off_hand.json` | `hand: "off"` — the item must be in the **off** hand. | Bone meal in the off hand, right-click podzol. |
 | `hand_item_and_consume.json` | `consume.mode: "durability"` — the tool takes damage. | Sneak-left-click gravel with a shovel. |
 | `hand_consume_chance.json` | `consume.chance` — spend the item only *sometimes* (25%). | Right-click cobblestone with flint. |
+| `hand_consume_count.json` | `consume.count` — a 33% chance of spending **3 to 5** items. `chance` decides whether, `count` decides how many. | Right-click dirt with bone meal. |
 | `hand_nbt_whitelist.json` | SNBT `nbt.whitelist` / `nbt.blacklist` with the `RangeTag` convention. | Right-click a log with a barely-used axe that has no Mending. |
 | `hand_nbt_predicates.json` | `nbt_predicates` — path-based, with a `where` filter tying a level to one enchantment. | Right-click with an Unbreaking II-VII hoe. |
 

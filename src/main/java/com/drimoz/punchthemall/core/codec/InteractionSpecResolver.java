@@ -135,8 +135,9 @@ public final class InteractionSpecResolver {
         boolean damageable = consume.mode().equalsIgnoreCase("durability");
         boolean consumable = consume.mode().equalsIgnoreCase("shrink") || consume.mode().equalsIgnoreCase("consume");
         double chance = consume.chance();
+        CountSpec.Range count = consume.count().resolve(1);
 
-        return PtaHand.create(handEnum, itemSet, whitelist, blacklist, predicates, chance, damageable, consumable);
+        return PtaHand.create(handEnum, itemSet, whitelist, blacklist, predicates, chance, damageable, consumable, count.min(), count.max());
     }
 
     // Target (block / fluid / air)

@@ -39,7 +39,7 @@
         { "type": "object", "additionalProperties": false, "required": ["count"], "properties": { "count": { "type": "integer", "minimum": 0 } } },
         { "type": "object", "additionalProperties": false, "properties": { "min": { "type": "integer", "minimum": 0 }, "max": { "type": "integer", "minimum": 0 } } }
       ],
-      "$comment": "In a reward pool the floor is 0, so {min:0,max:3} is a real 'nothing to three' roll. In a cost the floor is 1."
+      "$comment": "In a reward pool the floor is 0, so {min:0,max:3} is a real 'nothing to three' roll. In a cost, and in hand.consume, the floor is 1."
     },
     "nbtPair": {
       "type": "object",
@@ -73,8 +73,10 @@
       "additionalProperties": false,
       "properties": {
         "mode": { "enum": ["durability", "shrink", "none"], "default": "none", "description": "How the held item is spent on success." },
-        "chance": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 }
-      }
+        "chance": { "type": "number", "minimum": 0, "maximum": 1, "default": 1, "description": "Whether anything is spent at all." },
+        "count": { "$ref": "#/$defs/count", "description": "How much is spent once the chance roll succeeds: items under shrink, durability points under durability. Floor 1, default 1." }
+      },
+      "$comment": "chance and count are independent and compose: chance 0.33 with count {min:3,max:5} is a one-in-three chance of spending three to five."
     },
     "hand": {
       "type": "object",

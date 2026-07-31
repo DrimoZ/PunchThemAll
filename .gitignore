@@ -25,3 +25,6 @@ logs
 
 # Files from Forge MDK
 forge*changelog.txt
+
+# Collected release jars (one per MC version), produced by hand.
+jar build

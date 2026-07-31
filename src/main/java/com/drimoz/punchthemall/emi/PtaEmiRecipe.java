@@ -5,6 +5,7 @@ import com.drimoz.punchthemall.core.model.classes.PtaBlock;
 import com.drimoz.punchthemall.core.model.classes.PtaConditions;
 import com.drimoz.punchthemall.core.model.classes.PtaEffect;
 import com.drimoz.punchthemall.core.model.classes.PtaExtras;
+import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.classes.PtaRewards;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
@@ -157,6 +158,17 @@ public class PtaEmiRecipe implements EmiRecipe {
 
         if (rewards.getRolls() != 1) lines.add(Component.literal("Rolls: " + rewards.getRolls()));
         if (rewards.hasFortune()) lines.add(Component.literal("Fortune bonus: x" + rewards.getFortuneFactor()));
+
+        PtaHand hand = interaction.getHand();
+        if (hand.getChance() > 0 && (hand.isConsumable() || hand.isDamageable())) {
+            String amount = hand.hasConsumeRange()
+                    ? " x" + (hand.getConsumeMin() == hand.getConsumeMax()
+                        ? hand.getConsumeMin()
+                        : hand.getConsumeMin() + "-" + hand.getConsumeMax())
+                    : "";
+            lines.add(Component.literal("Held item: " + (int) (hand.getChance() * 100) + "% "
+                    + (hand.isConsumable() ? "consumed" : "damaged") + amount));
+        }
 
         for (PtaEffect effect : extras.effects()) {
             String name = effect.effect().unwrapKey().map(k -> k.location().toString()).orElse("effect");

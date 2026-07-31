@@ -117,9 +117,18 @@ Most interactions want a specific tool. Let's require **any shovel** and damage 
 - `hand.match` — required item(s)/tag. **Leave `hand` out entirely to require an empty hand.**
 - `hand.consume.mode`:
   - `durability` — damage a damageable tool (breaks when it runs out),
-  - `shrink` — consume one from the stack (good for ingredients like buckets or seeds),
+  - `shrink` — consume from the stack (good for ingredients like buckets or seeds),
   - `none` — don't spend it.
 - `hand.consume.chance` — probability of spending it (e.g. `0.5` = half the time).
+- `hand.consume.count` — how much is spent when that roll succeeds. Default `1`; write an integer
+  or a range. The two settings are independent and stack:
+
+  ```json
+  "consume": { "mode": "shrink", "chance": 0.33, "count": { "min": 3, "max": 5 } }
+  ```
+
+  = one click in three costs you 3–5 items. With `mode: "durability"` the number is durability
+  points instead. Holding fewer items than the roll asks for is fine — it takes what is there.
 
 > The `"minecraft:air"` entry with weight 75 is a **"nothing" filler**: 75% of clicks yield nothing.
 > Weights are relative, so `25` vs `75` means a 25% chance of flint.
