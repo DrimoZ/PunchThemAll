@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:bone_meal",
+    "consume": { "mode": "shrink", "chance": 0.33, "count": { "min": 3, "max": 5 } }
+  },
+  "target": { "kind": "block", "match": "minecraft:dirt" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:wheat_seeds", "count": { "min": 1, "max": 2 } }
+    ]
+  }
+}

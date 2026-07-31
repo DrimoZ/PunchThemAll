@@ -81,13 +81,18 @@ public record InteractionSpec(
     }
 
     // How a held item is spent on a successful interaction.
-    public record ConsumeSpec(String mode, double chance) {
+    //
+    // `chance` and `count` are independent: `chance` decides *whether* anything is spent, `count`
+    // decides *how much* once that roll succeeds. `chance: 0.33` with `count: {min:3, max:5}` means
+    // a one-in-three chance of spending three to five.
+    public record ConsumeSpec(String mode, double chance, CountSpec count) {
         public static final Codec<ConsumeSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.optionalFieldOf("mode", "none").forGetter(ConsumeSpec::mode),
-                Codec.DOUBLE.optionalFieldOf("chance", 1.0D).forGetter(ConsumeSpec::chance)
+                Codec.DOUBLE.optionalFieldOf("chance", 1.0D).forGetter(ConsumeSpec::chance),
+                CountSpec.CODEC.optionalFieldOf("count", CountSpec.exact(1)).forGetter(ConsumeSpec::count)
         ).apply(instance, ConsumeSpec::new));
 
-        public static final ConsumeSpec NONE = new ConsumeSpec("none", 1.0D);
+        public static final ConsumeSpec NONE = new ConsumeSpec("none", 1.0D, CountSpec.exact(1));
     }
 
     public record HandSpec(

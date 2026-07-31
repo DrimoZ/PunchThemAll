@@ -11,6 +11,23 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 ## [1.20.1-2.1.0]
 
 ### Added
+- **`hand.consume.count`** (`schema_version: 2`). How much a successful interaction spends, on top of
+  the existing `chance`, which only ever decides *whether* anything is spent. The two are
+  independent and compose:
+
+  ```json
+  "consume": { "mode": "shrink", "chance": 0.33, "count": { "min": 3, "max": 5 } }
+  ```
+
+  = one click in three costs 3–5 items. It takes the same shapes as every other count (`3`,
+  `{ "count": 3 }`, `{ "min": 3, "max": 5 }`), defaults to `1`, and has a floor of `1` — spending
+  nothing is what `chance` and `mode: "none"` are for. Under `mode: "durability"` it is durability
+  points rather than items, and a tool that runs out still breaks exactly once. Holding fewer items
+  than the roll asks for never blocks the interaction; it just costs what is there. JEI shows an
+  *Amount* line on the hand slot whenever the value is not `1`. Example:
+  `configExamples/interactions/v2/19_consume_count.json`.
+
+  The legacy (schema 1) loader ignores it, as it already ignores `enabled` and `hidden`.
 - **`hidden`** on an interaction (`schema_version: 2`). `"hidden": true` keeps it out of JEI while it
   loads, syncs and fires exactly as before — for secrets, and for the intermediate steps of a
   multi-stage recipe. Distinct from `enabled: false`, which is the one that turns an interaction

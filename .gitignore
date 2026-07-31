@@ -26,3 +26,6 @@ forge*changelog.txt
 
 # Minecraft writes here when the game is launched from the project root.
 logs
+
+# Collected release jars (one per MC version), produced by hand.
+jar build

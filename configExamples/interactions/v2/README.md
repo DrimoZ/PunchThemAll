@@ -28,6 +28,7 @@ Each example focuses on one feature so it is easy to understand and remix:
 | `16_block_entity_predicates.json` | Predicates against a block-entity (chest contents). |
 | `17_full_showcase.json` | Many features combined in one interaction. |
 | `18_hidden_from_jei.json` | `hidden: true` — loads and fires normally, but never appears in JEI. For secrets, and for the middle steps of a multi-stage recipe. Not the same as `enabled: false`, which turns it off. |
+| `19_consume_count.json` | `consume.count` — a 33% chance of spending **3 to 5** items. `chance` decides whether, `count` decides how many. |
 
 ## Selector cheat-sheet
 
@@ -37,4 +38,5 @@ Each example focuses on one feature so it is easy to understand and remix:
 
 ## Count cheat-sheet
 
-`count` (rewards) / `amount` (costs) accept: `3`, `{ "count": 3 }`, or `{ "min": 1, "max": 3 }`.
+`count` (rewards, `hand.consume`) / `amount` (costs) accept: `3`, `{ "count": 3 }`, or
+`{ "min": 1, "max": 3 }`.

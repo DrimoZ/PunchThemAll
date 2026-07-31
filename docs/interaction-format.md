@@ -44,7 +44,11 @@ means a tag; otherwise it is a registry id.
   "hand": {
     "hand": "main",                      // any | main | off (default any)
     "match": "#minecraft:shovels",       // omit for "empty hand" semantics
-    "consume": { "mode": "durability", "chance": 1.0 },  // mode: durability | shrink | none
+    "consume": {                         // mode: durability | shrink | none
+      "mode": "durability",
+      "chance": 1.0,                     // probability that anything is spent at all
+      "count": 1                         // how much is spent when it is — int, or { "min": 3, "max": 5 }
+    },
     "nbt": {                             // SNBT strings (valid JSON strings)
       "whitelist": "{Damage:{RangeTag:[0,500]}}",
       "blacklist": "{Enchantments:[{id:\"minecraft:silk_touch\"}]}"
@@ -141,6 +145,8 @@ Everything is visible in the **Interaction** category:
 - `guaranteed` drops appear as extra output slots (tooltip: *Guaranteed*).
 - `weighted` drops show their chance and count range.
 - `nbt_predicates` are listed in the tooltip of the hand / target slot.
+- The hand slot's tooltip shows the consume chance, and an *Amount* line whenever `consume.count`
+  is anything other than `1`.
 - Hovering the **arrow** shows a summary: `rolls`, Fortune bonus, `effects`, all `conditions`
   (time/weather/Y/light/sneaking/food/XP), and whether the interaction plays a sound / particles.
 - Interactions marked `hidden: true` are left out entirely — of the category, and of the height it
@@ -150,13 +156,14 @@ The interaction id is shown in the click-type tooltip, which is handy when repor
 
 ### Count / range
 
-`count` (rewards) and `amount` (costs) accept three shapes, unified to a `[min, max]` range:
+`count` (rewards, `hand.consume`) and `amount` (costs) accept three shapes, unified to a
+`[min, max]` range:
 
 - an integer: `3`
 - `{ "count": 3 }`
 - `{ "min": 1, "max": 3 }` (`max` defaults to `min`)
 
-Effective floor is `0` for reward pools and `1` for player costs.
+Effective floor is `0` for reward pools and `1` for player costs and `hand.consume`.
 
 ### NBT
 
@@ -174,8 +181,15 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 - **Empty hand vs. any item.** Omit `hand`, or use `hand` with no `match`, to require an **empty**
   hand. Add `match` to require specific items/tags.
 - **`consume` only spends the item on success.** `durability` damages a damageable item;
-  `shrink` removes one from the stack; `none` leaves it untouched. `chance` is the probability of
-  spending it.
+  `shrink` removes items from the stack; `none` leaves it untouched.
+- **`consume.chance` and `consume.count` are independent.** `chance` decides *whether* anything is
+  spent, `count` decides *how much* once that roll succeeds — they compose, so
+  `{ "mode": "shrink", "chance": 0.33, "count": { "min": 3, "max": 5 } }` is "a one-in-three chance
+  of losing three to five items". `count` defaults to `1`, uses the same shapes as everywhere else
+  (see *Count / range*), and has a floor of `1` — to spend nothing, use `chance` or
+  `mode: "none"`. Under `mode: "durability"` it counts **durability points**, not items, and a tool
+  that runs out still breaks exactly once. Under `mode: "shrink"` a roll larger than the stack takes
+  the whole stack — holding too few never blocks the interaction, it just costs less.
 - **Rolls default to 1.** Without a `rewards` block, nothing is dropped. With `weighted` only, you
   get exactly one weighted pick (the classic behaviour). `guaranteed` items are always given.
 - **Fortune** reads the enchantment from the **held** item, so it only helps interactions that use a

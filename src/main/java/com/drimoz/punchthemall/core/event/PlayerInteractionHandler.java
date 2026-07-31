@@ -258,10 +258,10 @@ public class PlayerInteractionHandler {
     private static boolean tryDropItem(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
         if (interaction.getHand().getItemSet().contains(handItem.getItem())) {
             if (interaction.getHand().isConsumable() && interaction.getHand().shouldConsume()) {
-                consumeItem(handItem);
+                consumeItem(handItem, interaction.getHand().rollConsumeCount());
             }
             else if (interaction.getHand().isDamageable() && handItem.isDamageableItem() && interaction.getHand().shouldConsume()) {
-                useItemDurability(handItem, player);
+                useItemDurability(handItem, player, interaction.getHand().rollConsumeCount());
             }
 
             dropRewards(player, level, pos, face, interaction, handItem);
@@ -286,15 +286,18 @@ public class PlayerInteractionHandler {
         }
     }
 
-    private static void useItemDurability(ItemStack itemStack, Player player) {
-        if (itemStack.hurt(1, player.getRandom(), null)) {
+    private static void useItemDurability(ItemStack itemStack, Player player, int amount) {
+        if (amount <= 0) return;
+
+        if (itemStack.hurt(amount, player.getRandom(), null)) {
             itemStack.shrink(1);
             itemStack.setDamageValue(0);
         }
     }
 
-    private static void consumeItem(ItemStack itemStack) {
-        itemStack.shrink(1);
+    private static void consumeItem(ItemStack itemStack, int amount) {
+        // The stack can hold fewer than the roll asked for; take what is there rather than going negative.
+        itemStack.shrink(Math.min(amount, itemStack.getCount()));
     }
 
     private static void dropItem(Player player, Level level, BlockPos pos, Direction face, ItemStack itemStack) {
