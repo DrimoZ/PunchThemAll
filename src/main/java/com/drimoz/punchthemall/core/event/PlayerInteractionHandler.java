@@ -304,10 +304,10 @@ public class PlayerInteractionHandler {
     private static boolean tryDropItem(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
         if (interaction.getHand().getItemSet().contains(handItem.getItem())) {
             if (interaction.getHand().isConsumable() && interaction.getHand().shouldConsume(player.getRandom())) {
-                consumeItem(handItem);
+                consumeItem(handItem, interaction.getHand().rollConsumeCount(player.getRandom()));
             }
             else if (interaction.getHand().isDamageable() && handItem.isDamageableItem() && interaction.getHand().shouldConsume(player.getRandom())) {
-                useItemDurability(handItem, player);
+                useItemDurability(handItem, player, interaction.getHand().rollConsumeCount(player.getRandom()));
             }
 
             dropRewards(player, level, pos, face, interaction, handItem);
@@ -332,15 +332,18 @@ public class PlayerInteractionHandler {
         }
     }
 
-    private static void useItemDurability(ItemStack itemStack, Player player) {
+    private static void useItemDurability(ItemStack itemStack, Player player, int amount) {
+        if (amount <= 0) return;
+
         // 1.21: durability + breaking is handled by hurtAndBreak (it shrinks the stack when broken).
         if (player.level() instanceof ServerLevel serverLevel) {
-            itemStack.hurtAndBreak(1, serverLevel, player instanceof ServerPlayer sp ? sp : null, item -> {});
+            itemStack.hurtAndBreak(amount, serverLevel, player instanceof ServerPlayer sp ? sp : null, item -> {});
         }
     }
 
-    private static void consumeItem(ItemStack itemStack) {
-        itemStack.shrink(1);
+    private static void consumeItem(ItemStack itemStack, int amount) {
+        // The stack can hold fewer than the roll asked for; take what is there rather than going negative.
+        itemStack.shrink(Math.min(amount, itemStack.getCount()));
     }
 
     private static void dropItem(Player player, Level level, BlockPos pos, Direction face, ItemStack itemStack) {

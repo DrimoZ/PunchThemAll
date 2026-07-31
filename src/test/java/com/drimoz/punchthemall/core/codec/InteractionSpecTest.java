@@ -80,7 +80,27 @@ class InteractionSpecTest {
         assertEquals(List.of(), hand.match());
         assertEquals("none", hand.consume().mode());
         assertEquals(1.0, hand.consume().chance());
+        assertEquals(1, hand.consume().count().resolve(1).min());
+        assertEquals(1, hand.consume().count().resolve(1).max());
         assertTrue(hand.nbtPredicates().isEmpty());
+    }
+
+    @Test
+    @DisplayName("consume count accepts a plain int and a min/max range")
+    void consumeCount() {
+        InteractionSpec.ConsumeSpec exact = parse("""
+                {"type": "right_click", "hand": {"consume": {"mode": "shrink", "count": 4}}}
+                """).hand().orElseThrow().consume();
+        assertEquals(4, exact.count().resolve(1).min());
+        assertEquals(4, exact.count().resolve(1).max());
+
+        InteractionSpec.ConsumeSpec range = parse("""
+                {"type": "right_click", "hand": {"consume": {"mode": "shrink", "chance": 0.33,
+                    "count": {"min": 3, "max": 5}}}}
+                """).hand().orElseThrow().consume();
+        assertEquals(0.33, range.chance());
+        assertEquals(3, range.count().resolve(1).min());
+        assertEquals(5, range.count().resolve(1).max());
     }
 
     @Test

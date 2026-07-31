@@ -112,6 +112,35 @@ class PtaModelInvariantsTest {
         }
 
         @Test
+        @DisplayName("the consume count rolls inside [min, max] and never below one")
+        void rollConsumeCount() {
+            PtaHand ranged = PtaHand.create(PtaHandEnum.ANY_HAND, items(Items.STICK),
+                    null, null, List.of(), 1, false, true, 3, 5);
+            RandomSource random = RandomSource.create(7L);
+
+            boolean sawMin = false;
+            boolean sawMax = false;
+            for (int i = 0; i < 500; i++) {
+                int rolled = ranged.rollConsumeCount(random);
+                assertTrue(rolled >= 3 && rolled <= 5, "rolled " + rolled + " outside [3, 5]");
+                sawMin |= rolled == 3;
+                sawMax |= rolled == 5;
+            }
+            assertTrue(sawMin && sawMax, "both bounds are reachable");
+            assertTrue(ranged.hasConsumeRange());
+
+            // An inverted or zero range is repaired rather than rejected: chance and mode: none are
+            // the ways to spend nothing.
+            PtaHand inverted = PtaHand.create(PtaHandEnum.ANY_HAND, items(Items.STICK),
+                    null, null, List.of(), 1, false, true, 0, -4);
+            assertEquals(1, inverted.getConsumeMin());
+            assertEquals(1, inverted.rollConsumeCount(random));
+            assertFalse(inverted.hasConsumeRange());
+
+            assertEquals(0, PtaHand.createEmpty(PtaHandEnum.ANY_HAND).rollConsumeCount(random));
+        }
+
+        @Test
         @DisplayName("nulls become empty collections")
         void nullsNormalised() {
             PtaHand hand = PtaHand.create(PtaHandEnum.ANY_HAND, items(Items.STICK), null, null, null, 1, false, true);

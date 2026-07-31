@@ -211,6 +211,13 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                                     ? Component.translatable(TranslationKeys.INTERACTION_HAND_CONSUME).getString()
                                     : Component.translatable(TranslationKeys.INTERACTION_HAND_DAMAGE).getString())
                     ));
+
+                    if (interaction.getHand().hasConsumeRange()) {
+                        tooltip.add(Component.literal(
+                                "§7" + Component.translatable(TranslationKeys.INTERACTION_HAND_COUNT).getString()
+                                        + " : §5" + formatRange(interaction.getHand().getConsumeMin(), interaction.getHand().getConsumeMax())
+                        ));
+                    }
                 }
                 addConstraintTooltip(tooltip,
                         interaction.getHand().getNbtWhiteList(), interaction.getHand().getNbtBlackList(),
@@ -483,6 +490,10 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     private boolean isMouseOver(double mouseX, double mouseY, int x, int y, int width, int height) {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+    }
+
+    private String formatRange(int min, int max) {
+        return min == max ? String.valueOf(min) : min + " - " + max;
     }
 
     private double getTruncatedChance(double num, double min, double max) {

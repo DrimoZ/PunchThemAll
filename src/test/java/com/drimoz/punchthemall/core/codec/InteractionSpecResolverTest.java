@@ -1,6 +1,7 @@
 package com.drimoz.punchthemall.core.codec;
 
 import com.drimoz.punchthemall.core.model.classes.PtaConditions;
+import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
@@ -92,6 +93,29 @@ class InteractionSpecResolverTest {
         assertTrue(resolve(template.formatted("shrink")).getHand().isConsumable());
         assertTrue(resolve(template.formatted("consume")).getHand().isConsumable());
         assertFalse(resolve(template.formatted("none")).getHand().isConsumable());
+    }
+
+    @Test
+    @DisplayName("consume count reaches the model, defaults to one and floors at one")
+    void consumeCount() {
+        PtaHand ranged = resolve("""
+                {"type": "right_click", "hand": {"match": "minecraft:stick",
+                   "consume": { "mode": "shrink", "chance": 0.33, "count": {"min": 3, "max": 5} }}}
+                """).getHand();
+
+        assertEquals(3, ranged.getConsumeMin());
+        assertEquals(5, ranged.getConsumeMax());
+        assertTrue(ranged.hasConsumeRange());
+
+        PtaHand implicit = resolve("{\"type\": \"right_click\", \"hand\": {\"match\": \"minecraft:stick\", \"consume\": {\"mode\": \"shrink\"}}}").getHand();
+        assertEquals(1, implicit.getConsumeMin());
+        assertEquals(1, implicit.getConsumeMax());
+        assertFalse(implicit.hasConsumeRange(), "an amount of one is not worth a viewer line");
+
+        // Spending nothing is what chance and mode: none are for, so zero is lifted to one.
+        PtaHand zero = resolve("{\"type\": \"right_click\", \"hand\": {\"match\": \"minecraft:stick\", \"consume\": {\"mode\": \"shrink\", \"count\": 0}}}").getHand();
+        assertEquals(1, zero.getConsumeMin());
+        assertEquals(1, zero.getConsumeMax());
     }
 
     @Test

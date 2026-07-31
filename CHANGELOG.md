@@ -46,15 +46,31 @@ is its `pack.mcmeta` (see below).
 
 ## [1.21.1-2.2.0] — NeoForge
 
-A correctness pass over 2.1.0, one new authoring field, and the first automated test suite.
+A correctness pass over 2.1.0, two new authoring fields, and the first automated test suite.
 
 ### Added
+- **`hand.consume.count`.** How much a successful interaction spends, on top of the existing
+  `chance`, which only ever decides *whether* anything is spent. The two are independent and
+  compose:
+
+  ```json
+  "consume": { "mode": "shrink", "chance": 0.33, "count": { "min": 3, "max": 5 } }
+  ```
+
+  = one click in three costs 3–5 items. It takes the same shapes as every other count (`3`,
+  `{ "count": 3 }`, `{ "min": 3, "max": 5 }`), defaults to `1`, and has a floor of `1` — spending
+  nothing is what `chance` and `mode: "none"` are for. Under `mode: "durability"` it is durability
+  points rather than items, and a tool that runs out still breaks exactly once. Holding fewer items
+  than the roll asks for never blocks the interaction; it just costs what is there. JEI shows an
+  *Amount* line on the hand slot whenever the value is not `1`, and EMI now carries the held-item
+  chance and amount on its arrow summary (it showed neither before). Example:
+  `pta_examples:hand_consume_count`.
 - **`hidden`** on an interaction. `"hidden": true` keeps it out of JEI and EMI while it loads, syncs
   and fires exactly as before — for secrets, and for the intermediate steps of a multi-stage recipe.
   Distinct from `enabled: false`, which is the one that turns an interaction *off*. Hidden
   interactions also stop stretching the category to fit their drop rows. Example:
   `pta_examples:hidden_from_viewers`.
-- **A test suite**: 241 tests over the NBT matchers, the count/weight arithmetic, the codec, the
+- **A test suite**: 244 tests over the NBT matchers, the count/weight arithmetic, the codec, the
   resolver, the registry and the sync batching. `./gradlew test`. It boots the game's registries in
   process, so it covers real `ItemStack` and NBT behaviour rather than stand-ins.
 - **A warning when `type` and `conditions.requires_sneaking` contradict each other.** Pairing
