@@ -224,8 +224,7 @@ Everything is visible in the **Interaction** category:
   `nbt.blacklist` and `nbt_predicates` together, since a player does not care which syntax you used.
   Enchantments are named and levelled (*Efficiency I - V*), not printed as raw tags.
 - The hand slot's tooltip shows the consume chance, plus an *Amount* line whenever `consume.count`
-  is anything other than `1`. (EMI builds its slots in one pass, so it carries the same line — held
-  item, chance and amount — on the arrow summary instead.)
+  is anything other than `1`.
 - Hovering the **arrow** shows a summary: `rolls`, Fortune bonus, `effects`, all `conditions`
   (time/weather/Y/light/sneaking/food/XP), and whether the interaction plays a sound / particles.
 - Interactions marked `hidden: true` are left out entirely — of the category, and of the height it

@@ -10,9 +10,27 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ## [26.1.2-2.3.0] — NeoForge
 
-A port to Minecraft 26.1. **Nothing about authoring changes**: the same `schema_version: 2` files,
-the same config keys, the same behaviour. If you have a PunchThemAll datapack, the only edit it needs
-is its `pack.mcmeta` (see below).
+A port to Minecraft 26.1, plus one new authoring field. Apart from that field, **nothing about
+authoring changes**: the same `schema_version: 2` files, the same config keys, the same behaviour. If
+you have a PunchThemAll datapack, the only edit it needs is its `pack.mcmeta` (see below).
+
+### Added
+- **`hand.consume.count`.** How much a successful interaction spends, on top of the existing
+  `chance`, which only ever decides *whether* anything is spent. The two are independent and
+  compose:
+
+  ```json
+  "consume": { "mode": "shrink", "chance": 0.33, "count": { "min": 3, "max": 5 } }
+  ```
+
+  = one click in three costs 3–5 items. It takes the same shapes as every other count (`3`,
+  `{ "count": 3 }`, `{ "min": 3, "max": 5 }`), defaults to `1`, and has a floor of `1` — spending
+  nothing is what `chance` and `mode: "none"` are for. Under `mode: "durability"` it is durability
+  points rather than items, and a tool that runs out still breaks exactly once. Holding fewer items
+  than the roll asks for never blocks the interaction; it just costs what is there. JEI shows an
+  *Amount* line on the hand slot whenever the value is not `1`. Example:
+  `pta_examples:hand_consume_count`. Shipped on the 1.20.1 and 1.21.1 lines too, so a pack can move
+  between them unedited.
 
 ### Changed
 - **Targets Minecraft 26.1.2 / NeoForge 26.1, on Java 25** (was 1.21.1 / NeoForge 21.1 / Java 21).
