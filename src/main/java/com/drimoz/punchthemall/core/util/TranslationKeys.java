@@ -32,6 +32,19 @@ public class TranslationKeys {
     public static final String INTERACTION_TRANSFORMATION_CHANCE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.chance";
     public static final String INTERACTION_TRANSFORMATION_BREAK = "gui." + PunchThemAll.MOD_ID + ".category.transformation.break";
 
+    // What a transformation does, and where (see TransformationDescriber)
+    public static final String INTERACTION_TRANSFORMATION_OP_REPLACE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.replace";
+    public static final String INTERACTION_TRANSFORMATION_OP_BREAK = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.break";
+    public static final String INTERACTION_TRANSFORMATION_OP_PLACE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.place";
+    public static final String INTERACTION_TRANSFORMATION_AT = "gui." + PunchThemAll.MOD_ID + ".category.transformation.at";
+    public static final String INTERACTION_TRANSFORMATION_FRAME_WORLD = "gui." + PunchThemAll.MOD_ID + ".category.transformation.frame.world";
+    public static final String INTERACTION_TRANSFORMATION_FRAME_PLAYER = "gui." + PunchThemAll.MOD_ID + ".category.transformation.frame.player";
+    public static final String INTERACTION_TRANSFORMATION_FRAME_FACE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.frame.face";
+    public static final String INTERACTION_TRANSFORMATION_REQUIRE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.require";
+    public static final String INTERACTION_TRANSFORMATION_DROPS = "gui." + PunchThemAll.MOD_ID + ".category.transformation.drops";
+    public static final String INTERACTION_TRANSFORMATION_MORE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.more";
+    public static final String INTERACTION_TRANSFORMATION_BROKEN = "gui." + PunchThemAll.MOD_ID + ".category.transformation.broken";
+
     public static final String INTERACTION_BIOME_WHITELIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.whitelist";
     public static final String INTERACTION_BIOME_BLACKLIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.blacklist";
 

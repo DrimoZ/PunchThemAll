@@ -14,6 +14,7 @@ import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.util.ItemConstraintDescriber;
+import com.drimoz.punchthemall.core.util.TransformationDescriber;
 import com.drimoz.punchthemall.core.util.TranslationKeys;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
@@ -202,7 +203,9 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             });
         }
 
-        if (!interaction.getBlock().isAir() && interaction.getTransformation().hasTransformation()) {
+        // Air interactions can carry transformations now, as long as those are offset from the
+        // player — so the slot is driven by whether there are any, not by the target kind.
+        if (interaction.hasTransformations()) {
             setupTransformationSlot(builder, interaction);
         }
     }
@@ -245,6 +248,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         transformationSlot.addRichTooltipCallback((slotView, tooltip) -> {
             double chance = interaction.getTransformation().getChance();
             tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_CHANCE).getString() + " : §l§5" + getTruncatedChance(chance, 0, 1) + "%"));
+            TransformationDescriber.describe(interaction).forEach(tooltip::add);
         });
     }
 
@@ -295,7 +299,12 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
     private ItemStack getTransformationItemStack(PtaTransformation transformation) {
         if (transformation.isAir()) {
-            return named(Items.BARRIER, Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_BREAK).getString()));
+            // Both write nothing, so both land here — but "Air" is wrong for a break, which leaves
+            // the block's own drops behind rather than making it vanish.
+            String key = transformation.isBreak()
+                    ? TranslationKeys.INTERACTION_TRANSFORMATION_BROKEN
+                    : TranslationKeys.INTERACTION_TRANSFORMATION_BREAK;
+            return named(Items.BARRIER, Component.literal("§d" + Component.translatable(key).getString()));
         } else if (transformation.isBlock()) {
             return new ItemStack(transformation.getBlock());
         } else {
@@ -341,7 +350,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         SLOT.draw(graphics, X_HAND_ITEM, Y_HAND_ITEM);
         SLOT.draw(graphics, X_BLOCK, Y_BLOCK);
 
-        if (interaction.getTransformation().hasTransformation()) {
+        if (interaction.hasTransformations()) {
             SLOT.draw(graphics, X_TRANSFORMATION, Y_TRANSFORMATION);
         }
 

@@ -6,9 +6,11 @@ import com.drimoz.punchthemall.core.checker.ItemChecker;
 import com.drimoz.punchthemall.core.codec.InteractionSpec.*;
 import com.drimoz.punchthemall.core.model.classes.*;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
+import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaInteractionRecord;
+import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.Holder;
@@ -59,7 +61,7 @@ public final class InteractionSpecResolver {
 
         PtaHand hand = resolveHand(id, spec.hand().orElse(null));
         PtaBlock block = resolveTarget(id, spec.target().orElse(null));
-        PtaTransformation transformation = resolveTransformation(id, spec.transformation().orElse(null));
+        List<PtaTransformation> transformations = resolveTransformations(id, spec.transformation());
         PtaRewards rewards = resolveRewards(id, spec.rewards().orElse(null), registries);
 
         PtaInteractionRecord damage = null;
@@ -89,7 +91,7 @@ public final class InteractionSpecResolver {
 
         // The spec is a record of plain values, so its hashCode is a structural digest of the source
         // JSON — exactly what PtaInteraction.equals needs to tell "reloaded unchanged" from "edited".
-        return new PtaInteraction(id, type, damage, hunger, hand, block, transformation, rewards,
+        return new PtaInteraction(id, type, damage, hunger, hand, block, transformations, rewards,
                 biomeWhitelist, biomeBlacklist, extras, spec.hidden(), spec.hashCode());
     }
 
@@ -143,11 +145,21 @@ public final class InteractionSpecResolver {
     // Target (block / fluid / air)
 
     private static PtaBlock resolveTarget(ResourceLocation id, TargetSpec spec) {
+        return resolveTarget(id, spec, "target");
+    }
+
+    /**
+     * @param path where this selector sits in the file, so the log points at the field the author
+     *             actually wrote — the same shape is used by {@code target} and by a transformation's
+     *             {@code require}.
+     */
+    private static PtaBlock resolveTarget(ResourceLocation id, TargetSpec spec, String path) {
         if (spec == null || spec.kind().equalsIgnoreCase("air")) {
             return PtaBlock.createAir();
         }
 
         String kind = spec.kind().toLowerCase(Locale.ROOT);
+        String matchPath = path + ".match";
         Set<Block> blockSet = new HashSet<>();
         Set<Fluid> fluidSet = new HashSet<>();
 
@@ -155,26 +167,26 @@ public final class InteractionSpecResolver {
             boolean isTag = !entry.isEmpty() && entry.charAt(0) == TAG_PREFIX;
             String name = isTag ? entry.substring(1) : entry;
             switch (kind) {
-                case "block" -> addBlock(id, blockSet, name, isTag, "target.match", true);
-                case "fluid" -> addFluid(id, fluidSet, name, isTag, "target.match", true);
+                case "block" -> addBlock(id, blockSet, name, isTag, matchPath, true);
+                case "fluid" -> addFluid(id, fluidSet, name, isTag, matchPath, true);
                 case "any" -> {
                     // Trying both sides is the point of "any", so neither lookup reports on its
                     // own — only failing at both is an error worth showing.
-                    boolean found = addBlock(id, blockSet, name, isTag, "target.match", false);
-                    found |= addFluid(id, fluidSet, name, isTag, "target.match", false);
-                    if (!found) error(id, "target.match - Unknown block/fluid " + entry);
+                    boolean found = addBlock(id, blockSet, name, isTag, matchPath, false);
+                    found |= addFluid(id, fluidSet, name, isTag, matchPath, false);
+                    if (!found) error(id, matchPath + " - Unknown block/fluid " + entry);
                 }
-                default -> error(id, "target.kind - Unknown kind " + spec.kind());
+                default -> error(id, path + ".kind - Unknown kind " + spec.kind());
             }
         }
 
         if (blockSet.isEmpty() && fluidSet.isEmpty()) {
-            error(id, "target.match resolved to nothing; treating target as air");
+            error(id, matchPath + " resolved to nothing; treating " + path + " as air");
             return PtaBlock.createAir();
         }
 
         if (!blockSet.isEmpty() && !fluidSet.isEmpty()) {
-            error(id, "target cannot mix blocks and fluids; block targets will be used");
+            error(id, path + " cannot mix blocks and fluids; block entries will be used");
             fluidSet.clear();
         }
 
@@ -195,26 +207,73 @@ public final class InteractionSpecResolver {
 
     // Transformation
 
-    private static PtaTransformation resolveTransformation(ResourceLocation id, TransformationSpec spec) {
-        if (spec == null) return PtaTransformation.createAir(0, null, null);
+    private static List<PtaTransformation> resolveTransformations(ResourceLocation id, List<TransformationSpec> specs) {
+        if (specs.isEmpty()) return List.of();
+
+        List<PtaTransformation> resolved = new ArrayList<>(specs.size());
+        boolean single = specs.size() == 1;
+        for (int index = 0; index < specs.size(); index++) {
+            // A single transformation is still written as a bare object, so naming an index in the
+            // log would point at something the author cannot find in their file.
+            String path = single ? "transformation" : "transformation[" + index + "]";
+            PtaTransformation transformation = resolveTransformation(id, specs.get(index), path);
+            if (transformation != null) resolved.add(transformation);
+        }
+        return List.copyOf(resolved);
+    }
+
+    /** @return the transformation, or {@code null} when this entry can never do anything. */
+    private static PtaTransformation resolveTransformation(ResourceLocation id, TransformationSpec spec, String path) {
+        if (spec == null || spec.chance() <= 0) return null;
 
         double chance = spec.chance();
-        if (chance <= 0) return PtaTransformation.createAir(0, null, null);
 
-        SoundEvent sound = resolveSound(id, spec.sound().orElse(null), "transformation.sound");
-        ParticleOptions particle = resolveParticles(id, spec.particles().orElse(null), "transformation.particles");
+        PtaTransformOp op;
+        try {
+            op = PtaTransformOp.fromString(spec.op());
+        } catch (IllegalArgumentException e) {
+            error(id, path + ".op - Unknown op " + spec.op() + " (expected replace, break or place)");
+            return null;
+        }
+
+        PtaOffset offset = resolveOffset(id, spec.at().orElse(null), path + ".at");
+        PtaBlock require = resolveRequirement(id, spec.require().orElse(null), path + ".require");
+
+        SoundEvent sound = resolveSound(id, spec.sound().orElse(null), path + ".sound");
+        ParticleOptions particle = resolveParticles(id, spec.particles().orElse(null), path + ".particles");
 
         IntoSpec into = spec.into().orElse(null);
+
+        if (op == PtaTransformOp.BREAK) {
+            if (into != null) {
+                error(id, path + ".into - op break destroys the block and writes nothing; into is ignored");
+            }
+            return PtaTransformation.createAir(chance, sound, particle)
+                    .withPlacement(op, offset, require, spec.drops());
+        }
+
+        if (op == PtaTransformOp.PLACE && into == null) {
+            error(id, path + ".into - op place needs a block or fluid to place");
+            return null;
+        }
+
+        PtaTransformation written = resolveInto(id, chance, into, spec.nbt().orElse(new CompoundTag()), sound, particle, path);
+        return written.withPlacement(op, offset, require, spec.drops());
+    }
+
+    private static PtaTransformation resolveInto(
+            ResourceLocation id, double chance, IntoSpec into,
+            CompoundTag nbt, SoundEvent sound, ParticleOptions particle, String path
+    ) {
         if (into == null) {
             return PtaTransformation.createAir(chance, sound, particle);
         }
 
-        CompoundTag nbt = spec.nbt().orElse(new CompoundTag());
         String kind = into.kind().toLowerCase(Locale.ROOT);
 
         if (kind.equals("block")) {
             if (!BlockChecker.doesBlockExist(into.id())) {
-                error(id, "transformation.into.id - Unknown block " + into.id());
+                error(id, path + ".into.id - Unknown block " + into.id());
                 return PtaTransformation.createAir(chance, sound, particle);
             }
             Block block = BlockChecker.getExistingBlock(into.id());
@@ -227,7 +286,7 @@ public final class InteractionSpecResolver {
 
         if (kind.equals("fluid")) {
             if (!FluidChecker.doesFluidExist(into.id())) {
-                error(id, "transformation.into.id - Unknown fluid " + into.id());
+                error(id, path + ".into.id - Unknown fluid " + into.id());
                 return PtaTransformation.createAir(chance, sound, particle);
             }
             Fluid fluid = FluidChecker.getExistingFluid(into.id());
@@ -239,8 +298,39 @@ public final class InteractionSpecResolver {
             return PtaTransformation.createAir(chance, sound, particle);
         }
 
-        error(id, "transformation.into.kind - Unknown kind " + into.kind());
+        error(id, path + ".into.kind - Unknown kind " + into.kind());
         return PtaTransformation.createAir(chance, sound, particle);
+    }
+
+    private static PtaOffset resolveOffset(ResourceLocation id, OffsetSpec spec, String path) {
+        if (spec == null) return PtaOffset.NONE;
+
+        PtaOffset.Frame frame;
+        try {
+            frame = PtaOffset.Frame.fromString(spec.relativeTo());
+        } catch (IllegalArgumentException e) {
+            error(id, path + ".relative_to - Unknown frame " + spec.relativeTo() + " (expected world, player or face); using world");
+            frame = PtaOffset.Frame.WORLD;
+        }
+
+        return new PtaOffset(spec.x(), spec.y(), spec.z(), frame);
+    }
+
+    /**
+     * A {@code require} that resolves to nothing would silently match no destination and make the
+     * whole transformation dead, which reads as a mod bug. Report it and drop the requirement
+     * instead — the op's own rules (a {@code place} still needs room) remain in force.
+     */
+    private static PtaBlock resolveRequirement(ResourceLocation id, TargetSpec spec, String path) {
+        if (spec == null) return null;
+
+        PtaBlock require = resolveTarget(id, spec, path);
+        if (require.isAir()) {
+            error(id, path + " - names no block or fluid; requirement ignored"
+                    + " (write match: [\"minecraft:air\"] to require an empty destination)");
+            return null;
+        }
+        return require;
     }
 
     // Rewards / pool

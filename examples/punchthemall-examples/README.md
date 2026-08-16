@@ -118,6 +118,11 @@ not supported yet — see [the backlog](../../docs/backlog.md).
 | `transformation_break.json` | **No `into`** — the target simply becomes air. | Sneak-left-click a cobweb holding a bucket. |
 | `transformation_into_fluid.json` | `into.kind: "fluid"`. | Right-click dirt with ice. |
 | `transformation_block_entity_nbt.json` | `nbt` on the transformation, writing data into the new block entity. | Sneak-right-click a chest with a name tag. |
+| `transformation_offset_world.json` | `at` in world axes — the destination is a fixed direction, whoever is clicking and from where. | Sneak-left-click a gold block with redstone; the block at x+1, z-2 turns to redstone. |
+| `transformation_offset_place.json` | `op: place` with `at.relative_to: "face"` — writes on the face you clicked, only into air. | Right-click the **top** of a stone block with a torch. On a side face the torch could not stay, so the placement is refused. |
+| `transformation_air_offset_place.json` | An **air** interaction with an offset: no block under the cursor, so the origin is you. | Sneak-right-click in the air with a feather; scaffolding appears two blocks up. |
+| `transformation_break_neighbour.json` | `op: break` at an offset, with the broken block's own loot. | Sneak-right-click stone with a pickaxe; the block above breaks. |
+| `transformation_multi.json` | A list of transformations from one click, each rolling its own chance. | Sneak-right-click netherrack with a blaze rod. |
 
 `chance` is required. Transformation `sound` / `particles` are separate from the interaction's own.
 

@@ -11,6 +11,7 @@ import com.drimoz.punchthemall.core.model.classes.PtaRewards;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.util.ItemConstraintDescriber;
+import com.drimoz.punchthemall.core.util.TransformationDescriber;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.render.EmiTexture;
@@ -71,7 +72,7 @@ public class PtaEmiRecipe implements EmiRecipe {
         }
 
         PtaTransformation transformation = interaction.getTransformation();
-        if (!block.isAir() && transformation.hasTransformation() && !transformation.isAir()) {
+        if (transformation.hasTransformation() && !transformation.isAir()) {
             EmiStack result = EmiStack.of(transformationStack(transformation))
                     .setChance((float) transformation.getChance());
             outputs.add(result);
@@ -126,7 +127,7 @@ public class PtaEmiRecipe implements EmiRecipe {
         int afterArrow = x + 28;
 
         PtaTransformation transformation = interaction.getTransformation();
-        if (!interaction.getBlock().isAir() && transformation.hasTransformation() && !transformation.isAir()) {
+        if (transformation.hasTransformation() && !transformation.isAir()) {
             widgets.addSlot(EmiStack.of(transformationStack(transformation)), afterArrow, y);
         }
 
@@ -169,6 +170,10 @@ public class PtaEmiRecipe implements EmiRecipe {
             lines.add(Component.literal("Held item: " + (int) (hand.getChance() * 100) + "% "
                     + (hand.isConsumable() ? "consumed" : "damaged") + amount));
         }
+
+        // The transformation slot only appears when something is written, and it cannot show where.
+        // The arrow is the one place that is always there to say it.
+        lines.addAll(TransformationDescriber.describe(interaction));
 
         for (PtaEffect effect : extras.effects()) {
             String name = effect.effect().unwrapKey().map(k -> k.location().toString()).orElse("effect");

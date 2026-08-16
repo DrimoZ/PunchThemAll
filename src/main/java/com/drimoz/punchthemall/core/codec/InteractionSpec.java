@@ -22,7 +22,7 @@ public record InteractionSpec(
         String type,
         Optional<HandSpec> hand,
         Optional<TargetSpec> target,
-        Optional<TransformationSpec> transformation,
+        List<TransformationSpec> transformation,
         Optional<RewardsSpec> rewards,
         Optional<CostsSpec> costs,
         Optional<ConditionsSpec> conditions,
@@ -40,7 +40,9 @@ public record InteractionSpec(
             Codec.STRING.fieldOf("type").forGetter(InteractionSpec::type),
             HandSpec.CODEC.optionalFieldOf("hand").forGetter(InteractionSpec::hand),
             TargetSpec.CODEC.optionalFieldOf("target").forGetter(InteractionSpec::target),
-            TransformationSpec.CODEC.optionalFieldOf("transformation").forGetter(InteractionSpec::transformation),
+            // One transformation or a list of them; a single object stays the short form on the way
+            // back out, so files that never asked for more than one are untouched by the change.
+            PtaCodecs.objectOrList(TransformationSpec.CODEC).optionalFieldOf("transformation", List.of()).forGetter(InteractionSpec::transformation),
             RewardsSpec.CODEC.optionalFieldOf("rewards").forGetter(InteractionSpec::rewards),
             CostsSpec.CODEC.optionalFieldOf("costs").forGetter(InteractionSpec::costs),
             ConditionsSpec.CODEC.optionalFieldOf("conditions").forGetter(InteractionSpec::conditions),
@@ -138,8 +140,30 @@ public record InteractionSpec(
         ).apply(instance, IntoSpec::new));
     }
 
+    /**
+     * Where a transformation lands, relative to the block that was interacted with.
+     *
+     * <p>{@code relative_to} picks the frame the three numbers are read in: {@code world} for the
+     * plain world axes, {@code player} for the player's horizontal facing, {@code face} for the
+     * clicked face. See {@code PtaOffset} for the exact axis roles.</p>
+     */
+    public record OffsetSpec(int x, int y, int z, String relativeTo) {
+        public static final Codec<OffsetSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.INT.optionalFieldOf("x", 0).forGetter(OffsetSpec::x),
+                Codec.INT.optionalFieldOf("y", 0).forGetter(OffsetSpec::y),
+                Codec.INT.optionalFieldOf("z", 0).forGetter(OffsetSpec::z),
+                Codec.STRING.optionalFieldOf("relative_to", "world").forGetter(OffsetSpec::relativeTo)
+        ).apply(instance, OffsetSpec::new));
+
+        public static final OffsetSpec NONE = new OffsetSpec(0, 0, 0, "world");
+    }
+
     public record TransformationSpec(
             double chance,
+            String op,
+            Optional<OffsetSpec> at,
+            Optional<TargetSpec> require,
+            boolean drops,
             Optional<IntoSpec> into,
             Optional<CompoundTag> nbt,
             Optional<String> sound,
@@ -147,6 +171,15 @@ public record InteractionSpec(
     ) {
         public static final Codec<TransformationSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.DOUBLE.fieldOf("chance").forGetter(TransformationSpec::chance),
+                // `replace` is what every transformation did before there were ops, so it stays the
+                // default and nothing already written changes meaning.
+                Codec.STRING.optionalFieldOf("op", "replace").forGetter(TransformationSpec::op),
+                OffsetSpec.CODEC.optionalFieldOf("at").forGetter(TransformationSpec::at),
+                // Same shape as `target`, but asked of the destination rather than of the block that
+                // was clicked. Absent means the destination is not inspected at all.
+                TargetSpec.CODEC.optionalFieldOf("require").forGetter(TransformationSpec::require),
+                // `op: break` only. Whether the destroyed block yields its loot.
+                Codec.BOOL.optionalFieldOf("drops", true).forGetter(TransformationSpec::drops),
                 IntoSpec.CODEC.optionalFieldOf("into").forGetter(TransformationSpec::into),
                 PtaCodecs.SNBT.optionalFieldOf("nbt").forGetter(TransformationSpec::nbt),
                 Codec.STRING.optionalFieldOf("sound").forGetter(TransformationSpec::sound),

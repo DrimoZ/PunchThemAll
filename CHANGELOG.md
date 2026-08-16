@@ -8,6 +8,73 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [1.21.1-2.3.0] — NeoForge
+
+### Added
+- **Transformations can act on a block other than the one you clicked, and can break or place
+  rather than only overwrite.** `transformation` gains four fields:
+
+  ```json
+  "transformation": {
+    "chance": 1.0,
+    "op": "place",
+    "at": { "y": 1 },
+    "require": { "match": "minecraft:air" },
+    "into": { "id": "minecraft:torch" }
+  }
+  ```
+
+  `op` is `replace` (the previous and still default behaviour), `break` (destroys what is there,
+  with its particles, sound and — unless `"drops": false` — its loot) or `place` (writes only where
+  there is room). `at` moves the destination: `x` is right, `y` is up, `z` is forward, read in the
+  world axes by default or against the player's facing (`relative_to: "player"`) or the clicked face
+  (`relative_to: "face"`). `require` is the same shape as `target`, asked of the destination.
+- **`transformation` also accepts a list**, applied in declaration order, each entry rolling its own
+  `chance`. Every destination is resolved and checked against the world as it was when the click
+  happened, before any of them is written, so declaration order does not change what `require` sees.
+- **Air-target interactions can now carry transformations**, as long as they are offset — their
+  origin is the player, so "place a block above me" is expressible. A zero-offset transformation on
+  an air target is still dropped, as it was before: there is no block there to change.
+- **Four config keys**, under `PunchThemAll.Interactions`: `allow_offset_transformations`,
+  `max_transformation_offset` (default 8), `max_transformations_per_interaction` (default 8) and
+  `fire_protection_events` (default true).
+- **In-world automated tests.** `./gradlew runGameTestServer` runs the transformation pipeline
+  against a real `ServerLevel` on a headless server — no client, no clicking. Sixteen tests cover
+  breaking, placing and replacing, offsets, `require`, the offset cap, and blocks being claimed once
+  per click; they take about two seconds. `./gradlew verify` runs them after the unit suite. This is
+  the first automated coverage of anything that needs a live world.
+
+### Changed
+- **Transformations post block break/place events**, so claim and protection mods can veto them, and
+  they respect `Level.mayInteract`. This matters more than it used to: an offset transformation can
+  reach a block the player never pointed at, including across a claim boundary. Turn it off with
+  `fire_protection_events` only on a single-player world.
+- **A click now transforms any one block at most once, rather than performing at most one
+  transformation.** Two interactions matching the same click still cannot both act on the same
+  block, but they no longer block each other when they act on different ones.
+- **JEI and EMI say what a transformation does and where.** Both drew it as one output slot next to
+  the target, which reads as "this becomes that" — untrue for a break, an offset, or a list. The
+  slot is unchanged; the tooltip now carries the operation, the offset with its frame, the
+  requirement and a count of any further transformations. JEI's placeholder for a transformation
+  that writes nothing now reads *Broken* for `op: "break"` rather than *Air*, since a break leaves
+  the block's drops behind and air does not.
+- **`op: "place"` refuses a destination the block cannot survive on**, instead of placing it and
+  letting the next block update pop it a tick later. A floating torch that vanishes reads as a mod
+  bug; a skipped placement with a line in the debug log reads as a rule.
+
+### Fixed
+- A transformation reaching outside the world height, or into an unloaded chunk, is skipped instead
+  of acting. Chunks are never force-loaded from a click.
+- Two entries of one transformation list that resolve to the same block no longer both apply; the
+  second is skipped, the same way two interactions on one click already were.
+- A transformation whose write is refused by the world no longer counts as having happened, so its
+  sound does not play and the block is not marked as changed for the rest of the click.
+- Every reason a transformation declines to act is reported under `Debug.log_skipped_interactions`,
+  naming the block and the reason. A transformation that quietly does nothing was previously
+  indistinguishable from a mod bug.
+
+---
+
 ## [1.21.1-2.2.0] — NeoForge
 
 A correctness pass over 2.1.0, two new authoring fields, and the first automated test suite.

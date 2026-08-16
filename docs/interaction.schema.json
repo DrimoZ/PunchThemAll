@@ -112,15 +112,45 @@
       }
     },
     "transformation": {
+      "description": "One transformation, or a list of them applied in order.",
+      "oneOf": [
+        { "$ref": "#/$defs/transformationEntry" },
+        { "type": "array", "items": { "$ref": "#/$defs/transformationEntry" }, "minItems": 1 }
+      ]
+    },
+    "transformationEntry": {
       "type": "object",
       "additionalProperties": false,
       "required": ["chance"],
       "properties": {
         "chance": { "type": "number", "minimum": 0, "maximum": 1 },
+        "op": {
+          "enum": ["replace", "break", "place"],
+          "default": "replace",
+          "description": "replace overwrites anything; break destroys what is there and writes nothing; place only writes where there is room."
+        },
+        "at": { "$ref": "#/$defs/offset" },
+        "require": { "$ref": "#/$defs/target", "description": "What the destination must already be for this to apply." },
+        "drops": { "type": "boolean", "default": true, "description": "op: break only — whether the destroyed block yields its loot." },
         "into": { "$ref": "#/$defs/into" },
         "nbt": { "type": "string", "description": "SNBT applied to the resulting block entity." },
         "sound": { "type": "string" },
         "particles": { "type": "string", "description": "Block id used for particles." }
+      }
+    },
+    "offset": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Where the transformation lands, relative to the interacted block. x is right, y is up, z is forward.",
+      "properties": {
+        "x": { "type": "integer", "default": 0 },
+        "y": { "type": "integer", "default": 0 },
+        "z": { "type": "integer", "default": 0 },
+        "relative_to": {
+          "enum": ["world", "player", "face"],
+          "default": "world",
+          "description": "world: x east, y up, z south. player: z is the way the player faces. face: z is out of the clicked face."
+        }
       }
     },
     "rewardEntry": {

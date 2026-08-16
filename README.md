@@ -10,11 +10,14 @@ cost the player health or hunger, grant potion effects, play sounds and particle
 biome, dimension, time, weather, altitude, light, or player state — and it all shows up in **JEI** and
 **EMI**.
 
-> **New in 2.1.0 (NeoForge 1.21.1):** ported to NeoForge/Java 21; interactions move from the config
-> folder into **datapacks**, so they reload with `/reload` and the server syncs them to clients;
-> native **EMI** support alongside JEI; item conditions now read as plain sentences in both viewers;
-> `left_click` on **air** finally works. The JSON format is unchanged from `schema_version: 2`.
-> See the [changelog](CHANGELOG.md).
+> **New in 2.3.0:** transformations can act on a **block other than the one you clicked**, and can
+> **break** or **place** rather than only overwrite — at an offset read in world axes, against your
+> facing, or out of the clicked face, several per click. Claim mods can veto them and server owners
+> get a distance cap. Existing files are unaffected: without `op` or `at`, a transformation does
+> exactly what it did before. See the [changelog](CHANGELOG.md).
+>
+> *Since 2.1.0 (NeoForge 1.21.1):* interactions live in **datapacks** rather than the config folder,
+> native **EMI** support alongside JEI, and `left_click` on **air** works.
 
 ---
 
@@ -27,6 +30,9 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
   a Fortune/Looting-style bonus.
 - 🔄 **Transformations** — swap the clicked block/fluid for another, copy block-state values, with
   sounds and particles.
+- 📐 **…on a block other than the one you clicked** — `break`, `place` or `replace` at a relative
+  offset, read in world axes, against the player's facing, or out of the clicked face. Several per
+  click, each with its own chance and its own condition on the destination. Claim mods can veto them.
 - 🌦️ **Conditions** — gate by biome/dimension (ids **or** `#tags`), time of day, weather, Y range,
   light level, sneaking, food, and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, plus interaction-level sound/particles.
@@ -49,7 +55,7 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
 ## Install
 
 1. Install NeoForge for 1.21.1 and (optionally) JEI or EMI.
-2. Drop `pta-1.21.1-2.1.0.jar` into your `mods` folder.
+2. Drop `pta-1.21.1-2.3.0.jar` into your `mods` folder.
 3. Provide interactions with a datapack (below).
 
 ## Quick start
@@ -99,7 +105,7 @@ search the **Interaction** category to see it.
 | [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
 | [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
-| [example catalogue](examples/punchthemall-examples/README.md) | **40 runnable examples**, one per feature, each with what it shows and how to trigger it. |
+| [example catalogue](examples/punchthemall-examples/README.md) | **47 runnable examples**, one per feature, each with what it shows and how to trigger it. |
 | [docs/backlog.md](docs/backlog.md) | Ideas, deferred work, and what is knowingly untested. |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 
@@ -108,22 +114,32 @@ search the **Interaction** category to see it.
 Standard NeoForge / ModDevGradle workflow (Java 21). There is no CI; builds are run locally.
 
 ```bash
-./gradlew build            # build the mod jar (into build/libs), tests included
-./gradlew test             # unit tests only
-./gradlew runClient        # launch the client to test
+./gradlew build            # build the mod jar (into build/libs), unit tests included
+./gradlew test             # unit tests only — a few seconds
+./gradlew runGameTestServer # in-world tests, headless, no client
+./gradlew verify           # both suites, unit first
+./gradlew runClient        # launch the client to test by hand
 ./gradlew runServer        # launch a dedicated server
 ./gradlew --refresh-dependencies   # if dependencies fail to resolve
 ```
 
-The unit suite boots the game's registries in process, so it exercises real `ItemStack` and NBT
-behaviour. It covers the logic below the game — NBT matching, drop and weight arithmetic, the codec,
-the resolver, the registry, sync batching. It does **not** cover anything that needs a live world
-(the click path, rendering) or tags, which need a running server; `docs/backlog.md` lists what that
-leaves untested.
+There are two automated suites, and they cover different halves of the mod.
 
-For that layer, [`examples/dev-probe-pack`](examples/dev-probe-pack) is a by-hand harness: drop it
-into a dev world, `/reload`, and read `run/logs/latest.log`. A green build has repeatedly not
-predicted correctness on this mod — run the client.
+The **unit suite** boots the game's registries in process, so it exercises real `ItemStack` and NBT
+behaviour. It covers the logic below the game — NBT matching, drop and weight arithmetic, the codec,
+the resolver, the registry, sync batching, and that every shipped example parses. It is fast enough
+to run on every change.
+
+The **game tests** run in a real `ServerLevel` on a headless server, which is the only way to test
+code whose every decision is a question about the world: whether a block can be replaced, whether it
+would survive where it is put, what breaking it drops. They live in `src/main/java/.../gametest` and
+cover the transformation pipeline. The tests themselves take about two seconds; almost all of the
+wall time is Minecraft starting up.
+
+Neither reaches the click path itself, rendering, or tags. For that layer,
+[`examples/dev-probe-pack`](examples/dev-probe-pack) is a by-hand harness: drop it into a dev world,
+`/reload`, and read `run/logs/latest.log`. A green build has repeatedly not predicted correctness on
+this mod — `docs/backlog.md` lists what is still unwatched.
 
 ## Compatibility
 

@@ -1,5 +1,7 @@
 package com.drimoz.punchthemall.core.model.classes;
 
+import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
+import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.nbt.CompoundTag;
@@ -12,6 +14,13 @@ import java.util.Set;
 
 public class PtaTransformation {
 
+    /**
+     * A transformation that does nothing, for callers that need an object rather than a null. Safe
+     * to share: every field is immutable and {@code chance} of zero makes each {@code has*} query
+     * answer false.
+     */
+    public static final PtaTransformation NONE = createAir(0, null, null);
+
     private final double chance;
     private final Block block;
     private final Fluid fluid;
@@ -20,12 +29,29 @@ public class PtaTransformation {
     private final SoundEvent sound;
     private final ParticleOptions particles;
 
+    /** What to do at the destination. Defaults to the pre-offset behaviour, {@link PtaTransformOp#REPLACE}. */
+    private final PtaTransformOp op;
+
+    /** Where the destination is, relative to the interacted block. {@link PtaOffset#NONE} is the block itself. */
+    private final PtaOffset offset;
+
+    /** Optional gate on what is already at the destination; {@code null} means "anything goes". */
+    private final PtaBlock require;
+
+    /** For {@link PtaTransformOp#BREAK}: whether the destroyed block yields its loot. */
+    private final boolean dropItems;
+
     // Calculated Properties
 
     public boolean hasTransformation() {
         return chance > 0;
     }
 
+    /**
+     * Whether this writes air. Note that a {@link PtaTransformOp#BREAK} also has no block or fluid
+     * to write, so callers deciding what to put down must check {@link #getOp()} first — breaking a
+     * block and overwriting it with air look identical here but are different in the world.
+     */
     public boolean isAir() {
         return hasTransformation() && block == null && fluid == null;
     }
@@ -36,6 +62,18 @@ public class PtaTransformation {
 
     public boolean isFluid() {
         return hasTransformation() && block == null && fluid != null;
+    }
+
+    public boolean isBreak() {
+        return hasTransformation() && op == PtaTransformOp.BREAK;
+    }
+
+    public boolean hasOffset() {
+        return !offset.isZero();
+    }
+
+    public boolean hasRequirement() {
+        return require != null;
     }
 
     public boolean hasStateList() {
@@ -84,25 +122,55 @@ public class PtaTransformation {
         return particles;
     }
 
+    public PtaTransformOp getOp() {
+        return op;
+    }
+
+    public PtaOffset getOffset() {
+        return offset;
+    }
+
+    public PtaBlock getRequire() {
+        return require;
+    }
+
+    public boolean shouldDropItems() {
+        return dropItems;
+    }
+
     // Life cycle
 
     public static PtaTransformation createBlock(double chance, Block block, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
-        return new PtaTransformation(chance, block, null, stateList, nbtList, sound, particles);
+        return new PtaTransformation(chance, block, null, stateList, nbtList, sound, particles,
+                PtaTransformOp.REPLACE, PtaOffset.NONE, null, true);
     }
 
     public static PtaTransformation createFluid(double chance, Fluid fluid, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
-        return new PtaTransformation(chance, null, fluid, stateList, nbtList, sound, particles);
+        return new PtaTransformation(chance, null, fluid, stateList, nbtList, sound, particles,
+                PtaTransformOp.REPLACE, PtaOffset.NONE, null, true);
     }
 
     public static PtaTransformation createAir(double chance, SoundEvent sound, ParticleOptions particles) {
-        return new PtaTransformation(chance, null, null, null, null, sound, particles);
+        return new PtaTransformation(chance, null, null, null, null, sound, particles,
+                PtaTransformOp.REPLACE, PtaOffset.NONE, null, true);
+    }
+
+    /**
+     * A copy of this transformation with the placement fields set. Kept separate from the factories
+     * so the common case — what to write — stays readable, and callers that do not care about
+     * placement carry on unchanged.
+     */
+    public PtaTransformation withPlacement(PtaTransformOp op, PtaOffset offset, PtaBlock require, boolean dropItems) {
+        return new PtaTransformation(chance, block, fluid, stateList, nbtList, sound, particles,
+                op, offset, require, dropItems);
     }
 
     protected PtaTransformation(
             double chance,
             Block block, Fluid fluid,
             Set<PtaStateRecord<?>> stateList, CompoundTag nbtList,
-            SoundEvent sound, ParticleOptions particles
+            SoundEvent sound, ParticleOptions particles,
+            PtaTransformOp op, PtaOffset offset, PtaBlock require, boolean dropItems
     ) {
         if (block != null && fluid != null)
             throw new IllegalArgumentException("Transformation must be either a Fluid or a Block.");
@@ -110,6 +178,10 @@ public class PtaTransformation {
         this.chance = chance < 0 ? 0 : chance > 1 ? 1 : chance;
         this.sound = sound;
         this.particles = particles;
+        this.op = op == null ? PtaTransformOp.REPLACE : op;
+        this.offset = offset == null ? PtaOffset.NONE : offset;
+        this.require = require;
+        this.dropItems = dropItems;
 
         if (block == null && fluid == null) {
             this.block = null;
@@ -126,6 +198,7 @@ public class PtaTransformation {
 
     @Override
     public String toString() {
-        return "PtaTransformation{chance=" + chance + ", block=" + block + ", fluid=" + fluid + '}';
+        return "PtaTransformation{chance=" + chance + ", op=" + op.serialized() + ", block=" + block
+                + ", fluid=" + fluid + ", offset=" + offset + '}';
     }
 }

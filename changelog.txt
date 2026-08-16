@@ -5,6 +5,47 @@ The full, maintained changelog is CHANGELOG.md in the repository. This file is t
 pasted onto the CurseForge/Modrinth release page.
 
 
+1.21.1-2.3.0
+------------
+
+New
+
+* Transformations can act on a block other than the one you clicked, and can break or place rather
+  than only overwrite. "op" is "replace" (the old behaviour, still the default), "break" (destroys
+  the block with its particles, its sound and its loot) or "place" (writes only where there is room
+  and where the block can stay). "at" moves the destination: x is right, y is up, z is forward, read
+  in world axes, against the player's facing, or out of the clicked face.
+* "require" gates a transformation on what the destination already is, using the same syntax as
+  "target".
+* "transformation" also accepts a list, applied in order, each entry rolling its own chance. Every
+  destination is checked against the world as it was when you clicked, so declaration order does not
+  change the outcome.
+* Air-target interactions can carry transformations when they are offset — their origin is the
+  player, so "place a block above me" now works.
+* Four config keys under PunchThemAll.Interactions: allow_offset_transformations,
+  max_transformation_offset, max_transformations_per_interaction and fire_protection_events.
+* In-world automated tests, running on a headless server.
+
+Changed
+
+* Transformations post block break/place events, so claim and protection mods can veto them. This
+  matters now that a transformation can reach a block the player never pointed at. Server owners
+  also get a hard distance cap.
+* A click transforms any one block at most once, instead of performing at most one transformation.
+  Two interactions on the same click no longer block each other when they act on different blocks.
+* JEI and EMI describe the operation, the offset and the requirement in the tooltip. The slot alone
+  read as "this block becomes that", which is untrue for a break, an offset or a list.
+
+Fixed
+
+* "op": "place" refuses a destination where the block could not survive, instead of placing it and
+  letting the next block update pop it.
+* Two entries of one transformation list aimed at the same block no longer both apply.
+* A transformation reaching outside the world height or into an unloaded chunk is skipped. Chunks
+  are never force-loaded from a click.
+* Every refusal is reported under Debug.log_skipped_interactions, naming the block and the reason.
+
+
 1.21.1-2.2.0
 ------------
 

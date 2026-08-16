@@ -49,6 +49,11 @@ it in game.
 | `transformation.into` | omit to break, or `kind` + `id` + `state` | `transformation_break`, `transformation_into_fluid` |
 | `transformation.into.state` | property → value, or `copy_state_value` | `transformation_state_copy` |
 | `transformation.nbt` | SNBT written into the new block entity | `transformation_block_entity_nbt` |
+| `transformation.op` | `replace` (default), `break`, `place` | `transformation_break_neighbour` |
+| `transformation.at` | `x`/`y`/`z` + `relative_to` | `transformation_offset_place` |
+| `transformation.require` | same shape as `target`, asked of the destination | `transformation_offset_place` |
+| `transformation.drops` | `op: break` only, default `true` | `transformation_break_neighbour` |
+| `transformation` as a list | several transformations from one click | `transformation_multi` |
 | `rewards.weighted` | `match` + `weight` + `count` + `nbt` | `rewards_count_shapes` |
 | `rewards.guaranteed` | same shape, always dropped | `rewards_guaranteed_and_rolls` |
 | `rewards.rolls` | integer, default `1` | `rewards_multi_match` |
@@ -116,8 +121,13 @@ means a tag; otherwise it is a registry id.
     ]
   },
 
+  // One object, or an array of them applied in order.
   "transformation": {
     "chance": 0.7,
+    "op": "replace",                     // replace (default) | break | place
+    "at": { "x": 0, "y": 0, "z": 0, "relative_to": "world" },  // omit for the block itself
+    "require": { "match": "minecraft:air" },                   // what the destination must already be
+    "drops": true,                       // op: break only — does it yield its loot
     "into": { "kind": "block", "id": "minecraft:sand", "state": { "facing": "copy_state_value" } },
     "nbt": "{}",                         // SNBT string
     "sound": "minecraft:block.gravel.break",
@@ -193,6 +203,62 @@ level to a specific enchantment you need `where`:
 ```
 
 Numeric widths (`5` vs `5s`) do not matter — comparisons are numeric on both sides.
+
+### Transformations: what, and where
+
+A transformation does one of three things, chosen with `op`:
+
+| `op` | what it does | needs `into` | drops |
+| --- | --- | --- | --- |
+| `replace` *(default)* | overwrites whatever is at the destination | no — omit it to write air | no |
+| `break` | destroys the block that is there, like a player would | no — it is rejected | yes, unless `"drops": false` |
+| `place` | writes a block, but only where there is room for one | **yes** | no |
+
+`replace` with no `into` and `break` look similar and are not: the first makes the block vanish, the
+second breaks it, with the particles, the sound and — by default — its loot.
+
+`at` moves the destination off the block that was clicked. The three numbers are always *right, up,
+forward*; `relative_to` decides what right and forward point at:
+
+| `relative_to` | forward (`z`) | right (`x`) |
+| --- | --- | --- |
+| `world` *(default)* | south | east |
+| `player` | the way the player is facing, flattened to four directions | the player's right |
+| `face` | out of the clicked face | the player's right |
+
+`y` is world up in every frame, so looking at your feet never tips the frame over.
+
+```json
+"transformation": {
+  "chance": 1.0,
+  "op": "place",
+  "at": { "y": 1 },
+  "require": { "match": "minecraft:air" },
+  "into": { "id": "minecraft:torch" }
+}
+```
+
+`require` is the same shape as `target`, asked of the destination instead of the clicked block. It is
+optional: without it, `replace` overwrites whatever is in the way. Note that `place` already refuses
+an occupied destination — and one where the block could not survive, so it will not leave you a torch
+that pops a tick later — so `require` is for the finer cases ("only if it is dirt").
+
+Writing a list applies several transformations from one click:
+
+```json
+"transformation": [
+  { "chance": 1.0, "op": "break", "at": { "y": 1 } },
+  { "chance": 1.0, "op": "place", "at": { "y": 1 }, "into": { "id": "minecraft:torch" } }
+]
+```
+
+Each entry rolls its own `chance` independently. Every destination is worked out and checked against
+the world *as it was when you clicked*, before any of them is written — so the order you declare them
+in does not change what `require` sees.
+
+> **On a server this reaches past what the player is pointing at.** Break and place events are posted
+> for every transformation, so claim mods can veto them, and `max_transformation_offset` caps how far
+> a datapack can reach. Both are in the config; see [configuration.md](configuration.md).
 
 ### Typed NBT predicates (`nbt_predicates`)
 
@@ -290,8 +356,15 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
   get exactly one weighted pick (the classic behaviour). `guaranteed` items are always given.
 - **Fortune** reads the enchantment from the **held** item, so it only helps interactions that use a
   hand item; the bonus is `round(level × factor)` extra items per weighted pick.
-- **Transformations happen at most once per click**, after a successful drop, subject to `chance`
-  and the `allow_transformations` config gate.
+- **Transformations run after a successful drop**, subject to `chance` and the `allow_transformations`
+  config gate. Any one **block** is transformed at most once per click, so two interactions matching
+  the same click cannot both act on it — but they can act on different blocks.
+- **A transformation that cannot act does nothing, quietly.** Out of the world height, in an unloaded
+  chunk, past `max_transformation_offset`, blocked by `require`, vetoed by a claim mod: all of these
+  skip. Turn on `Debug.log_skipped_interactions` and the log names the block and the reason.
+- **Placing fluids at an offset flows.** `into.kind: "fluid"` at a distance behaves like a bucket
+  poured there — it will spread, and on a server that is somebody's problem. `require` and a small
+  offset keep it predictable.
 - **`particles`** takes a **block id** (block-break particles), not a particle-type id.
 - **Biomes/dimensions** in `conditions.biomes` match by exact id (e.g. `minecraft:desert`,
   `minecraft:overworld`) **or** by biome **`#tag`** (e.g. `#minecraft:is_forest`).

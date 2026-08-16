@@ -91,6 +91,18 @@ For the layer just above it, `examples/dev-probe-pack` is a by-hand harness: dro
 `hidden` — each either logging something specific or visibly doing something. It is what found the
 two example-datapack bugs fixed in 2.2.0.
 
+- **The click path into transformations.** `TransformationApplier` itself now runs under game tests
+  (`./gradlew runGameTestServer`), so breaking, placing, replacing, `require`, the offset cap and the
+  per-block deduplication are all watched happening in a real world. What those tests do *not* cover
+  is `PlayerInteractionHandler` calling it: the origin it picks for a fluid or air interaction, and
+  the face it passes for the `face` frame. Those still need a client and a real click.
+- **No claim mod has ever vetoed a transformation.** The break and place events are posted, and the
+  hook signatures are right, but no FTB Chunks / GriefDefender install has been tried against them.
+  This is the guard that keeps offset transformations from being a way around claims, so it is the
+  one worth verifying before any public release. The game tests use a mock player, which is not a
+  `ServerPlayer`, so they deliberately skip that branch entirely.
+- **The viewer tooltips.** `TransformationDescriber` has no test; the operation, offset and
+  requirement lines have only been read in code, never on screen.
 - **The EMI plugin has never been loaded.** `PtaEmiPlugin` compiles against the API and has never run
   once: the `runtimeOnly` line in `build.gradle` is commented out because the full EMI jar fails to
   download from TerraformersMC (the transfer truncates every time; the api and sources jars are
@@ -129,6 +141,8 @@ two example-datapack bugs fixed in 2.2.0.
 
 ## Done
 
+- **Transformations that act somewhere else, and that break or place rather than only overwrite** —
+  `op` + `at` + `require`, and `transformation` as a list. Suggested by Koynax. *(unreleased)*
 - **`hidden` on an interaction** — keep it out of JEI/EMI without disabling it. *(1.21.1-2.2.0)*
 - **A unit test suite** — 241 tests, booting the game's registries in process. Listed under *Dropped*
   for a while; the reasoning there was half right and half wrong, see that entry. *(1.21.1-2.2.0)*

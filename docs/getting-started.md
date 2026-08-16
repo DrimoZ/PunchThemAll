@@ -246,11 +246,38 @@ Turn the clicked block/fluid into another one after a successful interaction:
 ```
 
 - `chance` — probability of the transformation happening.
-- `into.kind` — `block`, `fluid`, or `air` (air = break the block).
+- `into.kind` — `block`, `fluid`, or `air` (air = the block simply vanishes).
 - `into.state` — set specific state values, or `"copy_state_value"` to keep the original block's value.
 - `particles` — a **block id** (block-break particles).
 
-Transformations obey the `allow_transformations` config gate and happen at most once per click.
+### Acting somewhere else, or breaking instead of replacing
+
+`op` picks what happens, and `at` picks where:
+
+```json
+"transformation": {
+  "chance": 1.0,
+  "op": "place",
+  "at": { "y": 1 },
+  "require": { "match": "minecraft:air" },
+  "into": { "id": "minecraft:torch" }
+}
+```
+
+- `op` — `replace` (default, overwrite anything), `break` (destroy it, with its loot), or `place`
+  (write only where there is room, and only where the block can actually stay).
+- `at` — `x` is right, `y` is up, `z` is forward. `relative_to` reads them in the world axes
+  (`world`, default), against the player's facing (`player`), or out of the clicked face (`face`).
+- `require` — same shape as `target`, asked of the destination instead of the clicked block.
+
+Note that `op: "break"` and `into.kind: "air"` are not the same thing: the first breaks the block
+properly — particles, sound, and its loot — while the second makes it disappear.
+
+Writing `transformation` as an array applies several of them from one click. Full details, including
+the server-side limits, are in [interaction-format.md](interaction-format.md).
+
+Transformations obey the `allow_transformations` config gate. Any one block is transformed at most
+once per click.
 
 ---
 

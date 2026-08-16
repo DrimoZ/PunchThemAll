@@ -52,6 +52,8 @@ disable interactions at runtime. The most important gates:
 * `Interactions.allow_left_click` / `allow_right_click`
 * `Interactions.allow_block_interactions` / `allow_air_interactions` / `allow_fluid_interactions`
 * `Interactions.allow_transformations`
+* `Interactions.allow_offset_transformations`, `Interactions.max_transformation_offset`,
+  `Interactions.max_transformations_per_interaction`, `Interactions.fire_protection_events`
 * `Players.allow_fake_players`
 * `Players.allow_player_damage` / `allow_food_consumption`
 
@@ -67,7 +69,9 @@ overview of every loaded interaction. It shows:
 * the hand requirement (item/tag, hand slot, consume mode) with its NBT / `nbt_predicates` in the
   tooltip;
 * the target block, fluid, or air marker, with state / NBT details;
-* the transformation output when present;
+* the transformation output when present, with its operation, its offset and any `require` in the
+  tooltip — a slot on its own would read as "this block becomes that", which is not what a `break`
+  or an offset does;
 * **weighted** drop slots with chance and count, and **guaranteed** drops as extra output slots;
 * a summary (rolls, Fortune bonus, potion effects, conditions, sound/particles) — on the arrow tooltip
   in JEI, and in EMI's recipe display;

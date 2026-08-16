@@ -39,6 +39,10 @@ neoForge {
         gameTestServer {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // Its own directory, not the shared dev world. The tests then start from nothing every
+            // time — no world to grow and save, and none of the hand-installed datapacks in run/ to
+            // load — which is most of the difference between a slow run and a quick one.
+            gameDirectory = file('run/gametest')
         }
         data {
             data()
@@ -110,6 +114,22 @@ neoForge.addModdingDependenciesTo(sourceSets.test)
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     testLogging { events "passed", "failed", "skipped" }
+
+    // ExamplePackTest parses the shipped example pack, so editing an example has to invalidate the
+    // task. Without this Gradle only watches the sources, and a broken example ships as up-to-date.
+    inputs.dir(layout.projectDirectory.dir("examples")).withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+// The game tests need the structure template that the unit suite generates, and they are the slower
+// of the two — so unit tests run first and a failure there costs nothing extra.
+tasks.named('runGameTestServer').configure {
+    mustRunAfter tasks.named('test')
+}
+
+tasks.register('verify') {
+    group = 'verification'
+    description = 'Runs the unit suite and then the in-world game tests.'
+    dependsOn tasks.named('test'), tasks.named('runGameTestServer')
 }
 
 // Expand ${...} placeholders in neoforge.mods.toml and pack.mcmeta from gradle.properties.

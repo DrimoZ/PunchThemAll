@@ -3,8 +3,11 @@ package com.drimoz.punchthemall.core.codec;
 import com.drimoz.punchthemall.core.model.classes.PtaConditions;
 import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
+import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
+import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.ResourceLocation;
@@ -366,14 +369,112 @@ class InteractionSpecResolverTest {
     }
 
     @Test
-    @DisplayName("an air target cannot carry a transformation")
+    @DisplayName("an air target cannot transform the block it is standing on")
     void airTargetDropsTransformation() {
         PtaInteraction interaction = resolve("""
                 {"type": "left_click", "transformation": {"chance": 1, "into": {"id": "minecraft:stone"}}}
                 """);
 
         assertTrue(interaction.getBlock().isAir());
-        assertFalse(interaction.getTransformation().hasTransformation());
+        assertFalse(interaction.hasTransformations());
+    }
+
+    @Test
+    @DisplayName("an air target keeps an offset transformation, since that one is measured from the player")
+    void airTargetKeepsOffsetTransformation() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "transformation":
+                  {"chance": 1, "op": "place", "at": {"y": 2}, "into": {"id": "minecraft:stone"}}}
+                """);
+
+        assertTrue(interaction.getBlock().isAir());
+        assertTrue(interaction.hasTransformations());
+        assertEquals(2, interaction.getTransformation().getOffset().y());
+    }
+
+    @Test
+    @DisplayName("op, offset, require and drops all resolve")
+    void transformationPlacement() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "place", "drops": false,
+                   "at": {"x": 1, "y": 0, "z": -2, "relative_to": "face"},
+                   "require": {"match": "minecraft:air"},
+                   "into": {"id": "minecraft:torch"}}}
+                """);
+
+        PtaTransformation transformation = interaction.getTransformation();
+        assertEquals(PtaTransformOp.PLACE, transformation.getOp());
+        assertEquals(new PtaOffset(1, 0, -2, PtaOffset.Frame.FACE), transformation.getOffset());
+        assertTrue(transformation.hasRequirement());
+        assertTrue(transformation.getRequire().isBlockFromSet(Blocks.AIR));
+        assertFalse(transformation.shouldDropItems());
+    }
+
+    @Test
+    @DisplayName("break needs no into, and place without one is dropped")
+    void opValidation() {
+        PtaInteraction breaking = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "break", "at": {"y": 1}}}
+                """);
+        assertTrue(breaking.getTransformation().isBreak());
+        assertTrue(breaking.getTransformation().shouldDropItems());
+
+        PtaInteraction placingNothing = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "place", "at": {"y": 1}}}
+                """);
+        assertFalse(placingNothing.hasTransformations());
+    }
+
+    @Test
+    @DisplayName("an unknown op is dropped rather than guessed at")
+    void unknownOp() {
+        assertFalse(resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "sideways"}}
+                """).hasTransformations());
+    }
+
+    @Test
+    @DisplayName("an unknown offset frame falls back to world instead of losing the transformation")
+    void unknownFrame() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1, "relative_to": "sideways"}}}
+                """);
+
+        assertEquals(PtaOffset.Frame.WORLD, interaction.getTransformation().getOffset().frame());
+    }
+
+    @Test
+    @DisplayName("a require naming nothing is ignored rather than silently matching nothing")
+    void emptyRequirement() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "require": {"match": "minecraft:not_a_block"}}}
+                """);
+
+        assertTrue(interaction.hasTransformations());
+        assertFalse(interaction.getTransformation().hasRequirement());
+    }
+
+    @Test
+    @DisplayName("a list of transformations resolves in order, dropping only the broken entries")
+    void transformationList() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": [
+                   {"chance": 1, "op": "break", "at": {"y": 1}},
+                   {"chance": 1, "op": "place"},
+                   {"chance": 1, "at": {"y": -1}, "into": {"id": "minecraft:cobblestone"}}
+                 ]}
+                """);
+
+        assertEquals(2, interaction.getTransformations().size());
+        assertTrue(interaction.getTransformations().get(0).isBreak());
+        assertEquals(Blocks.COBBLESTONE, interaction.getTransformations().get(1).getBlock());
     }
 
     @Test

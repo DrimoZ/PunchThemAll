@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:redstone",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "minecraft:gold_block" },
+  "transformation": {
+    "chance": 1.0,
+    "op": "replace",
+    "at": { "x": 1, "y": 0, "z": -2 },
+    "into": { "kind": "block", "id": "minecraft:redstone_block" },
+    "sound": "minecraft:block.stone.place"
+  }
+}

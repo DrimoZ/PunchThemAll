@@ -5,7 +5,9 @@ import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaInteractionRecord;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class PtaInteraction {
@@ -18,7 +20,7 @@ public class PtaInteraction {
 
     private final PtaHand hand;
     private final PtaBlock block;
-    private final PtaTransformation transformation;
+    private final List<PtaTransformation> transformations;
     private final PtaRewards rewards;
 
     private final Set<String> biomeWhitelist;
@@ -80,8 +82,21 @@ public class PtaInteraction {
         return block;
     }
 
+    /**
+     * The first transformation, or an inert one when there is none. Kept for the recipe viewers and
+     * for callers that predate multi-step transformations; gameplay walks {@link #getTransformations()}.
+     */
     public PtaTransformation getTransformation() {
-        return transformation;
+        return transformations.isEmpty() ? PtaTransformation.NONE : transformations.get(0);
+    }
+
+    /** Every transformation this interaction applies, in declaration order. */
+    public List<PtaTransformation> getTransformations() {
+        return transformations;
+    }
+
+    public boolean hasTransformations() {
+        return !transformations.isEmpty();
     }
 
     public PtaPool getPool() {
@@ -126,14 +141,15 @@ public class PtaInteraction {
             Set<String> biomeWhitelist, Set<String> biomeBlackList,
             PtaExtras extras
     ) {
-        this(id, type, hurtPlayer, consumeFood, hand, block, transformation, rewards,
+        this(id, type, hurtPlayer, consumeFood, hand, block,
+                transformation == null ? List.of() : List.of(transformation), rewards,
                 biomeWhitelist, biomeBlackList, extras, false, 0);
     }
 
     public PtaInteraction(
             ResourceLocation id, PtaTypeEnum type,
             PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
-            PtaHand hand, PtaBlock block, PtaTransformation transformation, PtaRewards rewards,
+            PtaHand hand, PtaBlock block, List<PtaTransformation> transformations, PtaRewards rewards,
             Set<String> biomeWhitelist, Set<String> biomeBlackList,
             PtaExtras extras, boolean hidden, int contentHash
     ) {
@@ -149,11 +165,31 @@ public class PtaInteraction {
         this.consumeFood = consumeFood;
         this.hand = hand == null ? PtaHand.createEmpty(PtaHandEnum.ANY_HAND) : hand;
         this.block = block == null ? PtaBlock.createAir() : block;
-        this.transformation = transformation == null || this.block.isAir() ? PtaTransformation.createAir(0, null, null) : transformation;
+        this.transformations = keepApplicable(transformations, this.block);
         this.rewards = rewards;
         this.biomeWhitelist = biomeWhitelist == null ? new HashSet<>() : biomeWhitelist;
         this.biomeBlackList = biomeBlackList == null ? new HashSet<>() : biomeBlackList;
         this.extras = extras == null ? PtaExtras.EMPTY : extras;
+    }
+
+    /**
+     * Drop the transformations that cannot do anything, so the runtime never has to ask again.
+     *
+     * <p>An air target has no block under the cursor to act on, so a transformation aimed at the
+     * origin is meaningless and was discarded before offsets existed. One with an offset is not:
+     * its origin is the player, so "place a block above me" is a perfectly good air interaction and
+     * is kept.</p>
+     */
+    private static List<PtaTransformation> keepApplicable(List<PtaTransformation> transformations, PtaBlock block) {
+        if (transformations == null || transformations.isEmpty()) return List.of();
+
+        List<PtaTransformation> applicable = new ArrayList<>(transformations.size());
+        for (PtaTransformation transformation : transformations) {
+            if (transformation == null || !transformation.hasTransformation()) continue;
+            if (block.isAir() && !transformation.hasOffset()) continue;
+            applicable.add(transformation);
+        }
+        return List.copyOf(applicable);
     }
 
     /**

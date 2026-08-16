@@ -53,6 +53,10 @@ public class PTAConfig {
         public final ModConfigSpec.BooleanValue allowAirInteractions;
         public final ModConfigSpec.BooleanValue allowFluidInteractions;
         public final ModConfigSpec.BooleanValue allowTransformations;
+        public final ModConfigSpec.BooleanValue allowOffsetTransformations;
+        public final ModConfigSpec.IntValue maxTransformationOffset;
+        public final ModConfigSpec.IntValue maxTransformationsPerInteraction;
+        public final ModConfigSpec.BooleanValue fireProtectionEvents;
 
         private InteractionConfig(ModConfigSpec.Builder builder) {
             builder.push("Interactions");
@@ -63,7 +67,7 @@ public class PTAConfig {
                     .comment("Minimum delay, in ticks, between two successful interactions for the same player.", "20 ticks = 1 second. Set to 0 to disable player cooldowns.")
                     .defineInRange("cooldown_ticks", 1, 0, 10000);
             maxMatchesPerClick = builder
-                    .comment("Maximum number of matching interactions processed per click.", "Use 1 for predictable recipes, higher values for intentional chained outputs. Transformations still happen at most once per click.")
+                    .comment("Maximum number of matching interactions processed per click.", "Use 1 for predictable recipes, higher values for intentional chained outputs. Any one block is still transformed at most once per click.")
                     .defineInRange("max_matches_per_click", 64, 1, 1024);
             cancelVanillaInteraction = builder
                     .comment("Cancel the vanilla click event after at least one PunchThemAll interaction succeeds.", "Keep enabled to prevent duplicate vanilla handling; disable only for advanced compatibility packs.")
@@ -86,6 +90,30 @@ public class PTAConfig {
             allowTransformations = builder
                     .comment("Allow interactions to transform blocks or fluids after a successful drop roll.")
                     .define("allow_transformations", true);
+            allowOffsetTransformations = builder
+                    .comment(
+                            "Allow transformations to act on a block other than the one that was interacted with.",
+                            "Disabling this keeps every transformation on the clicked block, whatever the datapack asks for."
+                    )
+                    .define("allow_offset_transformations", true);
+            maxTransformationOffset = builder
+                    .comment(
+                            "How far a transformation may reach from the interacted block, in blocks along the longest axis.",
+                            "A transformation asking for more is skipped. This bounds what a datapack can touch from a single click."
+                    )
+                    .defineInRange("max_transformation_offset", 8, 0, 64);
+            maxTransformationsPerInteraction = builder
+                    .comment(
+                            "Maximum number of transformations one interaction may apply per click.",
+                            "Each one is a block update, so this bounds the cost of a single click on the server."
+                    )
+                    .defineInRange("max_transformations_per_interaction", 8, 1, 256);
+            fireProtectionEvents = builder
+                    .comment(
+                            "Post block break/place events for transformations, so claim and protection mods can veto them.",
+                            "Leave enabled on any server that is not single player: without it, an offset transformation can reach inside a protected area."
+                    )
+                    .define("fire_protection_events", true);
             builder.pop();
         }
     }

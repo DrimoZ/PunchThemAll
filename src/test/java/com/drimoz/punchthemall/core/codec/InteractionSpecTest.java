@@ -158,7 +158,7 @@ class InteractionSpecTest {
     void transformationRequiresChance() {
         assertTrue(tryParse("{\"type\": \"right_click\", \"transformation\": {}}").isError());
         assertEquals(0.5, parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 0.5}}")
-                .transformation().orElseThrow().chance());
+                .transformation().get(0).chance());
     }
 
     @Test
@@ -277,6 +277,64 @@ class InteractionSpecTest {
         JsonElement encoded = InteractionSpec.CODEC.encodeStart(JsonOps.INSTANCE, original)
                 .getOrThrow(message -> new AssertionError(message));
 
+        assertEquals(original, parse(encoded.toString()));
+    }
+
+    @Test
+    @DisplayName("a transformation defaults to replacing the clicked block in place")
+    void transformationPlacementDefaults() {
+        InteractionSpec.TransformationSpec transformation =
+                parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 1}}").transformation().get(0);
+
+        assertEquals("replace", transformation.op());
+        assertTrue(transformation.at().isEmpty());
+        assertTrue(transformation.require().isEmpty());
+        assertTrue(transformation.drops());
+    }
+
+    @Test
+    @DisplayName("an offset defaults each axis to zero and the frame to world")
+    void offsetDefaults() {
+        InteractionSpec.OffsetSpec at = parse("""
+                {"type": "right_click", "transformation": {"chance": 1, "at": {"y": 1}}}
+                """).transformation().get(0).at().orElseThrow();
+
+        assertEquals(0, at.x());
+        assertEquals(1, at.y());
+        assertEquals(0, at.z());
+        assertEquals("world", at.relativeTo());
+    }
+
+    @Test
+    @DisplayName("transformation takes one object or a list of them")
+    void transformationObjectOrList() {
+        assertEquals(1, parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 1}}")
+                .transformation().size());
+
+        List<InteractionSpec.TransformationSpec> many = parse("""
+                {"type": "right_click", "transformation": [
+                  {"chance": 1, "op": "break"},
+                  {"chance": 0.5, "op": "place", "at": {"y": 1}, "into": {"id": "minecraft:torch"}}
+                ]}
+                """).transformation();
+
+        assertEquals(2, many.size());
+        assertEquals("break", many.get(0).op());
+        assertEquals("place", many.get(1).op());
+    }
+
+    @Test
+    @DisplayName("a single transformation survives a round trip as a bare object")
+    void singleTransformationRoundTrips() {
+        // The sync payload re-encodes every spec on its way to the client, so the short form has to
+        // come back out as the short form or the two sides stop comparing equal.
+        String json = "{\"type\": \"right_click\", \"transformation\": {\"chance\": 1, \"op\": \"break\"}}";
+
+        InteractionSpec original = parse(json);
+        JsonElement encoded = InteractionSpec.CODEC.encodeStart(JsonOps.INSTANCE, original)
+                .getOrThrow(message -> new AssertionError(message));
+
+        assertTrue(encoded.getAsJsonObject().get("transformation").isJsonObject());
         assertEquals(original, parse(encoded.toString()));
     }
 

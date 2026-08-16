@@ -38,6 +38,10 @@ needed. (Interactions themselves are **not** configured here; they are datapack 
 | `allow_air_interactions` | `true` | Enables interactions configured with an air target. |
 | `allow_fluid_interactions` | `true` | Enables ray-traced source-fluid interactions. |
 | `allow_transformations` | `true` | Enables block/fluid transformations after a successful interaction. Drops can still happen when this is disabled. |
+| `allow_offset_transformations` | `true` | Enables transformations that act on a block other than the one interacted with. Disabling this does not fall back to the clicked block — the transformation is skipped. |
+| `max_transformation_offset` | `8` | How far a transformation may reach, in blocks along its longest axis. Anything further is skipped. |
+| `max_transformations_per_interaction` | `8` | How many transformations one interaction may apply per click. |
+| `fire_protection_events` | `true` | Posts block break/place events so claim and protection mods can veto a transformation. Keep enabled on any multiplayer server. |
 
 ### Recommended presets
 
