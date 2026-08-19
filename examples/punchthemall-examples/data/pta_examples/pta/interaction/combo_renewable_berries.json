@@ -10,7 +10,7 @@
   "transformation": {
     "chance": 1.0,
     "into": { "kind": "block", "id": "minecraft:sweet_berry_bush", "state": { "age": "1" } },
-    "sound": "minecraft:block.sweet_berry_bush_pick_berries"
+    "sound": "minecraft:block.sweet_berry_bush.pick_berries"
   },
   "rewards": {
     "guaranteed": [ { "match": "minecraft:sweet_berries", "count": { "min": 2, "max": 4 } } ]
