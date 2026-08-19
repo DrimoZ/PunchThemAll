@@ -83,6 +83,8 @@ block rather than replace it.
   Touch included. `true`/`false` still mean what they meant (`"vanilla"` / `"none"`) and still
   round-trip as booleans. Off by default on purpose: mining at a distance with an enchanted tool is a
   fine thing for a pack to choose and a poor one to inherit by accident.
+- **Four examples sized to the drop grid** (9, 12, 18 and 27 drops), so the layout above is
+  something you can look at rather than reason about.
 - **A test that every feature of the format has a runnable example.** Fifty-seven of them, matched
   against the example pack as text — a field documented but never demonstrated is invisible by
   inspection once there are sixty files, and the gap opens every time a feature is added.
@@ -90,6 +92,12 @@ block rather than replace it.
   Twenty-four in all, still about two seconds.
 
 ### Changed
+- **A recipe no longer inherits the height of the widest one in the category.** JEI sizes a
+  category rather than a recipe, so a single interaction with thirty drops made every other one
+  three rows tall and the list became a column of mostly empty boxes. The box is now capped at
+  two rows of drops, and only a recipe with more than that gets a scrolling grid — so a
+  scrollbar appears where it does something and nowhere else. A pack whose interactions all fit
+  in one row still gets a one-row box, exactly as before.
 - **`max_transformations_per_interaction` now defaults to 64**, up from 8, and counts every block a
   region covers. Eight was chosen when a transformation meant one block.
 

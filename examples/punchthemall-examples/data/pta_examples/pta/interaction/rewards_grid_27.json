@@ -1,0 +1,128 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:diamond_pickaxe",
+    "consume": {
+      "mode": "durability",
+      "count": 1
+    }
+  },
+  "target": {
+    "kind": "block",
+    "match": "minecraft:tuff"
+  },
+  "rewards": {
+    "weighted": [
+      {
+        "match": "minecraft:flint",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:clay_ball",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:coal",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:raw_copper",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:raw_iron",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:raw_gold",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:lapis_lazuli",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:redstone",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:quartz",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:amethyst_shard",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:emerald",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:diamond",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:iron_nugget",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:gold_nugget",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:copper_ingot",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:bone",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:string",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:gunpowder",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:feather",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:leather",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:wheat_seeds",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:sugar_cane",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:kelp",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:cocoa_beans",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:nether_wart",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:blaze_powder",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:ghast_tear",
+        "weight": 2
+      }
+    ]
+  }
+}

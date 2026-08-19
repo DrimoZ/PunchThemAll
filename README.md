@@ -10,7 +10,12 @@ cost the player health or hunger, grant potion effects, play sounds and particle
 biome, dimension, time, weather, altitude, light, or player state — and it all shows up in **JEI** and
 **EMI**.
 
-> **New in 2.3.0:** transformations can act on a **block other than the one you clicked**, and can
+> **New in 2.4.0:** gate an interaction on the **blocks around it**, act on a whole **region**
+> in one entry, roll a **set** of transformations together, and **move** a block instead of
+> replacing it. Tooltips now name what each transformation writes, with the full breakdown behind
+> a key you choose.
+>
+> *Since 2.3.0:* transformations can act on a **block other than the one you clicked**, and can
 > **break** or **place** rather than only overwrite — at an offset read in world axes, against your
 > facing, or out of the clicked face, several per click. Claim mods can veto them and server owners
 > get a distance cap. Existing files are unaffected: without `op` or `at`, a transformation does
@@ -55,7 +60,7 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
 ## Install
 
 1. Install NeoForge for 1.21.1 and (optionally) JEI or EMI.
-2. Drop `pta-1.21.1-2.3.0.jar` into your `mods` folder.
+2. Drop `pta-1.21.1-2.4.0.jar` into your `mods` folder.
 3. Provide interactions with a datapack (below).
 
 ## Quick start
@@ -107,7 +112,7 @@ search the **Interaction** category to see it.
 | [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
 | [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
-| [example catalogue](examples/punchthemall-examples/README.md) | **64 runnable examples**, one per feature, each with what it shows and how to trigger it. |
+| [example catalogue](examples/punchthemall-examples/README.md) | **68 runnable examples**, one per feature, each with what it shows and how to trigger it. |
 | [docs/backlog.md](docs/backlog.md) | Ideas, deferred work, and what is knowingly untested. |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 

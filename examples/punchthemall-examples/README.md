@@ -1,7 +1,7 @@
 # PunchThemAll — example datapack
 
 Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 64 interactions, each kept small so it demonstrates one thing you can copy.
+ready-to-use one: 68 interactions, each kept small so it demonstrates one thing you can copy.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -202,3 +202,21 @@ recipe here.
 
 `combo_hammer_behind.json` and `combo_excavator_3x3.json` are the same idea at two scales, and
 between them show why `require` exists: without it the excavator eats the ores you were exposing.
+
+## Drop grid sizes
+
+Four interactions that exist to make the recipe viewer layout visible. They are otherwise
+unremarkable — a pickaxe on a stone variant, giving a wide loot pool — and are worth keeping because
+the number of drops is what decides whether a scrollbar appears, and that is easy to get wrong
+without something to look at.
+
+| File | Drops | Rows | What it shows |
+| --- | ---: | ---: | --- |
+| `rewards_grid_9.json` | 9 | 1 | Exactly one full row, no scrollbar. |
+| `rewards_grid_12.json` | 12 | 2 | Two rows, the second part-filled. Still no scrollbar. |
+| `rewards_grid_18.json` | 18 | 2 | Exactly two full rows — the most a box shows. |
+| `rewards_grid_27.json` | 27 | 3 | More than the box shows, so this one scrolls. |
+
+The category is as tall as the widest recipe, capped at two rows: JEI sizes a category rather than a
+recipe, so without the cap this last file alone would make every other interaction in the list three
+rows tall. With it, the box stays two rows and only this recipe gets a scrollbar.
