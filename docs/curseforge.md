@@ -101,9 +101,31 @@ cobblestone, a chance at iron nuggets (doubled per Fortune level), a Haste buff 
 - **Config options:** [configuration.md](configuration.md)
 - **Cookbook (whole recipes by goal):** [cookbook.md](cookbook.md)
 - **What can and cannot be done:** [capabilities.md](capabilities.md)
+- **Full wiki:** <https://github.com/DrimoZ/PunchThemAll/wiki>
+- **Troubleshooting:** [troubleshooting.md](troubleshooting.md)
 - **Editor schema:** [interaction.schema.json](interaction.schema.json)
 - **Changelog:** [CHANGELOG.md](../CHANGELOG.md)
 - **Copy-paste example datapack:** [`examples/punchthemall-examples`](../examples/punchthemall-examples) — 64 interactions covering every field, [catalogued here](../examples/punchthemall-examples/README.md)
+
+## Permissions
+
+Short version: **use it.** No permission needed, no credit required.
+
+- **Modpacks**, public or private: yes, and you do not need to ask.
+- **Servers**: yes.
+- **Redistributing the jar** unchanged: yes.
+- **Forking** and publishing your fork: yes. It is MIT, so keep the licence notice.
+- **Reuploading it as your own mod**: please do not. Fork it under its own name instead.
+- **The logo and GUI artwork** travel with the mod, but are not free for unrelated projects.
+
+Credit is appreciated and never required.
+
+## Licence
+
+- **Code:** [MIT](https://github.com/DrimoZ/PunchThemAll/blob/master/LICENSE).
+- **Artwork:** [LICENSE-ASSETS](https://github.com/DrimoZ/PunchThemAll/blob/master/LICENSE-ASSETS).
+- **Third-party assets:** none. The mod ships no Minecraft textures, sounds or models — every
+  block and item it shows is rendered by the game from the player installation.
 
 ## Compatibility
 

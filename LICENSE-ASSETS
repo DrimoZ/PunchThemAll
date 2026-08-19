@@ -1,0 +1,48 @@
+PunchThemAll — asset licence
+============================
+
+This file covers the *artwork* shipped with PunchThemAll. The code is under the
+MIT Licence; see LICENSE.
+
+Covered by this file
+--------------------
+
+  logo.png
+  src/main/resources/assets/pta/textures/gui/jei.png
+  src/main/resources/assets/pta/textures/gui/punch.png
+
+These were made for PunchThemAll and are Copyright (c) 2024-2026 DrimoZ.
+
+What you may do
+---------------
+
+  * Redistribute them as part of PunchThemAll, unchanged — in a modpack, on a
+    server, in a mirror of the mod. No permission needed, no credit required.
+  * Use them to refer to the mod: screenshots, pack pages, videos, wikis.
+  * Fork the mod and keep them, as long as the fork is still recognisably
+    PunchThemAll rather than a different mod wearing its face.
+
+What you may not do
+-------------------
+
+  * Ship them in an unrelated project.
+  * Sell them, or sell access to them.
+  * Use them as the identity of another mod, so that players cannot tell which
+    project they are looking at.
+
+The distinction that matters is the last one. The code is MIT because reuse of
+code is good for everyone; the artwork is narrower because it is what tells
+players whose mod this is.
+
+No third-party assets
+---------------------
+
+PunchThemAll ships no assets it did not make. In particular it contains no
+Minecraft textures, sounds or models: everything it draws in JEI and EMI is
+either its own artwork or a block/item stack rendered by the game at runtime
+from the player's own installation.
+
+Mojang's assets are not redistributable, so if you fork this mod, do not add
+any — the temptation is a copied vanilla texture used as a placeholder, and it
+is a licence problem rather than a shortcut. (One had crept into this repository
+and was removed in 2.4.0.)

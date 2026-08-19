@@ -96,11 +96,12 @@ two example-datapack bugs fixed in 2.2.0.
   per-block deduplication are all watched happening in a real world. What those tests do *not* cover
   is `PlayerInteractionHandler` calling it: the origin it picks for a fluid or air interaction, and
   the face it passes for the `face` frame. Those still need a client and a real click.
-- **No claim mod has ever vetoed a transformation.** The break and place events are posted, and the
-  hook signatures are right, but no FTB Chunks / GriefDefender install has been tried against them.
-  This is the guard that keeps offset transformations from being a way around claims, so it is the
-  one worth verifying before any public release. The game tests use a mock player, which is not a
-  `ServerPlayer`, so they deliberately skip that branch entirely.
+- **No *real* claim mod has vetoed a transformation.** The guard itself is now covered: four game
+  tests register a listener that cancels the vanilla break and place events, which is exactly what
+  FTB Chunks and the rest do, and check that the transformation is refused — and that a veto stops
+  only the blocks it protects. What is still untested is a real claim mod install, where the
+  question is whether it listens to those events at the priority we assume rather than whether we
+  respect a veto.
 - **The viewer tooltips.** `TransformationDescriber` has no test; the operation, offset and
   requirement lines have only been read in code, never on screen.
 - **The EMI plugin has never been loaded.** `PtaEmiPlugin` compiles against the API and has never run

@@ -21,6 +21,10 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -464,6 +468,129 @@ public final class TransformationGameTests {
         if (mustNotBeCapped.matches(helper.getLevel(), origin, Direction.UP, Direction.NORTH)) {
             helper.fail("a log is above, so an inverted condition should not hold");
         }
+        helper.succeed();
+    }
+
+    // protection: what a claim mod actually does
+
+    /**
+     * Stands in for FTB Chunks, GriefDefender and the rest.
+     *
+     * <p>None of them know anything about PunchThemAll. What they do is listen for "this player is
+     * breaking a block" and "this player is placing a block" and cancel the ones inside a claim. So
+     * a listener that cancels those two events at one position is, from the mod side, exactly a
+     * claim boundary — which makes the guard testable without installing anything.</p>
+     */
+    public static class ClaimVeto {
+        private final BlockPos protectedPos;
+
+        ClaimVeto(BlockPos protectedPos) {
+            this.protectedPos = protectedPos;
+        }
+
+        @SubscribeEvent
+        public void onBreak(BlockEvent.BreakEvent event) {
+            if (event.getPos().equals(protectedPos)) event.setCanceled(true);
+        }
+
+        @SubscribeEvent
+        public void onPlace(BlockEvent.EntityPlaceEvent event) {
+            if (event.getPos().equals(protectedPos)) event.setCanceled(true);
+        }
+    }
+
+    /**
+     * Runs the applier as a real {@code ServerPlayer}.
+     *
+     * <p>{@code makeMockPlayer} returns a plain {@code Player}, and the protection events are only
+     * posted for a {@code ServerPlayer} — so the mock quietly skips the very branch these tests are
+     * about. A fake player is a {@code ServerPlayer}, which is also what an automation mod would be
+     * clicking with.</p>
+     */
+    private static List<BlockPos> applyAsServerPlayer(GameTestHelper helper, List<PtaTransformation> transformations) {
+        Player player = FakePlayerFactory.getMinecraft(helper.getLevel());
+        return TransformationApplier.apply(
+                helper.getLevel(), player,
+                helper.absolutePos(ORIGIN), Direction.UP,
+                transformations, helper.getLevel().getRandom(), new HashSet<>()
+        );
+    }
+
+    @GameTest(template = PLATFORM, batch = BATCH)
+    public static void aVetoedBreakLeavesTheBlockAlone(GameTestHelper helper) {
+        helper.setBlock(ORIGIN, Blocks.STONE);
+        helper.setBlock(ORIGIN.above(), Blocks.OAK_LOG);
+
+        ClaimVeto veto = new ClaimVeto(helper.absolutePos(ORIGIN.above()));
+        NeoForge.EVENT_BUS.register(veto);
+        try {
+            List<BlockPos> applied = applyAsServerPlayer(helper, List.of(breaking(at(0, 1, 0), PtaDropMode.VANILLA)));
+            if (!applied.isEmpty()) helper.fail("a vetoed break must not report itself as applied");
+        } finally {
+            NeoForge.EVENT_BUS.unregister(veto);
+        }
+
+        helper.assertBlockPresent(Blocks.OAK_LOG, ORIGIN.above());
+        helper.assertItemEntityCountIs(Blocks.OAK_LOG.asItem(), ORIGIN.above(), 2.0, 0);
+        helper.succeed();
+    }
+
+    @GameTest(template = PLATFORM, batch = BATCH)
+    public static void aVetoedPlaceWritesNothing(GameTestHelper helper) {
+        helper.setBlock(ORIGIN, Blocks.STONE);
+        helper.setBlock(ORIGIN.above(), Blocks.AIR);
+
+        ClaimVeto veto = new ClaimVeto(helper.absolutePos(ORIGIN.above()));
+        NeoForge.EVENT_BUS.register(veto);
+        try {
+            applyAsServerPlayer(helper, List.of(place(Blocks.TORCH, at(0, 1, 0), null)));
+        } finally {
+            NeoForge.EVENT_BUS.unregister(veto);
+        }
+
+        helper.assertBlockNotPresent(Blocks.TORCH, ORIGIN.above());
+        helper.succeed();
+    }
+
+    @GameTest(template = PLATFORM, batch = BATCH)
+    public static void aVetoOnlyCoversTheBlockItProtects(GameTestHelper helper) {
+        helper.setBlock(ORIGIN, Blocks.STONE);
+        helper.setBlock(ORIGIN.above(), Blocks.AIR);
+
+        // The claim is one block north; the transformation lands overhead, outside it.
+        ClaimVeto veto = new ClaimVeto(helper.absolutePos(ORIGIN.north()));
+        NeoForge.EVENT_BUS.register(veto);
+        try {
+            applyAsServerPlayer(helper, List.of(place(Blocks.TORCH, at(0, 1, 0), null)));
+        } finally {
+            NeoForge.EVENT_BUS.unregister(veto);
+        }
+
+        // Without this the veto tests above would pass even if the guard refused everything.
+        helper.assertBlockPresent(Blocks.TORCH, ORIGIN.above());
+        helper.succeed();
+    }
+
+    @GameTest(template = PLATFORM, batch = BATCH)
+    public static void aVetoStopsOnlyItsOwnBlockInARegion(GameTestHelper helper) {
+        helper.setBlock(ORIGIN, Blocks.STONE);
+        PtaOffset area = new PtaOffset(-1, 1, 0, PtaOffset.Frame.WORLD, new PtaOffset(1, 1, 0, PtaOffset.Frame.WORLD));
+        for (BlockPos pos : area.resolveAll(ORIGIN, Direction.UP, Direction.NORTH)) {
+            helper.setBlock(pos, Blocks.AIR);
+        }
+
+        ClaimVeto veto = new ClaimVeto(helper.absolutePos(ORIGIN.above()));
+        NeoForge.EVENT_BUS.register(veto);
+        try {
+            List<BlockPos> applied = applyAsServerPlayer(helper, List.of(place(Blocks.GLASS, area, null)));
+            if (applied.size() != 2) helper.fail("expected two of three placements to survive the veto, got " + applied.size());
+        } finally {
+            NeoForge.EVENT_BUS.unregister(veto);
+        }
+
+        helper.assertBlockNotPresent(Blocks.GLASS, ORIGIN.above());
+        helper.assertBlockPresent(Blocks.GLASS, ORIGIN.above().west());
+        helper.assertBlockPresent(Blocks.GLASS, ORIGIN.above().east());
         helper.succeed();
     }
 }

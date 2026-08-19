@@ -143,11 +143,50 @@ Neither reaches the click path itself, rendering, or tags. For that layer,
 `/reload`, and read `run/logs/latest.log`. A green build has repeatedly not predicted correctness on
 this mod — `docs/backlog.md` lists what is still unwatched.
 
+## The wiki
+
+The [GitHub wiki](https://github.com/DrimoZ/PunchThemAll/wiki) is the public reference, and it is
+**generated** from `docs/` rather than hand-written. It had drifted to 2.0.0 while the mod shipped
+2.4.0, because nothing could notice.
+
+```bash
+git clone https://github.com/DrimoZ/PunchThemAll.wiki.git   # once, next to this repo
+tools/sync-wiki.sh                                          # regenerate the pages
+tools/sync-wiki.sh --check                                  # non-zero if the wiki is behind
+```
+
+The script writes the pages and stops; review the diff and push it yourself. Edit `docs/`, never
+the wiki — a page edited there is overwritten on the next sync.
+
 ## Compatibility
 
 Works with any resource/tech mod, since interactions can require specific items/tags and target
 specific blocks/fluids. JEI and EMI are both supported natively.
 
+## Permissions
+
+Short version: **use it.** No permission needed, no credit required.
+
+| | |
+| --- | --- |
+| Use it in a modpack, public or private | Yes, and you do not need to ask |
+| Put it on a server | Yes |
+| Redistribute the jar unchanged | Yes |
+| Fork it, change it, publish the fork | Yes — MIT, so keep the licence notice |
+| Reupload it as your own mod | Please do not. Fork it under its own name instead |
+| Use the logo and GUI artwork | With the mod, yes; in an unrelated project, no. See [LICENSE-ASSETS](LICENSE-ASSETS) |
+
+Credit is appreciated and never required.
+
 ## License & credits
 
-Authored by **DrimoZ**. Free and open source under the [MIT License](LICENSE).
+Authored by **DrimoZ**.
+
+- **Code:** [MIT](LICENSE).
+- **Artwork** (logo, JEI icons): [LICENSE-ASSETS](LICENSE-ASSETS) — free to ship with the mod,
+  not to reuse elsewhere.
+- **Third-party assets:** none. The mod ships no Minecraft textures, sounds or models; every
+  block and item it draws is rendered by the game from the player's own installation.
+- Built on [NeoForge](https://neoforged.net/). Recipe browsing via
+  [JEI](https://github.com/mezz/JustEnoughItems) and [EMI](https://github.com/emilyploszaj/emi),
+  both compiled against their public APIs and neither redistributed.

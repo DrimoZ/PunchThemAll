@@ -111,6 +111,13 @@ dependencies {
 // Give the test source set the Minecraft/NeoForge classes (NBT, codecs, ...).
 neoForge.addModdingDependenciesTo(sourceSets.test)
 
+// A jar that travels without its licence leaves the person who found it in a modpack with no
+// way to know what they may do with it.
+tasks.named("jar", Jar).configure {
+    from(rootProject.file("LICENSE")) { into("META-INF") }
+    from(rootProject.file("LICENSE-ASSETS")) { into("META-INF") }
+}
+
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     testLogging { events "passed", "failed", "skipped" }

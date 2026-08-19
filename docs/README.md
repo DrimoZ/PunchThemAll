@@ -13,10 +13,13 @@ Start here, then dig in as needed.
 | [interaction.schema.json](interaction.schema.json) | Wire up **editor autocomplete/validation** for interaction files. |
 | [example catalogue](../examples/punchthemall-examples/README.md) | Find a **working file for every feature** — 64 examples, each with what it shows and how to trigger it. |
 | [curseforge.md](curseforge.md) | A short **project overview** (used for the CurseForge page). |
+| [troubleshooting.md](troubleshooting.md) | Work out **why nothing happened**, in the order that finds it fastest. |
 | [backlog.md](backlog.md) | Ideas and nice-to-haves, parked for later. Add freely, pick when there is room. |
 
 Related:
 
+- Public wiki: <https://github.com/DrimoZ/PunchThemAll/wiki> — generated from these files by
+  `tools/sync-wiki.sh`. Edit here, not there.
 - Changelog: [../CHANGELOG.md](../CHANGELOG.md)
 - Ready-to-copy example datapack: [`../examples/punchthemall-examples`](../examples/punchthemall-examples) — 64 interactions, catalogued in its [README](../examples/punchthemall-examples/README.md)
 

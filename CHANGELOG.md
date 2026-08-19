@@ -15,6 +15,19 @@ entries, a set that only half-happens, no way to gate on the surroundings, and n
 block rather than replace it.
 
 ### Added
+- **A troubleshooting guide**, [troubleshooting.md](docs/troubleshooting.md): why a file did not
+  load, why a click did nothing, why the drops or the block are not what you wrote, and a table
+  of every message the mod logs with what it means.
+- **The wiki is generated from the documentation**, by `tools/sync-wiki.sh`. It had drifted to
+  2.0.0 while the mod shipped 2.4.0, and nothing could notice; `--check` now exits non-zero when
+  it falls behind.
+- **`LICENSE-ASSETS`**, covering the logo and the JEI artwork, and both licence files now travel
+  inside the jar. A jar found in a modpack could not say what you were allowed to do with it.
+- **A permissions section** in the README and on the store page: modpacks yes, servers yes, forks
+  yes, reuploading as your own mod please no. Credit appreciated, never required.
+- **Four in-world tests for the protection guard.** A listener that cancels the vanilla break and
+  place events is, from this mod side, exactly what a claim mod is — so the veto is now tested
+  rather than asserted, including that it stops only the blocks it protects.
 - **Two new documents, and thirteen worked examples.** [capabilities.md](docs/capabilities.md)
   says what the mod can and cannot do, the things that look possible and are not, and every
   hard limit — so an impossible idea is cheap to rule out rather than expensive to discover.
@@ -74,6 +87,13 @@ block rather than replace it.
   > regenerate.
 
 ### Fixed
+- **Removed a Minecraft texture that had been sitting in the mod resources.** A copy of the
+  vanilla grass side was shipping in every jar, referenced by nothing. Mojang assets are not
+  redistributable, so this was a licensing problem rather than dead weight — though it was also
+  dead weight.
+- **Removed `CREDITS.txt`.** It was the Minecraft Forge 1.12 credits file, inherited from the old
+  MDK: it thanked the Forge authors, described MCP redistribution terms, and had nothing to do
+  with this mod. Attribution that names the wrong project is worse than none.
 - A neighbour or copy source that cannot be read — unloaded, out of the world — is treated as absent
   rather than as air, so nothing fires or writes on the strength of a chunk that was not there.
 
