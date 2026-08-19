@@ -15,6 +15,15 @@ entries, a set that only half-happens, no way to gate on the surroundings, and n
 block rather than replace it.
 
 ### Added
+- **Tooltips you can actually read, in two lengths.** An interaction can carry a dozen facts, and
+  the viewer used to end with *+1 more transformation(s)* — telling the player something was
+  hidden and then hiding it. The summary now names the block each transformation writes
+  (*Places Torch*, not *Places a block*); holding a key expands it into every transformation,
+  numbered and in order, each with its destination, its condition and what it drops. A region
+  says how many blocks it covers, and a set-level chance is stated before the entries it gates.
+- **`pta-client.toml`**, a client-side config file. `detail_key` picks which key expands a
+  tooltip: `shift` (default), `control`, `alt`, `always` or `never`. It is a separate file
+  because a server has no business deciding which key a player holds to read a tooltip.
 - **A troubleshooting guide**, [troubleshooting.md](docs/troubleshooting.md): why a file did not
   load, why a click did nothing, why the drops or the block are not what you wrote, and a table
   of every message the mod logs with what it means.

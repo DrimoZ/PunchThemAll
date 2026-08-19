@@ -45,6 +45,18 @@ public class TranslationKeys {
     public static final String INTERACTION_TRANSFORMATION_MORE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.more";
     public static final String INTERACTION_TRANSFORMATION_COPIED = "gui." + PunchThemAll.MOD_ID + ".category.transformation.copied";
     public static final String INTERACTION_TRANSFORMATION_BROKEN = "gui." + PunchThemAll.MOD_ID + ".category.transformation.broken";
+    public static final String INTERACTION_TRANSFORMATION_OP_PLACE_NAMED = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.place_named";
+    public static final String INTERACTION_TRANSFORMATION_OP_REPLACE_NAMED = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.replace_named";
+    public static final String INTERACTION_TRANSFORMATION_COUNT = "gui." + PunchThemAll.MOD_ID + ".category.transformation.count";
+    public static final String INTERACTION_TRANSFORMATION_GROUP = "gui." + PunchThemAll.MOD_ID + ".category.transformation.group";
+    public static final String INTERACTION_TRANSFORMATION_REGION = "gui." + PunchThemAll.MOD_ID + ".category.transformation.region";
+    public static final String INTERACTION_TRANSFORMATION_DROPS_TOOL = "gui." + PunchThemAll.MOD_ID + ".category.transformation.drops_tool";
+
+    // Progressive disclosure (see TooltipDetail)
+    public static final String INTERACTION_TOOLTIP_HINT = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.hint";
+    public static final String INTERACTION_TOOLTIP_KEY_SHIFT = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.key.shift";
+    public static final String INTERACTION_TOOLTIP_KEY_CONTROL = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.key.control";
+    public static final String INTERACTION_TOOLTIP_KEY_ALT = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.key.alt";
 
     public static final String INTERACTION_BIOME_WHITELIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.whitelist";
     public static final String INTERACTION_BIOME_BLACKLIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.blacklist";

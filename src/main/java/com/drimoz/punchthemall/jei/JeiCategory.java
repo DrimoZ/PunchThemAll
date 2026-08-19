@@ -1,5 +1,6 @@
 package com.drimoz.punchthemall.jei;
 
+import com.drimoz.punchthemall.client.TooltipDetail;
 import com.drimoz.punchthemall.core.model.classes.PtaBlock;
 import com.drimoz.punchthemall.core.model.classes.PtaConditions;
 import com.drimoz.punchthemall.core.model.classes.PtaEffect;
@@ -248,7 +249,12 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         transformationSlot.addRichTooltipCallback((slotView, tooltip) -> {
             double chance = interaction.getTransformation().getChance();
             tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_CHANCE).getString() + " : §l§5" + getTruncatedChance(chance, 0, 1) + "%"));
-            TransformationDescriber.describe(interaction).forEach(tooltip::add);
+            boolean expanded = TooltipDetail.isExpanded();
+            TransformationDescriber.describe(interaction, expanded).forEach(tooltip::add);
+            if (TransformationDescriber.hasMoreToShow(interaction)) {
+                Component hint = TooltipDetail.hint();
+                if (hint != null) tooltip.add(hint);
+            }
         });
     }
 

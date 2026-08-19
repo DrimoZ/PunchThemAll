@@ -6,6 +6,9 @@ public class PTAConfig {
 
     public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec COMMON_CONFIG;
+    public static final ModConfigSpec CLIENT_CONFIG;
+
+    public static final ClientConfig CLIENT;
 
     public static final InteractionConfig INTERACTIONS;
     public static final PlayerConfig PLAYERS;
@@ -13,6 +16,15 @@ public class PTAConfig {
     public static final DebugConfig DEBUG;
 
     static {
+        // The recipe viewers are a client concern, so their settings live in a client file. A
+        // server has no business deciding which key a player holds to read a tooltip.
+        ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
+        clientBuilder.comment("PunchThemAll client-side settings. These affect what you see, never what the mod does.");
+        clientBuilder.push("PunchThemAll");
+        CLIENT = new ClientConfig(clientBuilder);
+        clientBuilder.pop();
+        CLIENT_CONFIG = clientBuilder.build();
+
         BUILDER.comment(
                 "PunchThemAll common configuration.",
                 "The config is split by responsibility so pack makers can tune gameplay, automation and drops separately.",
@@ -40,6 +52,32 @@ public class PTAConfig {
      */
     public static <T> T valueOrDefault(ModConfigSpec.ConfigValue<T> value) {
         return COMMON_CONFIG.isLoaded() ? value.get() : value.getDefault();
+    }
+
+    /** The client counterpart of {@link #valueOrDefault}, for the client spec. */
+    public static <T> T clientValueOrDefault(ModConfigSpec.ConfigValue<T> value) {
+        return CLIENT_CONFIG.isLoaded() ? value.get() : value.getDefault();
+    }
+
+    public static class ClientConfig {
+        /** Which key expands a recipe tooltip from its summary to the full breakdown. */
+        public final ModConfigSpec.ConfigValue<String> tooltipDetailKey;
+
+        private ClientConfig(ModConfigSpec.Builder builder) {
+            builder.push("Tooltips");
+            tooltipDetailKey = builder
+                    .comment(
+                            "Which key to hold to expand an interaction tooltip in JEI/EMI.",
+                            "A tooltip that shows everything at once is unreadable on a busy interaction, and one",
+                            "that shows a summary only is useless when you need the detail — so the detail is behind",
+                            "a key, and this is that key.",
+                            "shift, control, alt: hold it to expand.",
+                            "always: never summarise, always show everything.",
+                            "never: never expand, summary only."
+                    )
+                    .defineInList("detail_key", "shift", java.util.List.of("shift", "control", "alt", "always", "never"));
+            builder.pop();
+        }
     }
 
     public static class InteractionConfig {

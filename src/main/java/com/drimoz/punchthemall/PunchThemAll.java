@@ -22,6 +22,7 @@ public class PunchThemAll {
 
     public PunchThemAll(IEventBus modEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.COMMON, PTAConfig.COMMON_CONFIG, FILE_DESTINATION + "/" + MOD_ID + "-common.toml");
+        modContainer.registerConfig(ModConfig.Type.CLIENT, PTAConfig.CLIENT_CONFIG, FILE_DESTINATION + "/" + MOD_ID + "-client.toml");
 
         // Runtime interaction handling (clicks, cooldowns). Interactions themselves are read from
         // datapacks by InteractionReloadListener and resolved into the runtime registry on

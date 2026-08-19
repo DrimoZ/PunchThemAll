@@ -11,6 +11,7 @@ import com.drimoz.punchthemall.core.model.classes.PtaRewards;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.util.ItemConstraintDescriber;
+import com.drimoz.punchthemall.client.TooltipDetail;
 import com.drimoz.punchthemall.core.util.TransformationDescriber;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
@@ -174,7 +175,12 @@ public class PtaEmiRecipe implements EmiRecipe {
 
         // The transformation slot only appears when something is written, and it cannot show where.
         // The arrow is the one place that is always there to say it.
-        lines.addAll(TransformationDescriber.describe(interaction));
+        boolean expanded = TooltipDetail.isExpanded();
+        lines.addAll(TransformationDescriber.describe(interaction, expanded));
+        if (TransformationDescriber.hasMoreToShow(interaction)) {
+            Component hint = TooltipDetail.hint();
+            if (hint != null) lines.add(hint);
+        }
 
         for (PtaEffect effect : extras.effects()) {
             String name = effect.effect().unwrapKey().map(k -> k.location().toString()).orElse("effect");
