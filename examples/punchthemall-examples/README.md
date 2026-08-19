@@ -1,7 +1,7 @@
 # PunchThemAll — example datapack
 
 Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 51 interactions, each kept small so it demonstrates one thing you can copy.
+ready-to-use one: 64 interactions, each kept small so it demonstrates one thing you can copy.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -170,3 +170,35 @@ are fine: `data/mypack/pta/interaction/early/flint.json` becomes `mypack:early/f
 
 Edit a file, run `/reload`, and the change applies immediately — no restart, and clients are updated
 too. A malformed file is skipped with an error in the log; the rest keep working.
+
+## Combined recipes
+
+The files above each demonstrate one field. These are whole interactions that put several together —
+the shape a real pack is written in. Each one is written out and explained in the
+[cookbook](../../docs/cookbook.md).
+
+| File | What it combines | Try it |
+| --- | --- | --- |
+| `combo_sifting_gravel.json` | Durability cost + a weighted pool with an `air` filler + a transformation. | Sneak-left-click gravel with a shovel. It becomes sand, and sometimes gives flint. |
+| `combo_renewable_berries.json` | A state whitelist + a transformation that resets the state. | Right-click a **ripe** berry bush with shears. Unripe bushes do nothing. |
+| `combo_fortune_scaled.json` | An enchantment predicate on the hand + `rewards.fortune`. | Sneak-left-click deepslate with a Fortune pickaxe. Without Fortune it does not fire at all. |
+| `combo_hammer_behind.json` | `op: break` + the `face` frame + `drops: "tool"`. | Sneak-right-click stone with a pickaxe: the block **behind** it breaks, honouring Silk Touch. |
+| `combo_excavator_3x3.json` | A region + `op: break` + `require` + `drops: "tool"`. | Sneak-right-click stone with a netherite pickaxe. Nine blocks, and only the stone among them. |
+| `combo_wand_places_ahead.json` | An **air** target + `op: place` + the `player` frame + `require`. | Sneak-right-click the sky with a blaze rod. A torch appears ahead of you and one up. |
+| `combo_paving_group.json` | A region + a group `chance`, so the patch lands whole or not at all. | Sneak-right-click grass with a shovel. Four times in five, the 3x3 becomes path. |
+| `combo_dig_shaft.json` | A vertical region + `require` + `rewards.at` moving the drops out of the hole. | Sneak-right-click dirt with an iron shovel. Three blocks down, drops land above. |
+| `combo_altar.json` | Two `conditions.neighbours`, one inverted. | Right-click obsidian with an eye of ender: crying obsidian below, and something (not air) above. |
+| `combo_neighbour_state.json` | A neighbour with a **state** whitelist. | Right-click a blast furnace with an iron ingot, with a **lit** furnace to its east. |
+| `combo_multistep_hidden.json` | `hidden: true` — step one of a two-step recipe, kept out of JEI. | Sneak-right-click clay with a water bucket. It becomes mud. |
+| `combo_multistep_finish.json` | The step that checks the first one happened, via a neighbour. | Right-click that mud with wheat, with a hay block underneath. |
+| `combo_deep_dark_costly.json` | Three conditions + a hunger cost, so the recipe is expensive rather than merely rare. | Sneak-left-click deepslate below Y 0, in the dark, reasonably fed. |
+
+### Reading them together
+
+`combo_multistep_hidden.json` and `combo_multistep_finish.json` are a pair: nothing chains
+automatically in this mod, so the player clicks twice and the second file uses
+`conditions.neighbours` to check the setup is right. That is the general shape of a multi-step
+recipe here.
+
+`combo_hammer_behind.json` and `combo_excavator_3x3.json` are the same idea at two scales, and
+between them show why `require` exists: without it the excavator eats the ores you were exposing.

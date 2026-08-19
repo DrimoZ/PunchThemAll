@@ -15,6 +15,11 @@ entries, a set that only half-happens, no way to gate on the surroundings, and n
 block rather than replace it.
 
 ### Added
+- **Two new documents, and thirteen worked examples.** [capabilities.md](docs/capabilities.md)
+  says what the mod can and cannot do, the things that look possible and are not, and every
+  hard limit — so an impossible idea is cheap to rule out rather than expensive to discover.
+  [cookbook.md](docs/cookbook.md) is whole interactions organised by what you are building,
+  each combining several fields; every one of them ships as a runnable `combo_*.json`.
 - **`conditions.neighbours` — gate an interaction on the blocks around it.** `require` asks about a
   block a transformation is going to change; this asks whether the recipe applies at all, which is
   what multi-block setups are made of:

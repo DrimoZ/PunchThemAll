@@ -8,6 +8,10 @@ older `schema_version` are rejected with a clear error.
 New to the mod? Read [getting-started.md](getting-started.md) first, and use the
 [JSON schema](interaction.schema.json) for editor autocomplete/validation.
 
+Looking for a whole working interaction rather than a field? See the
+[cookbook](cookbook.md). Wondering whether a thing is possible at all? See
+[what it can and cannot do](capabilities.md).
+
 ## Where files live
 
 Interactions are datapack data:

@@ -99,9 +99,11 @@ cobblestone, a chance at iron nuggets (doubled per Fortune level), a Haste buff 
 - **Full JSON reference:** [interaction-format.md](interaction-format.md)
 - **Datapacks, loading & JEI/EMI:** [interactions.md](interactions.md)
 - **Config options:** [configuration.md](configuration.md)
+- **Cookbook (whole recipes by goal):** [cookbook.md](cookbook.md)
+- **What can and cannot be done:** [capabilities.md](capabilities.md)
 - **Editor schema:** [interaction.schema.json](interaction.schema.json)
 - **Changelog:** [CHANGELOG.md](../CHANGELOG.md)
-- **Copy-paste example datapack:** [`examples/punchthemall-examples`](../examples/punchthemall-examples) — 51 interactions covering every field, [catalogued here](../examples/punchthemall-examples/README.md)
+- **Copy-paste example datapack:** [`examples/punchthemall-examples`](../examples/punchthemall-examples) — 64 interactions covering every field, [catalogued here](../examples/punchthemall-examples/README.md)
 
 ## Compatibility
 

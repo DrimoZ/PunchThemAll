@@ -413,6 +413,10 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 
 ## 12. Cookbook
 
+A few starters below. The full set — sifting, excavators that reach, altars with neighbour
+conditions, two-step recipes, all-or-nothing patterns — is in [cookbook.md](cookbook.md),
+where each one is a whole interaction rather than a fragment.
+
 **Hammer crushing (cobble → gravel → sand → dust), consuming durability:**
 
 ```json
@@ -502,6 +506,8 @@ This version only accepts `schema_version: 2`. Set `"schema_version": 2` at the 
 
 ## Where to go next
 
+- **Whole recipes by goal:** [cookbook.md](cookbook.md)
+- **What can and cannot be done:** [capabilities.md](capabilities.md)
 - **Full field reference:** [interaction-format.md](interaction-format.md)
 - **Config keys & presets:** [configuration.md](configuration.md)
 - **Datapacks, IDs, JEI/EMI, multiplayer:** [interactions.md](interactions.md)

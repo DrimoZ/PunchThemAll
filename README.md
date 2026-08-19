@@ -101,11 +101,13 @@ search the **Interaction** category to see it.
 | Doc | What's inside |
 | --- | --- |
 | [docs/getting-started.md](docs/getting-started.md) | **Start here.** A step-by-step guide that builds an interaction from scratch, with a cookbook and troubleshooting. |
+| [docs/cookbook.md](docs/cookbook.md) | **Whole recipes** by goal — sifting, excavators, altars, multi-step setups — each combining several fields. |
+| [docs/capabilities.md](docs/capabilities.md) | **What can and cannot be done**, the traps that look possible, and every hard limit. |
 | [docs/interaction-format.md](docs/interaction-format.md) | **Full JSON reference** for the `schema_version: 2` format. |
 | [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
 | [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
-| [example catalogue](examples/punchthemall-examples/README.md) | **51 runnable examples**, one per feature, each with what it shows and how to trigger it. |
+| [example catalogue](examples/punchthemall-examples/README.md) | **64 runnable examples**, one per feature, each with what it shows and how to trigger it. |
 | [docs/backlog.md](docs/backlog.md) | Ideas, deferred work, and what is knowingly untested. |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 

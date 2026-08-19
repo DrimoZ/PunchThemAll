@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "hidden": true,
+  "type": "shift_right_click",
+  "hand": { "hand": "main", "match": "minecraft:water_bucket" },
+  "target": { "kind": "block", "match": "minecraft:clay" },
+  "transformation": {
+    "chance": 1.0,
+    "into": { "kind": "block", "id": "minecraft:mud" },
+    "sound": "minecraft:block.mud.place"
+  }
+}
