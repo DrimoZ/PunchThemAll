@@ -6,7 +6,11 @@ import com.drimoz.punchthemall.core.checker.ItemChecker;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.drimoz.punchthemall.core.codec.InteractionSpec;
+import com.drimoz.punchthemall.core.codec.InteractionSpecResolver;
+import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.BeforeAll;
@@ -222,5 +226,46 @@ class ExampleIdsTest {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * An example that writes a second corner really gets a region.
+     *
+     * <p>Anchored on the shipped files rather than on a hand-built spec, because that is where the
+     * bug showed: {@code combo_excavator_3x3} advertised nine blocks and broke one, and every layer
+     * on its own was correct. The codec parsed the corner, the offset maths handled boxes, the game
+     * tests built one directly — only the resolver between them dropped it, and no test crossed that
+     * seam.</p>
+     */
+    @TestFactory
+    @DisplayName("every example that asks for a region gets one")
+    Stream<DynamicTest> regionsSurviveResolution() throws IOException {
+        List<Path> files;
+        try (Stream<Path> paths = Files.list(INTERACTIONS)) {
+            files = paths.filter(path -> path.toString().endsWith(".json")).sorted().toList();
+        }
+
+        List<Path> withRegions = files.stream()
+                .filter(file -> read(file).replaceAll("\s+", "").contains("\"to\":{"))
+                .toList();
+
+        assertTrue(!withRegions.isEmpty(), "no example uses a region, so this check proves nothing");
+
+        return withRegions.stream().map(file -> DynamicTest.dynamicTest(file.getFileName().toString(), () -> {
+            InteractionSpec spec = InteractionSpec.CODEC
+                    .parse(JsonOps.INSTANCE, JsonParser.parseString(read(file)))
+                    .getOrThrow(message -> new AssertionError(message));
+            PtaInteraction interaction = InteractionSpecResolver.resolve(
+                    ResourceLocation.fromNamespaceAndPath("pta_examples", "region_check"), spec, null);
+
+            assertTrue(interaction != null, file.getFileName() + " did not resolve at all");
+
+            boolean anyRegion = interaction.getTransformations().stream()
+                    .anyMatch(transformation -> transformation.getOffset().isRegion());
+            if (!anyRegion) {
+                fail(file.getFileName() + " writes a `to` corner but resolves to a single block."
+                        + " A region that collapses silently is worse than one that errors.");
+            }
+        }));
     }
 }

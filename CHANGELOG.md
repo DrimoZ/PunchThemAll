@@ -99,6 +99,12 @@ block rather than replace it.
   > regenerate.
 
 ### Fixed
+- **Regions never worked.** `at.to` parsed, the box maths was right, and the resolver between
+  them never read the second corner — so every region shipped as a single block.
+  `combo_excavator_3x3` advertised nine and broke one. Every layer was individually correct and
+  all three test suites were green, because none of them crossed that seam: the codec test
+  stopped at the spec, the offset test built a box by hand, and the game tests did too. There is
+  now a test that resolves each shipped example and fails if a `to` corner does not survive.
 - **JEI and EMI crashed on a `copy` transformation.** A copy is neither air nor a named block,
   so both viewers fell through to the fluid branch and dereferenced a null — JEI showed *This
   recipe crashed* in place of the recipe. It now reads *The block that was there*, which is what

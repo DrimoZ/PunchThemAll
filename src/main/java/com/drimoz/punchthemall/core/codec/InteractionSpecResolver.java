@@ -328,15 +328,23 @@ public final class InteractionSpecResolver {
     private static PtaOffset resolveOffset(ResourceLocation id, OffsetSpec spec, String path) {
         if (spec == null) return PtaOffset.NONE;
 
-        PtaOffset.Frame frame;
+        PtaOffset.Frame resolvedFrame;
         try {
-            frame = PtaOffset.Frame.fromString(spec.relativeTo());
+            resolvedFrame = PtaOffset.Frame.fromString(spec.relativeTo());
         } catch (IllegalArgumentException e) {
             error(id, path + ".relative_to - Unknown frame " + spec.relativeTo() + " (expected world, player or face); using world");
-            frame = PtaOffset.Frame.WORLD;
+            resolvedFrame = PtaOffset.Frame.WORLD;
         }
 
-        return new PtaOffset(spec.x(), spec.y(), spec.z(), frame);
+        // The far corner, when the file gave one. Forgetting to read it here is what made every
+        // region silently collapse to a single block: the JSON parsed, the maths was right, and
+        // nothing between the two ever carried the second corner across.
+        PtaOffset.Frame frame = resolvedFrame;
+        PtaOffset to = spec.to()
+                .map(corner -> new PtaOffset(corner.x(), corner.y(), corner.z(), frame))
+                .orElse(null);
+
+        return new PtaOffset(spec.x(), spec.y(), spec.z(), frame, to);
     }
 
     /**

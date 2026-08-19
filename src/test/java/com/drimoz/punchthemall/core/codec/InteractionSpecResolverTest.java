@@ -580,4 +580,54 @@ class InteractionSpecResolverTest {
         assertEquals(-64, interaction.getConditions().yMin());
         assertNull(interaction.getConditions().requiresSneaking());
     }
+
+    @Test
+    @DisplayName("a region survives resolution, corner and all")
+    void regionSurvivesResolution() {
+        // The seam nobody was testing. The codec parsed `to`, PtaOffset did the box maths correctly,
+        // the game tests built a region by hand — and the resolver in between never read the second
+        // corner, so every region shipped as a single block while all three suites stayed green.
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "replace",
+                   "at": {"x": -1, "y": 0, "z": -1, "to": {"x": 1, "y": 0, "z": 1}},
+                   "into": {"id": "minecraft:glass"}}}
+                """);
+
+        PtaOffset at = interaction.getTransformation().getOffset();
+        assertTrue(at.isRegion(), "the far corner should have survived the resolver");
+        assertEquals(9, at.size(), "a 3x3 covers nine blocks");
+        assertEquals(1, at.to().x());
+        assertEquals(1, at.to().z());
+    }
+
+    @Test
+    @DisplayName("the far corner is read in the same frame as the near one")
+    void regionCornersShareAFrame() {
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "break",
+                   "at": {"x": -1, "y": -1, "z": 0, "to": {"x": 1, "y": 1, "z": 0},
+                          "relative_to": "player"}}}
+                """);
+
+        PtaOffset at = interaction.getTransformation().getOffset();
+        assertEquals(PtaOffset.Frame.PLAYER, at.frame());
+        assertEquals(PtaOffset.Frame.PLAYER, at.to().frame(),
+                "a box read half in one frame and half in another would be a shape nobody drew");
+        assertEquals(9, at.size());
+    }
+
+    @Test
+    @DisplayName("an offset with no far corner is a single block, not an empty region")
+    void plainOffsetIsNotARegion() {
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1}, "into": {"id": "minecraft:glass"}}}
+                """);
+
+        PtaOffset at = interaction.getTransformation().getOffset();
+        assertFalse(at.isRegion());
+        assertEquals(1, at.size());
+    }
 }
