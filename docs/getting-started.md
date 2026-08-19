@@ -340,11 +340,10 @@ you need.
 - `weather` — any of `clear`, `rain`, `thunder`. Omit for "any weather".
 - `y_range` — `[minY, maxY]`.
 - `light` — block light `min`/`max` (0–15).
-- `requires_sneaking` — **don't use it.** `type` already encodes sneaking: `shift_right_click` *is*
-  "right-click while sneaking", and a sneaking player's click never reaches a plain `right_click`
-  interaction. So `requires_sneaking` is either redundant or contradictory, and in the second case
-  the interaction can never fire. PTA logs a warning naming the file when it spots that. The field
-  survives only so older files keep loading.
+- `requires_sneaking` — **you do not need it.** Sneaking is part of the type:
+  `shift_right_click` *is* right-click-while-sneaking. If you set both, the condition wins and
+  the type is adjusted to match, with a line in the log telling you which type to write instead.
+  Kept only so older files keep working.
 - `player_state` — minimum food and XP levels the player must have.
 
 ---

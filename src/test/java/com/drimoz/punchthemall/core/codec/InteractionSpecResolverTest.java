@@ -529,4 +529,55 @@ class InteractionSpecResolverTest {
         assertEquals(resolve(json), resolve(json));
         assertEquals(resolve(json).hashCode(), resolve(json).hashCode());
     }
+
+    @Test
+    @DisplayName("requires_sneaking is folded into the type rather than fighting it")
+    void sneakingIsFoldedIntoTheType() {
+        // Sneaking is part of the click type. Setting it twice used to give an interaction whose type
+        // filtered for one thing and whose condition filtered for the other, so it could never fire —
+        // while still being listed in JEI as a working recipe.
+        PtaInteraction folded = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": true}}
+                """);
+
+        assertEquals(PtaTypeEnum.SHIFT_RIGHT_CLICK, folded.getType());
+        assertNull(folded.getConditions().requiresSneaking(), "the type carries it now, so the condition is gone");
+
+        PtaInteraction unfolded = resolve("""
+                {"type": "shift_left_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": false}}
+                """);
+
+        assertEquals(PtaTypeEnum.LEFT_CLICK, unfolded.getType());
+        assertNull(unfolded.getConditions().requiresSneaking());
+    }
+
+    @Test
+    @DisplayName("a requires_sneaking that agrees with the type is simply dropped")
+    void redundantSneakingIsDropped() {
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": true}}
+                """);
+
+        assertEquals(PtaTypeEnum.SHIFT_RIGHT_CLICK, interaction.getType());
+        assertNull(interaction.getConditions().requiresSneaking());
+        // Nothing else in the conditions was disturbed on the way past.
+        assertTrue(interaction.getConditions().isEmpty());
+    }
+
+    @Test
+    @DisplayName("folding leaves the rest of the conditions alone")
+    void foldingKeepsOtherConditions() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": true, "time": "night", "y_range": [-64, 0]}}
+                """);
+
+        assertEquals(PtaTypeEnum.SHIFT_RIGHT_CLICK, interaction.getType());
+        assertEquals(PtaConditions.Time.NIGHT, interaction.getConditions().time());
+        assertEquals(-64, interaction.getConditions().yMin());
+        assertNull(interaction.getConditions().requiresSneaking());
+    }
 }

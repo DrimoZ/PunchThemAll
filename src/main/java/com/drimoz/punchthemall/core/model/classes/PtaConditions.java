@@ -31,6 +31,13 @@ public record PtaConditions(
     public static final PtaConditions EMPTY =
             new PtaConditions(Time.ANY, Set.of(), null, null, null, null, null, 0, 0, List.of());
 
+    /** The same conditions with the sneak gate removed, once the type carries it instead. */
+    public PtaConditions withoutSneaking() {
+        if (requiresSneaking == null) return this;
+        return new PtaConditions(time, weather, yMin, yMax, lightMin, lightMax, null,
+                minFood, minXpLevels, neighbours);
+    }
+
     public boolean isEmpty() {
         return time == Time.ANY && weather.isEmpty() && yMin == null && yMax == null
                 && lightMin == null && lightMax == null && requiresSneaking == null

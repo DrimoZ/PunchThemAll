@@ -90,28 +90,31 @@ public final class InteractionSpecResolver {
 
         PtaExtras extras = resolveExtras(id, spec);
 
-        warnOnSneakConflict(id, type, extras);
+        // Sneaking belongs to the type. A file that also sets conditions.requires_sneaking has said
+        // it twice, and when the two disagree the interaction can never fire — the type filters for
+        // one and the condition for the other. Rather than load something that cannot work, take the
+        // condition as the intent, fold it into the type, and leave one source of truth behind. The
+        // recipe viewers read the type, so this is also what stops them advertising a dead recipe.
+        Boolean requiresSneaking = extras.conditions().requiresSneaking();
+        if (requiresSneaking != null) {
+            if (requiresSneaking != type.isShiftClick()) {
+                PtaTypeEnum folded = type.withSneaking(requiresSneaking);
+                PTALoggers.warn(id + " - conditions.requires_sneaking is " + requiresSneaking
+                        + " but type is " + type.name().toLowerCase(Locale.ROOT)
+                        + "; sneaking belongs to the type, so this is being read as "
+                        + folded.name().toLowerCase(Locale.ROOT)
+                        + ". Write that as the type and drop requires_sneaking.");
+                type = folded;
+            }
+            extras = new PtaExtras(extras.conditions().withoutSneaking(), extras.effects(),
+                    extras.sound(), extras.particles());
+        }
+
 
         // The spec is a record of plain values, so its hashCode is a structural digest of the source
         // JSON — exactly what PtaInteraction.equals needs to tell "reloaded unchanged" from "edited".
         return new PtaInteraction(id, type, damage, hunger, hand, block, transformations, transformationChance, rewards,
                 biomeWhitelist, biomeBlacklist, extras, spec.hidden(), spec.hashCode());
-    }
-
-    /**
-     * {@code type} already encodes sneaking ({@code shift_left_click} / {@code shift_right_click}),
-     * so {@code conditions.requires_sneaking} is a second, independent gate on the same state. The
-     * two contradict each other more often than they combine usefully, and the result — an
-     * interaction that can never fire — looks like the mod is broken rather than the file.
-     */
-    private static void warnOnSneakConflict(ResourceLocation id, PtaTypeEnum type, PtaExtras extras) {
-        Boolean requiresSneaking = extras.conditions().requiresSneaking();
-        if (requiresSneaking == null || requiresSneaking == type.isShiftClick()) return;
-
-        PTALoggers.warn(id + " - conditions.requires_sneaking is " + requiresSneaking
-                + " but type " + type.name().toLowerCase(Locale.ROOT)
-                + (type.isShiftClick() ? " already requires sneaking" : " already requires not sneaking")
-                + "; this interaction can never match. Drop requires_sneaking, or switch the type.");
     }
 
     // Hand

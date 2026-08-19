@@ -305,7 +305,14 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                     ? TranslationKeys.INTERACTION_TRANSFORMATION_BROKEN
                     : TranslationKeys.INTERACTION_TRANSFORMATION_BREAK;
             return named(Items.BARRIER, Component.literal("§d" + Component.translatable(key).getString()));
-        } else if (transformation.isBlock()) {
+        }
+        if (transformation.isCopy()) {
+            // Neither air nor a named block: a copy writes whatever stands at its source, which
+            // is not known until the click happens. Falling through to the fluid branch here
+            // dereferenced a null fluid and took the whole category down with it.
+            return named(Items.BARRIER, Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_COPIED).getString()));
+        }
+        if (transformation.isBlock()) {
             return new ItemStack(transformation.getBlock());
         } else {
             return new ItemStack(transformation.getFluid().getBucket());
@@ -476,9 +483,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
         if (conditions.lightMin() != null || conditions.lightMax() != null) {
             lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_LIGHT, valueOrStar(conditions.lightMin()) + " - " + valueOrStar(conditions.lightMax())));
-        }
-        if (conditions.requiresSneaking() != null) {
-            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_SNEAK, String.valueOf(conditions.requiresSneaking())));
         }
         if (conditions.minFood() > 0) {
             lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_FOOD, String.valueOf(conditions.minFood())));

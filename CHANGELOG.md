@@ -74,6 +74,9 @@ block rather than replace it.
   Touch included. `true`/`false` still mean what they meant (`"vanilla"` / `"none"`) and still
   round-trip as booleans. Off by default on purpose: mining at a distance with an enchanted tool is a
   fine thing for a pack to choose and a poor one to inherit by accident.
+- **A test that every feature of the format has a runnable example.** Fifty-seven of them, matched
+  against the example pack as text — a field documented but never demonstrated is invisible by
+  inspection once there are sixty files, and the gap opens every time a feature is added.
 - **Eight more in-world tests**, covering regions, copying, tool drops and neighbour conditions.
   Twenty-four in all, still about two seconds.
 
@@ -87,6 +90,19 @@ block rather than replace it.
   > regenerate.
 
 ### Fixed
+- **JEI and EMI crashed on a `copy` transformation.** A copy is neither air nor a named block,
+  so both viewers fell through to the fluid branch and dereferenced a null — JEI showed *This
+  recipe crashed* in place of the recipe. It now reads *The block that was there*, which is what
+  a copy writes.
+- **The sneak requirement was shown in two places that could disagree.** The icon came from the
+  click type, a tooltip line came from `conditions.requires_sneaking`, and nothing tied them
+  together: an interaction using the type showed the sneaking figure and no tooltip, while one
+  using the condition showed the standing figure and a tooltip saying sneaking was required.
+  Sneaking is now folded into the type at load, so there is one source of truth, the icon is
+  always right, and the duplicate tooltip line is gone.
+- **An interaction whose `requires_sneaking` disagreed with its type could never fire**, and was
+  listed in the viewers as a working recipe anyway. The condition is now taken as the intent and
+  the type adjusted to match, with a warning naming the type to write instead.
 - **Removed a Minecraft texture that had been sitting in the mod resources.** A copy of the
   vanilla grass side was shipping in every jar, referenced by nothing. Mojang assets are not
   redistributable, so this was a licensing problem rather than dead weight — though it was also

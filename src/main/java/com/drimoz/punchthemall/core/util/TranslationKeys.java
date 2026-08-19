@@ -43,6 +43,7 @@ public class TranslationKeys {
     public static final String INTERACTION_TRANSFORMATION_REQUIRE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.require";
     public static final String INTERACTION_TRANSFORMATION_DROPS = "gui." + PunchThemAll.MOD_ID + ".category.transformation.drops";
     public static final String INTERACTION_TRANSFORMATION_MORE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.more";
+    public static final String INTERACTION_TRANSFORMATION_COPIED = "gui." + PunchThemAll.MOD_ID + ".category.transformation.copied";
     public static final String INTERACTION_TRANSFORMATION_BROKEN = "gui." + PunchThemAll.MOD_ID + ".category.transformation.broken";
 
     public static final String INTERACTION_BIOME_WHITELIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.whitelist";

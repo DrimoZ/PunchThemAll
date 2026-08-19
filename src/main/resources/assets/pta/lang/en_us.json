@@ -31,6 +31,7 @@
   "gui.pta.category.transformation.drops": "Drops what it breaks",
   "gui.pta.category.transformation.more": "+%s more transformation(s)",
   "gui.pta.category.transformation.broken": "Broken",
+  "gui.pta.category.transformation.copied": "The block that was there",
   "gui.pta.category.biome.whitelist": "Biome Whitelist",
   "gui.pta.category.biome.blacklist": "Biome Blacklist",
   "gui.pta.category.text.nbt": "NBTs",

@@ -22,6 +22,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,7 +73,7 @@ public class PtaEmiRecipe implements EmiRecipe {
         }
 
         PtaTransformation transformation = interaction.getTransformation();
-        if (transformation.hasTransformation() && !transformation.isAir()) {
+        if (transformation.hasTransformation() && !transformation.isAir() && !transformation.isCopy()) {
             EmiStack result = EmiStack.of(transformationStack(transformation))
                     .setChance((float) transformation.getChance());
             outputs.add(result);
@@ -127,7 +128,7 @@ public class PtaEmiRecipe implements EmiRecipe {
         int afterArrow = x + 28;
 
         PtaTransformation transformation = interaction.getTransformation();
-        if (transformation.hasTransformation() && !transformation.isAir()) {
+        if (transformation.hasTransformation() && !transformation.isAir() && !transformation.isCopy()) {
             widgets.addSlot(EmiStack.of(transformationStack(transformation)), afterArrow, y);
         }
 
@@ -187,7 +188,6 @@ public class PtaEmiRecipe implements EmiRecipe {
             if (!c.weather().isEmpty()) lines.add(Component.literal(" - weather: " + c.weather()));
             if (c.yMin() != null || c.yMax() != null) lines.add(Component.literal(" - Y: " + c.yMin() + " to " + c.yMax()));
             if (c.lightMin() != null || c.lightMax() != null) lines.add(Component.literal(" - light: " + c.lightMin() + " to " + c.lightMax()));
-            if (c.requiresSneaking() != null) lines.add(Component.literal(" - sneaking: " + c.requiresSneaking()));
             if (c.minFood() > 0) lines.add(Component.literal(" - min food: " + c.minFood()));
             if (c.minXpLevels() > 0) lines.add(Component.literal(" - min XP: " + c.minXpLevels()));
         }
@@ -222,6 +222,11 @@ public class PtaEmiRecipe implements EmiRecipe {
     }
 
     private static ItemStack transformationStack(PtaTransformation transformation) {
+        // A copy has no fixed block to show: what it writes is only known at click time.
+        // Without this it fell through to the fluid branch and dereferenced a null.
+        if (transformation.isCopy()) {
+            return new ItemStack(Items.BARRIER);
+        }
         if (transformation.isBlock()) {
             return new ItemStack(transformation.getBlock());
         }

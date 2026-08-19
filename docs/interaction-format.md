@@ -73,7 +73,7 @@ it in game.
 | `conditions.weather` | list of `clear`, `rain`, `thunder` | `conditions_time_weather` |
 | `conditions.y_range` | `[min, max]` | `conditions_y_light_player` |
 | `conditions.light` | `min` / `max` | `conditions_y_light_player` |
-| `conditions.requires_sneaking` | `true` / `false` — **redundant with `type`**, see below | `conditions_sneaking` |
+| `conditions.requires_sneaking` | `true` / `false` — **folded into `type`**, see below | `conditions_sneaking` |
 | `conditions.player_state` | `min_food`, `min_xp_levels` | `conditions_y_light_player` |
 | `effects` | `id` + `duration` + `amplifier` + `chance` | `effects_multiple` |
 | `sound` / `particles` | registry ids | `effects_and_feedback` |
@@ -415,13 +415,13 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 - **`hidden` is not `enabled: false`.** A hidden interaction loads, syncs and fires exactly like any
   other; it is only left out of JEI and EMI. Use it for secrets and for the intermediate steps of a
   multi-stage recipe. `enabled: false` is the one that turns an interaction off.
-- **`type` already covers sneaking — `requires_sneaking` cannot add anything.** A sneaking player's
-  click always resolves to the `shift_` variant, so a `left_click` interaction never sees one and a
-  `shift_left_click` interaction never sees anything else. That leaves `requires_sneaking` either
-  redundant (it agrees with the type) or fatal (it disagrees, and the interaction can never match).
-  PTA logs a warning naming the file in the second case. **Choose the `type` and leave
-  `requires_sneaking` out.** It is kept only so existing files keep loading.
-  *(The shipped `conditions_sneaking` example got this wrong until 2.2.0 and could never fire.)*
+- **Sneaking belongs to `type`, and `requires_sneaking` is folded into it.** A sneaking click
+  always resolves to the `shift_` variant, so a `left_click` interaction never sees one. Setting
+  the condition as well used to be either redundant or fatal — when it disagreed with the type,
+  the interaction could never fire while still being listed in JEI as a working recipe. Since
+  2.4.0 the condition is taken as the intent and the type is adjusted to match, with a warning
+  naming the type to write instead. **Choose the `type` and leave `requires_sneaking` out;** it
+  is kept only so existing files keep loading.
 - **`kind: "any"` prefers blocks for `minecraft:water` and `minecraft:lava`,** because those ids exist
   in both the block and the fluid registry, and a target cannot mix the two. That is harmless — a
   water source really is `minecraft:water` as a block at that position — but if you specifically want

@@ -125,9 +125,10 @@ odds are the `weight` numbers in `rewards.weighted`.
 **Weights are not percentages.** Weights `10` and `30` give a 25% / 75% split. They are relative to
 the total, which is why a `minecraft:air` entry is the idiomatic way to set a failure rate.
 
-**`requires_sneaking` does not add sneaking to a non-sneak type.** The type already decides that.
-Writing `shift_right_click` with `requires_sneaking: false` gives an interaction that can never
-fire — the loader warns about exactly this.
+**`requires_sneaking` is not a second sneak setting.** Sneaking is part of the type, and a file
+that sets both is read with the *condition* winning: `right_click` plus
+`requires_sneaking: true` is loaded as `shift_right_click`, with a warning telling you to write
+that instead. Before 2.4.0 the two fought and the interaction could never fire.
 
 **An absent NBT tag does not match a range.** A brand-new tool has no `Damage` tag at all, so
 `{"path": "Damage", "int_range": [0, 500]}` will not match it.

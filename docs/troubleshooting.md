@@ -96,9 +96,10 @@ relative to the block you clicked, not to you, unless you asked for `relative_to
 **6. The cooldown.** `cooldown_ticks` throttles how often one player can trigger anything. If you are
 clicking fast and only some clicks land, this is why.
 
-**7. `requires_sneaking` fighting the type.** Setting `requires_sneaking: false` on a
-`shift_right_click` gives an interaction that can never match. The loader warns about exactly this
-at load time — read the log.
+**7. `requires_sneaking` quietly changing the type.** Sneaking belongs to the type, so a file
+setting both is read with the condition winning — `right_click` with `requires_sneaking: true`
+loads as `shift_right_click`. The log says so. If an interaction wants a click you did not
+expect, that is why; write the type you mean and drop the condition.
 
 ---
 
@@ -172,7 +173,7 @@ They can act on different blocks, but not both on the same one.
 | `... names no block or fluid; requirement ignored` | A `require` that matches nothing. Write `match: ["minecraft:air"]` to require an empty destination |
 | `op place needs a block or fluid to place` | `op: "place"` without `into` |
 | `op break destroys the block and writes nothing; into is ignored` | Harmless, but the `into` is doing nothing |
-| `this interaction can never match` | `requires_sneaking` contradicts the type |
+| `sneaking belongs to the type, so this is being read as ...` | `requires_sneaking` disagreed with the type; the condition won |
 | `reaches past max_transformation_offset` | The offset is further than the config allows |
 | `is not loaded` / `is outside the world height` | The destination is not somewhere the mod may write |
 | `cannot survive at` | `op: "place"` refused a destination where the block would pop |
