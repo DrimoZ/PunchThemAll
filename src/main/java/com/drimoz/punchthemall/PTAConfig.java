@@ -75,7 +75,10 @@ public class PTAConfig {
                             "always: never summarise, always show everything.",
                             "never: never expand, summary only."
                     )
-                    .defineInList("detail_key", "shift", java.util.List.of("shift", "control", "alt", "always", "never"));
+                    // Arrays.asList, not List.of: NeoForge validates the spec by testing a null
+                    // value against the allowed list, and an immutable list throws on contains(null)
+                    // rather than answering false. That crashes config loading before the game starts.
+                    .defineInList("detail_key", "shift", java.util.Arrays.asList("shift", "control", "alt", "always", "never"));
             builder.pop();
         }
     }
