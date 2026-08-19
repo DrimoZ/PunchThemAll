@@ -4,6 +4,7 @@ import com.drimoz.punchthemall.core.model.classes.PtaConditions;
 import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
+import com.drimoz.punchthemall.core.model.enums.PtaDropMode;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
@@ -629,5 +630,124 @@ class InteractionSpecResolverTest {
         PtaOffset at = interaction.getTransformation().getOffset();
         assertFalse(at.isRegion());
         assertEquals(1, at.size());
+    }
+
+    // Every field added in 2.3.0 and 2.4.0, checked end to end.
+    //
+    // The region bug was not a mistake in any one layer: it was a field the resolver never carried
+    // across, with every layer around it correct and tested. These walk the same seam for each of
+    // the other fields added at the same time, since the way that bug happened is the way it would
+    // happen again.
+
+    @Test
+    @DisplayName("a copy carries the offset it reads from")
+    void copySourceSurvivesResolution() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1},
+                   "into": {"kind": "copy", "from": {"y": -1, "relative_to": "player"}}}}
+                """);
+
+        PtaTransformation transformation = interaction.getTransformation();
+        assertTrue(transformation.isCopy(), "kind: copy should resolve to a copy");
+        assertNotNull(transformation.getCopyFrom());
+        assertEquals(-1, transformation.getCopyFrom().y());
+        assertEquals(PtaOffset.Frame.PLAYER, transformation.getCopyFrom().frame(),
+                "the source has its own frame and it must not be lost");
+    }
+
+    @Test
+    @DisplayName("a copy with no `from` reads the interacted block")
+    void copyDefaultsToTheOrigin() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1}, "into": {"kind": "copy"}}}
+                """);
+
+        assertTrue(interaction.getTransformation().isCopy());
+        assertEquals(PtaOffset.NONE, interaction.getTransformation().getCopyFrom());
+    }
+
+    @Test
+    @DisplayName("rewards.at reaches the rewards, not just the spec")
+    void rewardDropPositionSurvivesResolution() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "rewards": {"at": {"y": 2, "relative_to": "face"},
+                   "guaranteed": [{"match": "minecraft:flint"}]}}
+                """);
+
+        PtaOffset dropAt = interaction.getRewards().getDropAt();
+        assertEquals(2, dropAt.y());
+        assertEquals(PtaOffset.Frame.FACE, dropAt.frame());
+    }
+
+    @Test
+    @DisplayName("rewards with no `at` still drop on the interacted block")
+    void rewardsDefaultToTheOrigin() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "rewards": {"guaranteed": [{"match": "minecraft:flint"}]}}
+                """);
+
+        assertEquals(PtaOffset.NONE, interaction.getRewards().getDropAt());
+    }
+
+    @Test
+    @DisplayName("neighbour conditions reach the conditions with their offset and their block")
+    void neighboursSurviveResolution() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"neighbours": [
+                   {"at": {"y": -1}, "block": {"match": "minecraft:obsidian"}},
+                   {"at": {"y": 1, "relative_to": "player"}, "block": {"match": "minecraft:sand"}, "invert": true}
+                 ]}}
+                """);
+
+        var neighbours = interaction.getConditions().neighbours();
+        assertEquals(2, neighbours.size());
+
+        assertEquals(-1, neighbours.get(0).at().y());
+        assertFalse(neighbours.get(0).invert());
+        assertTrue(neighbours.get(0).block().isBlockFromSet(Blocks.OBSIDIAN));
+
+        assertEquals(PtaOffset.Frame.PLAYER, neighbours.get(1).at().frame());
+        assertTrue(neighbours.get(1).invert());
+        assertTrue(neighbours.get(1).block().isBlockFromSet(Blocks.SAND));
+    }
+
+    @Test
+    @DisplayName("a transformation group carries its chance to the interaction")
+    void groupChanceSurvivesResolution() {
+        PtaInteraction grouped = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 0.7, "all": [
+                   {"chance": 1, "op": "break"},
+                   {"chance": 1, "op": "break", "at": {"y": 1}}
+                 ]}}
+                """);
+
+        assertEquals(0.7, grouped.getTransformationChance());
+        assertEquals(2, grouped.getTransformations().size());
+
+        // A plain list is a set that always happens, not one that never does.
+        PtaInteraction plain = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": [{"chance": 1, "op": "break"}]}
+                """);
+        assertEquals(1.0, plain.getTransformationChance());
+    }
+
+    @Test
+    @DisplayName("the drop mode survives, in all three spellings")
+    void dropModeSurvivesResolution() {
+        String template = """
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "break", "drops": %s}}
+                """;
+
+        assertEquals(PtaDropMode.VANILLA, resolve(template.formatted("true")).getTransformation().getDropMode());
+        assertEquals(PtaDropMode.NONE, resolve(template.formatted("false")).getTransformation().getDropMode());
+        assertEquals(PtaDropMode.TOOL, resolve(template.formatted("\"tool\"")).getTransformation().getDropMode());
     }
 }
