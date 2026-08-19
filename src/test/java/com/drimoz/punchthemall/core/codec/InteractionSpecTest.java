@@ -158,7 +158,7 @@ class InteractionSpecTest {
     void transformationRequiresChance() {
         assertTrue(tryParse("{\"type\": \"right_click\", \"transformation\": {}}").isError());
         assertEquals(0.5, parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 0.5}}")
-                .transformation().get(0).chance());
+                .transformation().all().get(0).chance());
     }
 
     @Test
@@ -284,12 +284,12 @@ class InteractionSpecTest {
     @DisplayName("a transformation defaults to replacing the clicked block in place")
     void transformationPlacementDefaults() {
         InteractionSpec.TransformationSpec transformation =
-                parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 1}}").transformation().get(0);
+                parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 1}}").transformation().all().get(0);
 
         assertEquals("replace", transformation.op());
         assertTrue(transformation.at().isEmpty());
         assertTrue(transformation.require().isEmpty());
-        assertTrue(transformation.drops());
+        assertEquals("vanilla", transformation.drops());
     }
 
     @Test
@@ -297,7 +297,7 @@ class InteractionSpecTest {
     void offsetDefaults() {
         InteractionSpec.OffsetSpec at = parse("""
                 {"type": "right_click", "transformation": {"chance": 1, "at": {"y": 1}}}
-                """).transformation().get(0).at().orElseThrow();
+                """).transformation().all().get(0).at().orElseThrow();
 
         assertEquals(0, at.x());
         assertEquals(1, at.y());
@@ -309,14 +309,14 @@ class InteractionSpecTest {
     @DisplayName("transformation takes one object or a list of them")
     void transformationObjectOrList() {
         assertEquals(1, parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 1}}")
-                .transformation().size());
+                .transformation().all().size());
 
         List<InteractionSpec.TransformationSpec> many = parse("""
                 {"type": "right_click", "transformation": [
                   {"chance": 1, "op": "break"},
                   {"chance": 0.5, "op": "place", "at": {"y": 1}, "into": {"id": "minecraft:torch"}}
                 ]}
-                """).transformation();
+                """).transformation().all();
 
         assertEquals(2, many.size());
         assertEquals("break", many.get(0).op());
@@ -348,5 +348,119 @@ class InteractionSpecTest {
         assertEquals(parse(json), parse(json));
         assertEquals(parse(json).hashCode(), parse(json).hashCode());
         assertNotEquals(parse(json), parse("{\"type\": \"left_click\", \"rewards\": {\"rolls\": 3}}"));
+    }
+
+    @Test
+    @DisplayName("an offset can carry a second corner, making it a box")
+    void offsetRegion() {
+        InteractionSpec.OffsetSpec at = parse("""
+                {"type": "right_click", "transformation":
+                  {"chance": 1, "at": {"x": -1, "y": 0, "z": -1, "to": {"x": 1, "y": 0, "z": 1}}}}
+                """).transformation().all().get(0).at().orElseThrow();
+
+        assertEquals(-1, at.x());
+        assertEquals(1, at.to().orElseThrow().x());
+        assertEquals(1, at.to().orElseThrow().z());
+    }
+
+    @Test
+    @DisplayName("drops accept a boolean or a name, and booleans stay booleans")
+    void dropModes() {
+        assertEquals("vanilla", drops("{\"chance\": 1, \"op\": \"break\"}"));
+        assertEquals("vanilla", drops("{\"chance\": 1, \"op\": \"break\", \"drops\": true}"));
+        assertEquals("none", drops("{\"chance\": 1, \"op\": \"break\", \"drops\": false}"));
+        assertEquals("tool", drops("{\"chance\": 1, \"op\": \"break\", \"drops\": \"tool\"}"));
+
+        // A file written with `false` must not come back as `"none"`, or every reload would look
+        // like an edit to the viewers.
+        String json = "{\"type\": \"right_click\", \"transformation\": {\"chance\": 1, \"op\": \"break\", \"drops\": false}}";
+        JsonElement encoded = InteractionSpec.CODEC.encodeStart(JsonOps.INSTANCE, parse(json))
+                .getOrThrow(message -> new AssertionError(message));
+        assertTrue(encoded.getAsJsonObject().get("transformation").getAsJsonObject().get("drops").getAsJsonPrimitive().isBoolean());
+    }
+
+    private static String drops(String transformation) {
+        return parse("{\"type\": \"right_click\", \"transformation\": " + transformation + "}")
+                .transformation().all().get(0).drops();
+    }
+
+    @Test
+    @DisplayName("a transformation set can carry its own chance, and plain shapes default it to one")
+    void transformationGroupChance() {
+        assertEquals(1.0, parse("{\"type\": \"right_click\", \"transformation\": {\"chance\": 0.5}}")
+                .transformation().chance());
+
+        InteractionSpec.TransformationGroupSpec group = parse("""
+                {"type": "right_click", "transformation": {"chance": 0.7, "all": [
+                  {"chance": 1, "op": "break"},
+                  {"chance": 1, "op": "break", "at": {"y": 1}}
+                ]}}
+                """).transformation();
+
+        assertEquals(0.7, group.chance());
+        assertEquals(2, group.all().size());
+    }
+
+    @Test
+    @DisplayName("a grouped set round-trips as a group, an ungrouped one stays plain")
+    void transformationGroupRoundTrip() {
+        String grouped = "{\"type\": \"right_click\", \"transformation\": {\"chance\": 0.7, \"all\": {\"chance\": 1, \"op\": \"break\"}}}";
+        assertEquals(parse(grouped), parse(encode(parse(grouped))));
+
+        String plain = "{\"type\": \"right_click\", \"transformation\": {\"chance\": 1, \"op\": \"break\"}}";
+        JsonElement encoded = InteractionSpec.CODEC.encodeStart(JsonOps.INSTANCE, parse(plain))
+                .getOrThrow(message -> new AssertionError(message));
+        assertFalse(encoded.getAsJsonObject().get("transformation").getAsJsonObject().has("all"),
+                "a set with no group chance should not grow an `all`");
+    }
+
+    private static String encode(InteractionSpec spec) {
+        return InteractionSpec.CODEC.encodeStart(JsonOps.INSTANCE, spec)
+                .getOrThrow(message -> new AssertionError(message)).toString();
+    }
+
+    @Test
+    @DisplayName("into can copy a block instead of naming one")
+    void intoCopy() {
+        InteractionSpec.IntoSpec into = parse("""
+                {"type": "right_click", "transformation":
+                  {"chance": 1, "into": {"kind": "copy", "from": {"y": -1}}}}
+                """).transformation().all().get(0).into().orElseThrow();
+
+        assertEquals("copy", into.kind());
+        assertEquals(-1, into.from().orElseThrow().y());
+    }
+
+    @Test
+    @DisplayName("rewards can name where they land")
+    void rewardsDropPosition() {
+        InteractionSpec.OffsetSpec at = parse("""
+                {"type": "right_click", "rewards": {"at": {"y": 2, "relative_to": "player"}}}
+                """).rewards().orElseThrow().at().orElseThrow();
+
+        assertEquals(2, at.y());
+        assertEquals("player", at.relativeTo());
+    }
+
+    @Test
+    @DisplayName("conditions can require a block nearby, or require its absence")
+    void neighbourConditions() {
+        List<InteractionSpec.NeighbourSpec> neighbours = parse("""
+                {"type": "right_click", "conditions": {"neighbours": [
+                  {"at": {"y": -1}, "block": {"match": "minecraft:obsidian"}},
+                  {"at": {"y": 1}, "block": {"match": "#minecraft:logs"}, "invert": true}
+                ]}}
+                """).conditions().orElseThrow().neighbours();
+
+        assertEquals(2, neighbours.size());
+        assertEquals(-1, neighbours.get(0).at().y());
+        assertFalse(neighbours.get(0).invert());
+        assertTrue(neighbours.get(1).invert());
+    }
+
+    @Test
+    @DisplayName("a neighbour condition needs a block to look for")
+    void neighbourRequiresBlock() {
+        assertTrue(tryParse("{\"type\": \"right_click\", \"conditions\": {\"neighbours\": [{\"at\": {\"y\": 1}}]}}").isError());
     }
 }

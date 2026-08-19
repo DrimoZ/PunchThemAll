@@ -39,6 +39,21 @@ public final class PtaCodecs {
         );
     }
 
+    /**
+     * How a broken block drops, written either as a boolean or by name.
+     *
+     * <p>{@code true} and {@code false} were the whole vocabulary before tool-aware drops
+     * existed, so they keep working and keep their meaning; {@code "tool"} is the new one. A
+     * boolean comes back out as a boolean, so old files round-trip unchanged.</p>
+     */
+    public static final Codec<String> DROP_MODE =
+            Codec.either(Codec.BOOL, Codec.STRING).xmap(
+                    either -> either.map(drops -> drops ? "vanilla" : "none", mode -> mode),
+                    mode -> "vanilla".equalsIgnoreCase(mode) ? Either.left(true)
+                            : "none".equalsIgnoreCase(mode) ? Either.left(false)
+                            : Either.right(mode)
+            );
+
     /** A scalar coerced to a String (accepts string, boolean or number). */
     public static final Codec<String> SCALAR_STRING =
             Codec.either(Codec.STRING, Codec.either(Codec.BOOL, Codec.LONG)).xmap(

@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
@@ -168,10 +169,10 @@ public class PlayerInteractionHandler {
         List<PtaInteraction> interactions;
 
         if (fluidInteraction) {
-            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, hitResult.getBlockPos(), level);
+            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, hitResult.getBlockPos(), level, direction);
         }
         else {
-            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
+            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level, direction);
         }
 
         int processedInteractions = 0;
@@ -195,8 +196,10 @@ public class PlayerInteractionHandler {
                     processedInteractions++;
                     // An air interaction has no block under the cursor, so its transformations are
                     // measured from the player — only offset ones survive resolution.
-                    transformed.addAll(TransformationApplier.apply(level, player, playerPos, direction,
-                            interaction.getTransformations(), player.getRandom(), transformed));
+                    if (rollsTransformationGroup(interaction, player.getRandom())) {
+                        transformed.addAll(TransformationApplier.apply(level, player, playerPos, direction,
+                                                            interaction.getTransformations(), player.getRandom(), transformed));
+                    }
                 }
             }
             else {
@@ -206,8 +209,10 @@ public class PlayerInteractionHandler {
                     if (shouldProcessPlayerEffects(player)) processPlayer(player, interaction);
                     playInteractionFeedback(level, targetPos, interaction);
                     processedInteractions++;
-                    transformed.addAll(TransformationApplier.apply(level, player, targetPos, direction,
-                            interaction.getTransformations(), player.getRandom(), transformed));
+                    if (rollsTransformationGroup(interaction, player.getRandom())) {
+                        transformed.addAll(TransformationApplier.apply(level, player, targetPos, direction,
+                                                            interaction.getTransformations(), player.getRandom(), transformed));
+                    }
                 }
             }
         }
@@ -314,9 +319,25 @@ public class PlayerInteractionHandler {
         return false;
     }
 
+    /**
+     * One roll for the whole transformation set, on top of each entry's own chance.
+     *
+     * <p>A set with no group chance always passes here, which is every file that did not ask
+     * for one.</p>
+     */
+    private static boolean rollsTransformationGroup(PtaInteraction interaction, RandomSource random) {
+        double chance = interaction.getTransformationChance();
+        return chance >= 1.0D || (chance > 0 && random.nextDouble() <= chance);
+    }
+
     private static void dropRewards(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
+        // Drops land on the interacted block unless the file moved them — useful when the
+        // interaction is really acting somewhere else.
+        BlockPos dropPos = interaction.getRewards().getDropAt()
+                .resolve(pos, face, player.getDirection());
+
         for (ItemStack stack : interaction.getRewards().roll(player.getRandom(), handItem)) {
-            dropItem(player, level, pos, face, stack);
+            dropItem(player, level, dropPos, face, stack);
         }
     }
 

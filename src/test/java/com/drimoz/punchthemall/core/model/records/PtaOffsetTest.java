@@ -167,4 +167,80 @@ class PtaOffsetTest {
                     () -> PtaOffset.Frame.fromString("sideways"));
         }
     }
+
+    @Nested
+    @DisplayName("regions")
+    class Regions {
+
+        private static PtaOffset box(int x1, int y1, int z1, int x2, int y2, int z2, PtaOffset.Frame frame) {
+            return new PtaOffset(x1, y1, z1, frame, new PtaOffset(x2, y2, z2, frame));
+        }
+
+        @Test
+        @DisplayName("a box covers both corners and everything between")
+        void covers() {
+            PtaOffset area = box(-1, 0, -1, 1, 0, 1, PtaOffset.Frame.WORLD);
+
+            assertTrue(area.isRegion());
+            assertEquals(9, area.size());
+            assertEquals(9, area.resolveAll(ORIGIN, Direction.UP, Direction.NORTH).size());
+            assertTrue(area.resolveAll(ORIGIN, Direction.UP, Direction.NORTH).contains(ORIGIN));
+            assertTrue(area.resolveAll(ORIGIN, Direction.UP, Direction.NORTH).contains(new BlockPos(11, 64, 11)));
+        }
+
+        @Test
+        @DisplayName("corners in either order describe the same box")
+        void cornerOrderDoesNotMatter() {
+            assertEquals(
+                    box(-1, 0, -1, 1, 0, 1, PtaOffset.Frame.WORLD).resolveAll(ORIGIN, Direction.UP, Direction.NORTH),
+                    box(1, 0, 1, -1, 0, -1, PtaOffset.Frame.WORLD).resolveAll(ORIGIN, Direction.UP, Direction.NORTH));
+        }
+
+        @Test
+        @DisplayName("reach is the furthest corner, so the config cap bounds the whole box")
+        void reachTakesTheFurthestCorner() {
+            assertEquals(5, box(0, 0, 0, 5, 0, 0, PtaOffset.Frame.WORLD).reach());
+            assertEquals(4, box(-4, 0, 0, 1, 0, 0, PtaOffset.Frame.WORLD).reach());
+        }
+
+        @Test
+        @DisplayName("a box is never zero, even when both corners are the origin")
+        void neverZero() {
+            assertFalse(box(0, 0, 0, 0, 0, 0, PtaOffset.Frame.WORLD).isZero());
+            assertEquals(1, box(0, 0, 0, 0, 0, 0, PtaOffset.Frame.WORLD).size());
+        }
+
+        @Test
+        @DisplayName("the far corner borrows the near corner's frame rather than keeping its own")
+        void farCornerBorrowsTheFrame() {
+            PtaOffset area = new PtaOffset(0, 0, 0, PtaOffset.Frame.PLAYER,
+                    new PtaOffset(1, 0, 0, PtaOffset.Frame.WORLD));
+
+            assertEquals(PtaOffset.Frame.PLAYER, area.to().frame());
+        }
+
+        @Test
+        @DisplayName("a box in the player frame turns with the player, as a whole")
+        void rotatesTogether() {
+            PtaOffset area = box(0, 0, 1, 0, 0, 2, PtaOffset.Frame.PLAYER);
+
+            // Facing north (-Z), "one to two blocks in front" is north of the origin.
+            assertEquals(
+                    java.util.List.of(new BlockPos(10, 64, 9), new BlockPos(10, 64, 8)),
+                    area.resolveAll(ORIGIN, null, Direction.NORTH));
+            // Facing east (+X), the same box lies east instead.
+            assertEquals(
+                    java.util.List.of(new BlockPos(11, 64, 10), new BlockPos(12, 64, 10)),
+                    area.resolveAll(ORIGIN, null, Direction.EAST));
+        }
+
+        @Test
+        @DisplayName("a box cannot nest another box")
+        void noNesting() {
+            PtaOffset inner = box(0, 0, 0, 1, 0, 0, PtaOffset.Frame.WORLD);
+
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                    () -> new PtaOffset(0, 0, 0, PtaOffset.Frame.WORLD, inner));
+        }
+    }
 }

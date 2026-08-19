@@ -2,6 +2,7 @@ package com.drimoz.punchthemall.core.model.classes;
 
 import com.drimoz.punchthemall.McBootstrap;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
+import com.drimoz.punchthemall.core.model.enums.PtaDropMode;
 import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
 import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
@@ -289,7 +290,7 @@ class PtaModelInvariantsTest {
         void cannotMix() {
             assertThrows(IllegalArgumentException.class, () -> new PtaTransformation(
                     1, Blocks.STONE, Fluids.WATER, null, null, null, null,
-                    PtaTransformOp.REPLACE, PtaOffset.NONE, null, true) {});
+                    PtaTransformOp.REPLACE, PtaOffset.NONE, null, PtaDropMode.VANILLA, null) {});
         }
     }
 

@@ -21,6 +21,12 @@ public class PtaInteraction {
     private final PtaHand hand;
     private final PtaBlock block;
     private final List<PtaTransformation> transformations;
+
+    /**
+     * One roll deciding whether the transformations are attempted at all, on top of each
+     * entry's own chance. 1.0 — always attempted — unless the file grouped them.
+     */
+    private final double transformationChance;
     private final PtaRewards rewards;
 
     private final Set<String> biomeWhitelist;
@@ -95,6 +101,11 @@ public class PtaInteraction {
         return transformations;
     }
 
+    /** The roll that gates the whole set. See {@link #getTransformations()}. */
+    public double getTransformationChance() {
+        return transformationChance;
+    }
+
     public boolean hasTransformations() {
         return !transformations.isEmpty();
     }
@@ -142,14 +153,14 @@ public class PtaInteraction {
             PtaExtras extras
     ) {
         this(id, type, hurtPlayer, consumeFood, hand, block,
-                transformation == null ? List.of() : List.of(transformation), rewards,
+                transformation == null ? List.of() : List.of(transformation), 1.0D, rewards,
                 biomeWhitelist, biomeBlackList, extras, false, 0);
     }
 
     public PtaInteraction(
             ResourceLocation id, PtaTypeEnum type,
             PtaInteractionRecord hurtPlayer, PtaInteractionRecord consumeFood,
-            PtaHand hand, PtaBlock block, List<PtaTransformation> transformations, PtaRewards rewards,
+            PtaHand hand, PtaBlock block, List<PtaTransformation> transformations, double transformationChance, PtaRewards rewards,
             Set<String> biomeWhitelist, Set<String> biomeBlackList,
             PtaExtras extras, boolean hidden, int contentHash
     ) {
@@ -166,6 +177,7 @@ public class PtaInteraction {
         this.hand = hand == null ? PtaHand.createEmpty(PtaHandEnum.ANY_HAND) : hand;
         this.block = block == null ? PtaBlock.createAir() : block;
         this.transformations = keepApplicable(transformations, this.block);
+        this.transformationChance = transformationChance < 0 ? 0 : Math.min(transformationChance, 1);
         this.rewards = rewards;
         this.biomeWhitelist = biomeWhitelist == null ? new HashSet<>() : biomeWhitelist;
         this.biomeBlackList = biomeBlackList == null ? new HashSet<>() : biomeBlackList;

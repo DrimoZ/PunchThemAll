@@ -8,6 +8,72 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [1.21.1-2.4.0] — NeoForge
+
+The six things a pack maker runs into within an hour of the 2.3.0 offsets: patterns needing nine
+entries, a set that only half-happens, no way to gate on the surroundings, and no way to move a
+block rather than replace it.
+
+### Added
+- **`conditions.neighbours` — gate an interaction on the blocks around it.** `require` asks about a
+  block a transformation is going to change; this asks whether the recipe applies at all, which is
+  what multi-block setups are made of:
+
+  ```json
+  "conditions": { "neighbours": [
+    { "at": { "y": -1 }, "block": { "match": "minecraft:obsidian" } },
+    { "at": { "y": 1 }, "block": { "match": "#minecraft:logs" }, "invert": true }
+  ] }
+  ```
+
+  The `block` half is a `target`, so states and tags work exactly as they do there. All of them must
+  hold; `invert` flips one. A neighbour in an unloaded chunk or outside the world counts as not
+  matching, so a recipe never fires on evidence nobody could see.
+- **Regions.** An offset can name a second corner with `to`, and then covers the box between the two,
+  corners included — a 3x3 is one entry rather than nine. Both corners read in the same frame, so a
+  box in a rotating frame turns as a whole and a shape drawn one way lands that way. Every block
+  counts against `max_transformations_per_interaction`, and each is checked on its own: a `place`
+  over a region fills the gaps and leaves the rest alone rather than failing outright.
+- **A chance for a whole set.** `transformation` accepts `{ "chance": 0.7, "all": [ ... ] }`. Each
+  entry still rolls its own chance; this one decides whether the set is attempted. Without it, "a
+  seven-in-ten chance the pattern appears" was only expressible as "each block of it, independently",
+  which for a pattern means a different half-built shape every time.
+- **`into: { "kind": "copy" }` — write the block that is already somewhere rather than naming one.**
+  Paired with a break of its own source, that moves a block:
+
+  ```json
+  "transformation": [
+    { "chance": 1.0, "at": { "y": 1 }, "into": { "kind": "copy" } },
+    { "chance": 1.0, "op": "break", "drops": false }
+  ]
+  ```
+
+  The copy is read while planning, before anything is written, so the break cannot empty the source
+  first. `from` reads somewhere other than the interacted block.
+- **`rewards.at` — where the drops land.** They appeared at the interacted block and nowhere else,
+  which reads oddly once the interaction is really acting three blocks away.
+- **`drops: "tool"` on `op: break`** — the block's loot as broken by the held item, Fortune and Silk
+  Touch included. `true`/`false` still mean what they meant (`"vanilla"` / `"none"`) and still
+  round-trip as booleans. Off by default on purpose: mining at a distance with an enchanted tool is a
+  fine thing for a pack to choose and a poor one to inherit by accident.
+- **Eight more in-world tests**, covering regions, copying, tool drops and neighbour conditions.
+  Twenty-four in all, still about two seconds.
+
+### Changed
+- **`max_transformations_per_interaction` now defaults to 64**, up from 8, and counts every block a
+  region covers. Eight was chosen when a transformation meant one block.
+
+  > **Upgrading:** config files keep the values already written in them. An existing
+  > `pta-common.toml` still says `8`, and regions will quietly stop at the eighth block — with a line
+  > in the log under `Debug.log_skipped_interactions`. Raise it by hand, or delete the file and let it
+  > regenerate.
+
+### Fixed
+- A neighbour or copy source that cannot be read — unloaded, out of the world — is treated as absent
+  rather than as air, so nothing fires or writes on the strength of a chunk that was not there.
+
+---
+
 ## [1.21.1-2.3.0] — NeoForge
 
 ### Added

@@ -11,6 +11,10 @@
     "chance": 1.0,
     "op": "break",
     "at": { "y": 1 },
-    "drops": true
+    "drops": "tool"
+  },
+  "rewards": {
+    "at": { "y": 1 },
+    "guaranteed": [ { "match": "minecraft:gravel", "count": 1 } ]
   }
 }

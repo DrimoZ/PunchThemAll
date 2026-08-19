@@ -6,10 +6,12 @@ import com.drimoz.punchthemall.core.checker.ItemChecker;
 import com.drimoz.punchthemall.core.codec.InteractionSpec.*;
 import com.drimoz.punchthemall.core.model.classes.*;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
+import com.drimoz.punchthemall.core.model.enums.PtaDropMode;
 import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaInteractionRecord;
+import com.drimoz.punchthemall.core.model.records.PtaNeighbour;
 import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
@@ -61,7 +63,8 @@ public final class InteractionSpecResolver {
 
         PtaHand hand = resolveHand(id, spec.hand().orElse(null));
         PtaBlock block = resolveTarget(id, spec.target().orElse(null));
-        List<PtaTransformation> transformations = resolveTransformations(id, spec.transformation());
+        List<PtaTransformation> transformations = resolveTransformations(id, spec.transformation().all());
+        double transformationChance = spec.transformation().chance();
         PtaRewards rewards = resolveRewards(id, spec.rewards().orElse(null), registries);
 
         PtaInteractionRecord damage = null;
@@ -91,7 +94,7 @@ public final class InteractionSpecResolver {
 
         // The spec is a record of plain values, so its hashCode is a structural digest of the source
         // JSON — exactly what PtaInteraction.equals needs to tell "reloaded unchanged" from "edited".
-        return new PtaInteraction(id, type, damage, hunger, hand, block, transformations, rewards,
+        return new PtaInteraction(id, type, damage, hunger, hand, block, transformations, transformationChance, rewards,
                 biomeWhitelist, biomeBlacklist, extras, spec.hidden(), spec.hashCode());
     }
 
@@ -237,6 +240,7 @@ public final class InteractionSpecResolver {
         }
 
         PtaOffset offset = resolveOffset(id, spec.at().orElse(null), path + ".at");
+        PtaDropMode dropMode = resolveDropMode(id, spec.drops(), path + ".drops");
         PtaBlock require = resolveRequirement(id, spec.require().orElse(null), path + ".require");
 
         SoundEvent sound = resolveSound(id, spec.sound().orElse(null), path + ".sound");
@@ -249,7 +253,7 @@ public final class InteractionSpecResolver {
                 error(id, path + ".into - op break destroys the block and writes nothing; into is ignored");
             }
             return PtaTransformation.createAir(chance, sound, particle)
-                    .withPlacement(op, offset, require, spec.drops());
+                    .withPlacement(op, offset, require, dropMode);
         }
 
         if (op == PtaTransformOp.PLACE && into == null) {
@@ -258,7 +262,7 @@ public final class InteractionSpecResolver {
         }
 
         PtaTransformation written = resolveInto(id, chance, into, spec.nbt().orElse(new CompoundTag()), sound, particle, path);
-        return written.withPlacement(op, offset, require, spec.drops());
+        return written.withPlacement(op, offset, require, dropMode);
     }
 
     private static PtaTransformation resolveInto(
@@ -294,12 +298,28 @@ public final class InteractionSpecResolver {
             return PtaTransformation.createFluid(chance, fluid, state, nbt, sound, particle);
         }
 
+        if (kind.equals("copy")) {
+            // Reads the block standing at `from` when the click happens, so pairing this with a
+            // break at the same place moves a block rather than duplicating one.
+            PtaOffset from = resolveOffset(id, into.from().orElse(null), path + ".into.from");
+            return PtaTransformation.createCopy(chance, from, nbt, sound, particle);
+        }
+
         if (kind.equals("air")) {
             return PtaTransformation.createAir(chance, sound, particle);
         }
 
         error(id, path + ".into.kind - Unknown kind " + into.kind());
         return PtaTransformation.createAir(chance, sound, particle);
+    }
+
+    private static PtaDropMode resolveDropMode(ResourceLocation id, String mode, String path) {
+        try {
+            return PtaDropMode.fromString(mode);
+        } catch (IllegalArgumentException e) {
+            error(id, path + " - Unknown drop mode " + mode + " (expected true, false, \"vanilla\", \"none\" or \"tool\")");
+            return PtaDropMode.VANILLA;
+        }
     }
 
     private static PtaOffset resolveOffset(ResourceLocation id, OffsetSpec spec, String path) {
@@ -372,7 +392,9 @@ public final class InteractionSpecResolver {
             }
         }
 
-        return PtaRewards.create(PtaPool.create(pool), guaranteed, spec.rolls(), fortuneEnchant, fortuneFactor);
+        PtaOffset dropAt = resolveOffset(id, spec.at().orElse(null), "rewards.at");
+        return PtaRewards.create(PtaPool.create(pool), guaranteed, spec.rolls(), fortuneEnchant, fortuneFactor)
+                .droppingAt(dropAt);
     }
 
     private static PtaDropRecord toDropRecord(ResourceLocation id, RewardEntrySpec entry, String path) {
@@ -385,7 +407,7 @@ public final class InteractionSpecResolver {
     // Extras: conditions (non-biome) + player effects + interaction sound/particles
 
     private static PtaExtras resolveExtras(ResourceLocation id, InteractionSpec spec) {
-        PtaConditions conditions = spec.conditions().map(InteractionSpecResolver::resolveConditions).orElse(PtaConditions.EMPTY);
+        PtaConditions conditions = spec.conditions().map(conditionsSpec -> resolveConditions(id, conditionsSpec)).orElse(PtaConditions.EMPTY);
 
         List<PtaEffect> effects = new ArrayList<>();
         for (EffectSpec effectSpec : spec.effects()) {
@@ -409,7 +431,7 @@ public final class InteractionSpecResolver {
         return new PtaExtras(conditions, effects, sound, particles);
     }
 
-    private static PtaConditions resolveConditions(ConditionsSpec spec) {
+    private static PtaConditions resolveConditions(ResourceLocation id, ConditionsSpec spec) {
         PtaConditions.Time time = switch (spec.time().toLowerCase(Locale.ROOT)) {
             case "day" -> PtaConditions.Time.DAY;
             case "night" -> PtaConditions.Time.NIGHT;
@@ -438,8 +460,24 @@ public final class InteractionSpecResolver {
         Integer lightMax = spec.light().max().orElse(null);
         Boolean requiresSneaking = spec.requiresSneaking().orElse(null);
 
+        List<PtaNeighbour> neighbours = new ArrayList<>();
+        int index = 0;
+        for (NeighbourSpec neighbourSpec : spec.neighbours()) {
+            String path = "conditions.neighbours[" + index + "]";
+            index++;
+
+            PtaBlock block = resolveTarget(id, neighbourSpec.block(), path + ".block");
+            if (block.isAir()) {
+                error(id, path + ".block - names no block or fluid; this condition can never hold and was dropped");
+                continue;
+            }
+            neighbours.add(new PtaNeighbour(
+                    resolveOffset(id, neighbourSpec.at(), path + ".at"),
+                    block, neighbourSpec.invert()));
+        }
+
         return new PtaConditions(time, weather, yMin, yMax, lightMin, lightMax, requiresSneaking,
-                spec.playerState().minFood(), spec.playerState().minXpLevels());
+                spec.playerState().minFood(), spec.playerState().minXpLevels(), List.copyOf(neighbours));
     }
 
     // Registry resolution helpers

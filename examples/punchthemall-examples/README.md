@@ -1,7 +1,7 @@
 # PunchThemAll — example datapack
 
 Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 42 interactions, each kept small so it demonstrates one thing you can copy.
+ready-to-use one: 51 interactions, each kept small so it demonstrates one thing you can copy.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -121,8 +121,12 @@ not supported yet — see [the backlog](../../docs/backlog.md).
 | `transformation_offset_world.json` | `at` in world axes — the destination is a fixed direction, whoever is clicking and from where. | Sneak-left-click a gold block with redstone; the block at x+1, z-2 turns to redstone. |
 | `transformation_offset_place.json` | `op: place` with `at.relative_to: "face"` — writes on the face you clicked, only into air. | Right-click the **top** of a stone block with a torch. On a side face the torch could not stay, so the placement is refused. |
 | `transformation_air_offset_place.json` | An **air** interaction with an offset: no block under the cursor, so the origin is you. | Sneak-right-click in the air with a feather; scaffolding appears two blocks up. |
-| `transformation_break_neighbour.json` | `op: break` at an offset, with the broken block's own loot. | Sneak-right-click stone with a pickaxe; the block above breaks. |
+| `transformation_break_neighbour.json` | `op: break` at an offset with `drops: "tool"`, plus `rewards.at` moving the drops. | Sneak-right-click stone with a pickaxe; the block above breaks, honouring Silk Touch. |
 | `transformation_multi.json` | A list of transformations from one click, each rolling its own chance. | Sneak-right-click netherrack with a blaze rod. |
+| `transformation_region.json` | `at.to` — one entry covering a 3x3 box instead of nine entries. | Sneak-right-click dirt with bone meal; the 3x3 around it turns to grass. |
+| `transformation_group_chance.json` | A group with its own `chance`: the whole set happens, or none of it does. | Sneak-right-click cobblestone with a torch; 70% of the time it is placed above. |
+| `transformation_move_block.json` | `into.kind: "copy"` paired with a break — moves a block rather than replacing it. | Sneak-right-click wool with a stick; it rises one block. |
+| `conditions_neighbours.json` | `conditions.neighbours` — gates the interaction on what is around it. | Right-click crying obsidian with blaze powder, obsidian underneath and nothing logged above. |
 
 `chance` is required. Transformation `sound` / `particles` are separate from the interaction's own.
 

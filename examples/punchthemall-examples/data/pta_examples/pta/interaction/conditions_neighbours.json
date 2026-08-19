@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:blaze_powder" },
+  "target": { "kind": "block", "match": "minecraft:crying_obsidian" },
+  "conditions": {
+    "neighbours": [
+      { "at": { "y": -1 }, "block": { "match": "minecraft:obsidian" } },
+      { "at": { "y": 1 }, "block": { "match": "#minecraft:logs" }, "invert": true }
+    ]
+  },
+  "rewards": {
+    "guaranteed": [ { "match": "minecraft:ender_pearl", "count": 1 } ]
+  }
+}

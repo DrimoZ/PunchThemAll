@@ -1,5 +1,6 @@
 package com.drimoz.punchthemall.core.codec;
 
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.nbt.CompoundTag;
@@ -22,7 +23,7 @@ public record InteractionSpec(
         String type,
         Optional<HandSpec> hand,
         Optional<TargetSpec> target,
-        List<TransformationSpec> transformation,
+        TransformationGroupSpec transformation,
         Optional<RewardsSpec> rewards,
         Optional<CostsSpec> costs,
         Optional<ConditionsSpec> conditions,
@@ -42,7 +43,7 @@ public record InteractionSpec(
             TargetSpec.CODEC.optionalFieldOf("target").forGetter(InteractionSpec::target),
             // One transformation or a list of them; a single object stays the short form on the way
             // back out, so files that never asked for more than one are untouched by the change.
-            PtaCodecs.objectOrList(TransformationSpec.CODEC).optionalFieldOf("transformation", List.of()).forGetter(InteractionSpec::transformation),
+            TransformationGroupSpec.CODEC.optionalFieldOf("transformation", TransformationGroupSpec.EMPTY).forGetter(InteractionSpec::transformation),
             RewardsSpec.CODEC.optionalFieldOf("rewards").forGetter(InteractionSpec::rewards),
             CostsSpec.CODEC.optionalFieldOf("costs").forGetter(InteractionSpec::costs),
             ConditionsSpec.CODEC.optionalFieldOf("conditions").forGetter(InteractionSpec::conditions),
@@ -130,13 +131,16 @@ public record InteractionSpec(
     }
 
     // The block/fluid a transformation turns the target into.
-    public record IntoSpec(String kind, String id, Map<String, String> state) {
+    public record IntoSpec(String kind, String id, Map<String, String> state, Optional<OffsetSpec> from) {
         private static final Codec<Map<String, String>> STATE_MAP = Codec.unboundedMap(Codec.STRING, PtaCodecs.SCALAR_STRING);
 
         public static final Codec<IntoSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.STRING.optionalFieldOf("kind", "block").forGetter(IntoSpec::kind),
-                Codec.STRING.fieldOf("id").forGetter(IntoSpec::id),
-                STATE_MAP.optionalFieldOf("state", Map.of()).forGetter(IntoSpec::state)
+                Codec.STRING.optionalFieldOf("id", "").forGetter(IntoSpec::id),
+                STATE_MAP.optionalFieldOf("state", Map.of()).forGetter(IntoSpec::state),
+                // `kind: "copy"` only: where to read the block from. Defaults to the
+                // interacted block, which is what "move this somewhere else" needs.
+                OffsetSpec.CODEC.optionalFieldOf("from").forGetter(IntoSpec::from)
         ).apply(instance, IntoSpec::new));
     }
 
@@ -147,15 +151,27 @@ public record InteractionSpec(
      * plain world axes, {@code player} for the player's horizontal facing, {@code face} for the
      * clicked face. See {@code PtaOffset} for the exact axis roles.</p>
      */
-    public record OffsetSpec(int x, int y, int z, String relativeTo) {
+    /** One corner of a box, in the frame of the offset that carries it. */
+    public record CornerSpec(int x, int y, int z) {
+        public static final Codec<CornerSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.INT.optionalFieldOf("x", 0).forGetter(CornerSpec::x),
+                Codec.INT.optionalFieldOf("y", 0).forGetter(CornerSpec::y),
+                Codec.INT.optionalFieldOf("z", 0).forGetter(CornerSpec::z)
+        ).apply(instance, CornerSpec::new));
+    }
+
+    public record OffsetSpec(int x, int y, int z, String relativeTo, Optional<CornerSpec> to) {
         public static final Codec<OffsetSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 Codec.INT.optionalFieldOf("x", 0).forGetter(OffsetSpec::x),
                 Codec.INT.optionalFieldOf("y", 0).forGetter(OffsetSpec::y),
                 Codec.INT.optionalFieldOf("z", 0).forGetter(OffsetSpec::z),
-                Codec.STRING.optionalFieldOf("relative_to", "world").forGetter(OffsetSpec::relativeTo)
+                Codec.STRING.optionalFieldOf("relative_to", "world").forGetter(OffsetSpec::relativeTo),
+                // A second corner. Present, the offset covers the whole box between the two,
+                // corners included, read in the same frame.
+                CornerSpec.CODEC.optionalFieldOf("to").forGetter(OffsetSpec::to)
         ).apply(instance, OffsetSpec::new));
 
-        public static final OffsetSpec NONE = new OffsetSpec(0, 0, 0, "world");
+        public static final OffsetSpec NONE = new OffsetSpec(0, 0, 0, "world", Optional.empty());
     }
 
     public record TransformationSpec(
@@ -163,7 +179,7 @@ public record InteractionSpec(
             String op,
             Optional<OffsetSpec> at,
             Optional<TargetSpec> require,
-            boolean drops,
+            String drops,
             Optional<IntoSpec> into,
             Optional<CompoundTag> nbt,
             Optional<String> sound,
@@ -178,13 +194,45 @@ public record InteractionSpec(
                 // Same shape as `target`, but asked of the destination rather than of the block that
                 // was clicked. Absent means the destination is not inspected at all.
                 TargetSpec.CODEC.optionalFieldOf("require").forGetter(TransformationSpec::require),
-                // `op: break` only. Whether the destroyed block yields its loot.
-                Codec.BOOL.optionalFieldOf("drops", true).forGetter(TransformationSpec::drops),
+                // `op: break` only. What the destroyed block leaves: true/"vanilla", false/"none",
+                // or "tool" to honour the held item, Fortune and Silk Touch included.
+                PtaCodecs.DROP_MODE.optionalFieldOf("drops", "vanilla").forGetter(TransformationSpec::drops),
                 IntoSpec.CODEC.optionalFieldOf("into").forGetter(TransformationSpec::into),
                 PtaCodecs.SNBT.optionalFieldOf("nbt").forGetter(TransformationSpec::nbt),
                 Codec.STRING.optionalFieldOf("sound").forGetter(TransformationSpec::sound),
                 Codec.STRING.optionalFieldOf("particles").forGetter(TransformationSpec::particles)
         ).apply(instance, TransformationSpec::new));
+    }
+
+    /**
+     * A set of transformations that succeed or fail together.
+     *
+     * <p>Each entry still rolls its own {@code chance}; this one decides whether the set is
+     * attempted at all. Without it "a seven-in-ten chance that the whole pattern appears" is
+     * not expressible — only "each block of it, independently", which for a pattern means a
+     * different, half-built shape every time.</p>
+     */
+    public record TransformationGroupSpec(double chance, List<TransformationSpec> all) {
+        private static final Codec<TransformationGroupSpec> GROUP = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.DOUBLE.optionalFieldOf("chance", 1.0D).forGetter(TransformationGroupSpec::chance),
+                PtaCodecs.objectOrList(TransformationSpec.CODEC).fieldOf("all").forGetter(TransformationGroupSpec::all)
+        ).apply(instance, TransformationGroupSpec::new));
+
+        // Three accepted shapes, in the order they are tried: the group object (recognised by
+        // `all`), then a bare transformation, then a list of them. A set with no group chance
+        // encodes back to whichever plain shape it came from, so nothing gains an `all` it was
+        // never written with.
+        public static final Codec<TransformationGroupSpec> CODEC =
+                Codec.either(GROUP, PtaCodecs.objectOrList(TransformationSpec.CODEC)).xmap(
+                        either -> either.map(group -> group, list -> new TransformationGroupSpec(1.0D, list)),
+                        group -> group.chance() >= 1.0D ? Either.right(group.all()) : Either.left(group)
+                );
+
+        public static final TransformationGroupSpec EMPTY = new TransformationGroupSpec(1.0D, List.of());
+
+        public boolean isEmpty() {
+            return all.isEmpty();
+        }
     }
 
     // A single weighted drop entry (the v1 "pool" element, with "weight" replacing "chance").
@@ -201,13 +249,17 @@ public record InteractionSpec(
             List<RewardEntrySpec> weighted,
             List<RewardEntrySpec> guaranteed,
             int rolls,
-            Optional<FortuneSpec> fortune
+            Optional<FortuneSpec> fortune,
+            Optional<OffsetSpec> at
     ) {
         public static final Codec<RewardsSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 RewardEntrySpec.CODEC.listOf().optionalFieldOf("weighted", List.of()).forGetter(RewardsSpec::weighted),
                 RewardEntrySpec.CODEC.listOf().optionalFieldOf("guaranteed", List.of()).forGetter(RewardsSpec::guaranteed),
                 Codec.INT.optionalFieldOf("rolls", 1).forGetter(RewardsSpec::rolls),
-                FortuneSpec.CODEC.optionalFieldOf("fortune").forGetter(RewardsSpec::fortune)
+                FortuneSpec.CODEC.optionalFieldOf("fortune").forGetter(RewardsSpec::fortune),
+                // Where the drops appear. Defaults to the interacted block, which is where
+                // they always used to land — worth moving when the interaction acts elsewhere.
+                OffsetSpec.CODEC.optionalFieldOf("at").forGetter(RewardsSpec::at)
         ).apply(instance, RewardsSpec::new));
     }
 
@@ -253,6 +305,23 @@ public record InteractionSpec(
         public static final PlayerStateSpec EMPTY = new PlayerStateSpec(0, 0);
     }
 
+    /**
+     * A block that must (or must not) be somewhere near the one being interacted with, for the
+     * interaction to happen at all.
+     *
+     * <p>The block half is a {@code target}, so the syntax for saying "obsidian" or
+     * "#minecraft:logs in any state" is the one already learned. What it gates is different:
+     * a transformation's {@code require} asks about a block it is going to change, this asks
+     * whether the recipe applies.</p>
+     */
+    public record NeighbourSpec(OffsetSpec at, TargetSpec block, boolean invert) {
+        public static final Codec<NeighbourSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                OffsetSpec.CODEC.optionalFieldOf("at", OffsetSpec.NONE).forGetter(NeighbourSpec::at),
+                TargetSpec.CODEC.fieldOf("block").forGetter(NeighbourSpec::block),
+                Codec.BOOL.optionalFieldOf("invert", false).forGetter(NeighbourSpec::invert)
+        ).apply(instance, NeighbourSpec::new));
+    }
+
     public record ConditionsSpec(
             BiomeSpec biomes,
             String time,
@@ -260,7 +329,8 @@ public record InteractionSpec(
             Optional<List<Integer>> yRange,
             LightSpec light,
             Optional<Boolean> requiresSneaking,
-            PlayerStateSpec playerState
+            PlayerStateSpec playerState,
+            List<NeighbourSpec> neighbours
     ) {
         public static final Codec<ConditionsSpec> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 BiomeSpec.CODEC.optionalFieldOf("biomes", BiomeSpec.EMPTY).forGetter(ConditionsSpec::biomes),
@@ -269,7 +339,8 @@ public record InteractionSpec(
                 Codec.INT.listOf().optionalFieldOf("y_range").forGetter(ConditionsSpec::yRange),
                 LightSpec.CODEC.optionalFieldOf("light", LightSpec.EMPTY).forGetter(ConditionsSpec::light),
                 Codec.BOOL.optionalFieldOf("requires_sneaking").forGetter(ConditionsSpec::requiresSneaking),
-                PlayerStateSpec.CODEC.optionalFieldOf("player_state", PlayerStateSpec.EMPTY).forGetter(ConditionsSpec::playerState)
+                PlayerStateSpec.CODEC.optionalFieldOf("player_state", PlayerStateSpec.EMPTY).forGetter(ConditionsSpec::playerState),
+                NeighbourSpec.CODEC.listOf().optionalFieldOf("neighbours", List.of()).forGetter(ConditionsSpec::neighbours)
         ).apply(instance, ConditionsSpec::new));
     }
 

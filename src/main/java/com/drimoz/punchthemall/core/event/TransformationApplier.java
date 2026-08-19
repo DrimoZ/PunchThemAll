@@ -2,6 +2,7 @@ package com.drimoz.punchthemall.core.event;
 
 import com.drimoz.punchthemall.PTAConfig;
 import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
+import com.drimoz.punchthemall.core.model.enums.PtaDropMode;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.BlockMatcher;
 import com.drimoz.punchthemall.core.util.PTALoggers;
@@ -14,6 +15,8 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -44,8 +47,14 @@ public final class TransformationApplier {
 
     private TransformationApplier() {}
 
-    /** A transformation that passed its roll and its checks, with the block it will act on. */
-    private record Planned(PtaTransformation transformation, BlockPos pos) {}
+    /**
+     * A transformation that passed its roll and its checks, with the block it will act on.
+     *
+     * @param copied the state a {@code copy} transformation will write, read while planning so it
+     *               is the block that stood there when the click happened rather than whatever an
+     *               earlier entry left behind. {@code null} for everything else.
+     */
+    private record Planned(PtaTransformation transformation, BlockPos pos, BlockState copied) {}
 
     /**
      * @param origin the block the interaction happened on — the player's own position for an air
@@ -99,17 +108,38 @@ public final class TransformationApplier {
             }
             if (!rolls(transformation, random)) continue;
 
-            BlockPos pos = transformation.getOffset().resolve(origin, face, playerFacing);
-            if (alreadyTouched.contains(pos) || claimed.contains(pos)) {
-                logSkipped("another transformation already claimed " + pos + " on this click");
-                continue;
-            }
-            if (!isAllowed(level, player, transformation, pos, face)) continue;
+            for (BlockPos pos : transformation.getOffset().resolveAll(origin, face, playerFacing)) {
+                if (plan.size() >= budget) {
+                    logSkipped("max_transformations_per_interaction (" + budget + ") reached");
+                    break;
+                }
+                if (alreadyTouched.contains(pos) || claimed.contains(pos)) {
+                    logSkipped("another transformation already claimed " + pos + " on this click");
+                    continue;
+                }
+                if (!isAllowed(level, player, transformation, pos, face)) continue;
 
-            claimed.add(pos);
-            plan.add(new Planned(transformation, pos));
+                claimed.add(pos);
+                plan.add(new Planned(transformation, pos, captureCopy(level, transformation, origin, face, playerFacing)));
+            }
+
         }
         return plan;
+    }
+
+    /**
+     * The block a {@code copy} will write, read now rather than at write time.
+     *
+     * <p>That timing is the whole point. Pairing a copy with a break at the same place is how a
+     * file moves a block; if the copy read the world when it wrote, it would find the hole the
+     * break just made and move air instead.</p>
+     */
+    private static BlockState captureCopy(Level level, PtaTransformation transformation, BlockPos origin, Direction face, Direction playerFacing) {
+        if (!transformation.isCopy()) return null;
+
+        BlockPos source = transformation.getCopyFrom().resolve(origin, face, playerFacing);
+        if (level.isOutsideBuildHeight(source) || !level.isLoaded(source)) return null;
+        return level.getBlockState(source);
     }
 
     private static boolean rolls(PtaTransformation transformation, RandomSource random) {
@@ -230,8 +260,8 @@ public final class TransformationApplier {
             // destroyBlock does the whole vanilla job: break particles, break sound, and the block's
             // own loot when asked for it. It can still decline — the block may have changed under us
             // between planning and here — so its answer is what decides the position was touched.
-            case BREAK -> level.destroyBlock(pos, transformation.shouldDropItems(), player);
-            case PLACE, REPLACE -> write(level, pos, transformation);
+            case BREAK -> breakBlock(level, player, pos, transformation.getDropMode());
+            case PLACE, REPLACE -> write(level, pos, transformation, planned.copied());
         };
 
         if (changed && transformation.hasSound()) {
@@ -240,8 +270,39 @@ public final class TransformationApplier {
         return changed;
     }
 
+    /**
+     * Destroy a block the way the drop mode asks for.
+     *
+     * <p>{@code destroyBlock} does the whole vanilla job — break particles, break sound, and the
+     * block's own loot. It has no notion of a tool, though, so {@code tool} drops are rolled
+     * separately with the held item and the block is then broken without dropping anything, to
+     * avoid handing out both sets.</p>
+     */
+    private static boolean breakBlock(Level level, Player player, BlockPos pos, PtaDropMode mode) {
+        if (mode != PtaDropMode.TOOL) {
+            return level.destroyBlock(pos, mode.drops(), player);
+        }
+
+        BlockState state = level.getBlockState(pos);
+        BlockEntity blockEntity = state.hasBlockEntity() ? level.getBlockEntity(pos) : null;
+        ItemStack tool = player.getMainHandItem();
+
+        if (level instanceof ServerLevel serverLevel) {
+            Block.dropResources(state, serverLevel, pos, blockEntity, player, tool);
+        }
+        return level.destroyBlock(pos, false, player);
+    }
+
     /** @return whether the world was actually changed. */
-    private static boolean write(Level level, BlockPos pos, PtaTransformation transformation) {
+    private static boolean write(Level level, BlockPos pos, PtaTransformation transformation, BlockState copied) {
+        if (transformation.isCopy()) {
+            // A copy of a block that was never captured — the source was unloaded, or out of the
+            // world — would silently write air over the destination. Leaving it alone is the
+            // honest outcome.
+            if (copied == null) return skip(pos + " has nothing to copy from");
+            return level.setBlockAndUpdate(pos, copied);
+        }
+
         if (transformation.isAir()) {
             return level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
         }

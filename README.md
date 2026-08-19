@@ -105,7 +105,7 @@ search the **Interaction** category to see it.
 | [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
 | [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
-| [example catalogue](examples/punchthemall-examples/README.md) | **47 runnable examples**, one per feature, each with what it shows and how to trigger it. |
+| [example catalogue](examples/punchthemall-examples/README.md) | **51 runnable examples**, one per feature, each with what it shows and how to trigger it. |
 | [docs/backlog.md](docs/backlog.md) | Ideas, deferred work, and what is knowingly untested. |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 

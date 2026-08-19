@@ -13,6 +13,7 @@ import com.drimoz.punchthemall.core.util.ItemView;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -185,11 +186,16 @@ public class InteractionRegistry {
      * arbitrary iteration order would make it unpredictable which of several matches wins.
      */
     public List<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level) {
+        return getFilteredInteractions(interactionType, clickOnBlock, player, pos, level, null);
+    }
+
+    /** @param face the clicked face, so neighbour conditions written in the {@code face} frame resolve. */
+    public List<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level, Direction face) {
         PtaTypeEnum eventType = PtaTypeEnum.getTypeFromEvent(interactionType, player.isShiftKeyDown());
 
         List<PtaInteraction> matches = new ArrayList<>();
         for (PtaInteraction interaction : getCandidates(eventType, clickOnBlock, pos, level)) {
-            if (passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level)) {
+            if (passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level, face)) {
                 matches.add(interaction);
             }
         }
@@ -237,11 +243,11 @@ public class InteractionRegistry {
 
     private boolean passesInteractionFilters(
             PtaInteraction interaction, PtaTypeEnum eventType, boolean clickOnBlock,
-            Player player, BlockPos pos, Level level
+            Player player, BlockPos pos, Level level, Direction face
     ) {
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&
-                interaction.getConditions().matches(level, player, pos) &&
+                interaction.getConditions().matches(level, player, pos, face) &&
                 passesAirOrBlockFilter(interaction, clickOnBlock) &&
                 passesBlockStateFilter(interaction, clickOnBlock, pos, level) &&
                 passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level) &&

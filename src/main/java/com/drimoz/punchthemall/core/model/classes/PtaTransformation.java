@@ -1,5 +1,6 @@
 package com.drimoz.punchthemall.core.model.classes;
 
+import com.drimoz.punchthemall.core.model.enums.PtaDropMode;
 import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
 import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
@@ -38,8 +39,15 @@ public class PtaTransformation {
     /** Optional gate on what is already at the destination; {@code null} means "anything goes". */
     private final PtaBlock require;
 
-    /** For {@link PtaTransformOp#BREAK}: whether the destroyed block yields its loot. */
-    private final boolean dropItems;
+    /** For {@link PtaTransformOp#BREAK}: what the destroyed block leaves behind. */
+    private final PtaDropMode dropMode;
+
+    /**
+     * When set, this writes whatever block is at that offset instead of a fixed one — the half of a
+     * "move this block over there" that puts it down. Read while planning, so it sees the world as it
+     * was before any of this click's transformations ran.
+     */
+    private final PtaOffset copyFrom;
 
     // Calculated Properties
 
@@ -53,7 +61,7 @@ public class PtaTransformation {
      * block and overwriting it with air look identical here but are different in the world.
      */
     public boolean isAir() {
-        return hasTransformation() && block == null && fluid == null;
+        return hasTransformation() && block == null && fluid == null && copyFrom == null;
     }
 
     public boolean isBlock() {
@@ -135,24 +143,45 @@ public class PtaTransformation {
     }
 
     public boolean shouldDropItems() {
-        return dropItems;
+        return dropMode.drops();
+    }
+
+
+    public PtaDropMode getDropMode() {
+        return dropMode;
+    }
+
+    /** Whether this writes the block found at {@link #getCopyFrom()} rather than a fixed one. */
+    public boolean isCopy() {
+        return hasTransformation() && copyFrom != null;
+    }
+
+    public PtaOffset getCopyFrom() {
+        return copyFrom;
     }
 
     // Life cycle
 
     public static PtaTransformation createBlock(double chance, Block block, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
         return new PtaTransformation(chance, block, null, stateList, nbtList, sound, particles,
-                PtaTransformOp.REPLACE, PtaOffset.NONE, null, true);
+                PtaTransformOp.REPLACE, PtaOffset.NONE, null, PtaDropMode.VANILLA, null);
     }
 
     public static PtaTransformation createFluid(double chance, Fluid fluid, Set<PtaStateRecord<?>> stateList, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
         return new PtaTransformation(chance, null, fluid, stateList, nbtList, sound, particles,
-                PtaTransformOp.REPLACE, PtaOffset.NONE, null, true);
+                PtaTransformOp.REPLACE, PtaOffset.NONE, null, PtaDropMode.VANILLA, null);
     }
 
     public static PtaTransformation createAir(double chance, SoundEvent sound, ParticleOptions particles) {
         return new PtaTransformation(chance, null, null, null, null, sound, particles,
-                PtaTransformOp.REPLACE, PtaOffset.NONE, null, true);
+                PtaTransformOp.REPLACE, PtaOffset.NONE, null, PtaDropMode.VANILLA, null);
+    }
+
+    /** Writes whatever block stands at {@code copyFrom} when the click happens. */
+    public static PtaTransformation createCopy(double chance, PtaOffset copyFrom, CompoundTag nbtList, SoundEvent sound, ParticleOptions particles) {
+        return new PtaTransformation(chance, null, null, null, nbtList, sound, particles,
+                PtaTransformOp.REPLACE, PtaOffset.NONE, null, PtaDropMode.VANILLA,
+                copyFrom == null ? PtaOffset.NONE : copyFrom);
     }
 
     /**
@@ -160,9 +189,9 @@ public class PtaTransformation {
      * so the common case — what to write — stays readable, and callers that do not care about
      * placement carry on unchanged.
      */
-    public PtaTransformation withPlacement(PtaTransformOp op, PtaOffset offset, PtaBlock require, boolean dropItems) {
+    public PtaTransformation withPlacement(PtaTransformOp op, PtaOffset offset, PtaBlock require, PtaDropMode dropMode) {
         return new PtaTransformation(chance, block, fluid, stateList, nbtList, sound, particles,
-                op, offset, require, dropItems);
+                op, offset, require, dropMode, copyFrom);
     }
 
     protected PtaTransformation(
@@ -170,10 +199,13 @@ public class PtaTransformation {
             Block block, Fluid fluid,
             Set<PtaStateRecord<?>> stateList, CompoundTag nbtList,
             SoundEvent sound, ParticleOptions particles,
-            PtaTransformOp op, PtaOffset offset, PtaBlock require, boolean dropItems
+            PtaTransformOp op, PtaOffset offset, PtaBlock require, PtaDropMode dropMode,
+            PtaOffset copyFrom
     ) {
         if (block != null && fluid != null)
             throw new IllegalArgumentException("Transformation must be either a Fluid or a Block.");
+        if (copyFrom != null && (block != null || fluid != null))
+            throw new IllegalArgumentException("Transformation cannot both copy a block and name one.");
 
         this.chance = chance < 0 ? 0 : chance > 1 ? 1 : chance;
         this.sound = sound;
@@ -181,13 +213,14 @@ public class PtaTransformation {
         this.op = op == null ? PtaTransformOp.REPLACE : op;
         this.offset = offset == null ? PtaOffset.NONE : offset;
         this.require = require;
-        this.dropItems = dropItems;
+        this.dropMode = dropMode == null ? PtaDropMode.VANILLA : dropMode;
+        this.copyFrom = copyFrom;
 
         if (block == null && fluid == null) {
             this.block = null;
             this.fluid = null;
             this.stateList = new HashSet<>();
-            this.nbtList = new CompoundTag();
+            this.nbtList = nbtList == null ? new CompoundTag() : nbtList;
         } else {
             this.block = block;
             this.fluid = fluid;
@@ -198,7 +231,9 @@ public class PtaTransformation {
 
     @Override
     public String toString() {
-        return "PtaTransformation{chance=" + chance + ", op=" + op.serialized() + ", block=" + block
-                + ", fluid=" + fluid + ", offset=" + offset + '}';
+        return "PtaTransformation{chance=" + chance + ", op=" + op.serialized()
+                + ", block=" + block + ", fluid=" + fluid
+                + (copyFrom == null ? "" : ", copyFrom=" + copyFrom)
+                + ", offset=" + offset + '}';
     }
 }

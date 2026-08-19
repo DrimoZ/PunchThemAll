@@ -104,10 +104,10 @@ public class PTAConfig {
                     .defineInRange("max_transformation_offset", 8, 0, 64);
             maxTransformationsPerInteraction = builder
                     .comment(
-                            "Maximum number of transformations one interaction may apply per click.",
-                            "Each one is a block update, so this bounds the cost of a single click on the server."
+                            "Maximum number of blocks one interaction may transform per click.",
+                            "Each one is a block update, so this bounds the cost of a single click on the server. A region counts every block it covers."
                     )
-                    .defineInRange("max_transformations_per_interaction", 8, 1, 256);
+                    .defineInRange("max_transformations_per_interaction", 64, 1, 4096);
             fireProtectionEvents = builder
                     .comment(
                             "Post block break/place events for transformations, so claim and protection mods can veto them.",

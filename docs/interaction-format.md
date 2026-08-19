@@ -52,8 +52,13 @@ it in game.
 | `transformation.op` | `replace` (default), `break`, `place` | `transformation_break_neighbour` |
 | `transformation.at` | `x`/`y`/`z` + `relative_to` | `transformation_offset_place` |
 | `transformation.require` | same shape as `target`, asked of the destination | `transformation_offset_place` |
-| `transformation.drops` | `op: break` only, default `true` | `transformation_break_neighbour` |
+| `transformation.drops` | `op: break` only: `true`/`"vanilla"`, `false`/`"none"`, `"tool"` | `transformation_break_neighbour` |
 | `transformation` as a list | several transformations from one click | `transformation_multi` |
+| `transformation.at.to` | second corner — the offset becomes a box | `transformation_region` |
+| `transformation` as a group | `chance` + `all`, one roll for the whole set | `transformation_group_chance` |
+| `transformation.into.kind: copy` | write the block found at `from` | `transformation_move_block` |
+| `rewards.at` | where the drops land, default the interacted block | `transformation_break_neighbour` |
+| `conditions.neighbours` | `at` + `block` + `invert` — gate on the surroundings | `conditions_neighbours` |
 | `rewards.weighted` | `match` + `weight` + `count` + `nbt` | `rewards_count_shapes` |
 | `rewards.guaranteed` | same shape, always dropped | `rewards_guaranteed_and_rolls` |
 | `rewards.rolls` | integer, default `1` | `rewards_multi_match` |
@@ -121,13 +126,15 @@ means a tag; otherwise it is a registry id.
     ]
   },
 
-  // One object, or an array of them applied in order.
+  // One object, an array of them applied in order, or { "chance": 0.7, "all": [ ... ] }
+  // to roll once for the whole set.
   "transformation": {
     "chance": 0.7,
     "op": "replace",                     // replace (default) | break | place
-    "at": { "x": 0, "y": 0, "z": 0, "relative_to": "world" },  // omit for the block itself
+    "at": { "x": 0, "y": 0, "z": 0, "relative_to": "world",  // omit for the block itself
+             "to": { "x": 1, "y": 0, "z": 1 } },                 // optional: makes it a box
     "require": { "match": "minecraft:air" },                   // what the destination must already be
-    "drops": true,                       // op: break only — does it yield its loot
+    "drops": true,                       // op: break only — true | false | "tool" (honours the held item)
     "into": { "kind": "block", "id": "minecraft:sand", "state": { "facing": "copy_state_value" } },
     "nbt": "{}",                         // SNBT string
     "sound": "minecraft:block.gravel.break",
@@ -139,6 +146,7 @@ means a tag; otherwise it is a registry id.
     "guaranteed": [                      // always dropped, in addition to the rolls
       { "match": "minecraft:flint", "count": 1 }
     ],
+    "at": { "y": 1 },                    // where the drops land (default: the interacted block)
     "weighted": [                        // weighted drop pool
       { "match": "minecraft:clay_ball", "weight": 10, "count": { "min": 1, "max": 3 } },
       { "match": "minecraft:air",       "weight": 90 }   // count defaults to 1
@@ -259,6 +267,80 @@ in does not change what `require` sees.
 > **On a server this reaches past what the player is pointing at.** Break and place events are posted
 > for every transformation, so claim mods can veto them, and `max_transformation_offset` caps how far
 > a datapack can reach. Both are in the config; see [configuration.md](configuration.md).
+
+### Acting on a whole region
+
+An offset can name a second corner, and then covers the box between the two:
+
+```json
+"at": { "x": -1, "y": 1, "z": -1, "to": { "x": 1, "y": 1, "z": 1 } }
+```
+
+That is a 3x3 slab one block up — nine blocks from one entry. Both corners are read in the same
+frame, and in a rotating frame the box turns as a whole, so a shape drawn one way lands that way.
+
+Every block in a region counts against `max_transformations_per_interaction` (default 64), and each
+is checked on its own: a `place` over a region fills the gaps and leaves the occupied blocks alone
+rather than failing outright.
+
+### Rolling a whole set at once
+
+Each entry rolls its own `chance`, which for a pattern means a different, half-built shape every
+time. To roll once for the set, wrap it:
+
+```json
+"transformation": {
+  "chance": 0.7,
+  "all": [
+    { "chance": 1.0, "op": "break", "at": { "y": 1 } },
+    { "chance": 1.0, "op": "place", "at": { "y": 1 }, "into": { "id": "minecraft:torch" } }
+  ]
+}
+```
+
+Seven times in ten the pair is attempted; each entry then rolls its own chance inside that.
+
+### Moving a block instead of naming one
+
+`into: { "kind": "copy" }` writes whatever block stands at `from` — the interacted block unless you
+say otherwise:
+
+```json
+"transformation": [
+  { "chance": 1.0, "at": { "y": 1 }, "into": { "kind": "copy" } },
+  { "chance": 1.0, "op": "break", "drops": false }
+]
+```
+
+That moves the clicked block one up. The copy is read when you click, before anything is written, so
+pairing it with a break of its own source works — the break cannot empty the source first.
+
+### Where the drops land
+
+Rewards appear at the interacted block. When the interaction really acts somewhere else, move them:
+
+```json
+"rewards": { "at": { "y": 1 }, "guaranteed": [ { "match": "minecraft:flint" } ] }
+```
+
+### Requiring a block nearby
+
+`require` asks about a block a transformation is going to change. To gate the **interaction itself**
+on its surroundings — which is what multi-block setups are made of — use `conditions.neighbours`:
+
+```json
+"conditions": {
+  "neighbours": [
+    { "at": { "y": -1 }, "block": { "match": "minecraft:obsidian" } },
+    { "at": { "y": 1 }, "block": { "match": "#minecraft:logs" }, "invert": true }
+  ]
+}
+```
+
+"Obsidian underneath, and no log on top." The `block` half is a `target`, so the syntax is the one
+you already know, states included. All of them must hold. `invert` flips one. A neighbour outside the
+world or in an unloaded chunk counts as not matching, so a recipe never fires on evidence nobody
+could see.
 
 ### Typed NBT predicates (`nbt_predicates`)
 
