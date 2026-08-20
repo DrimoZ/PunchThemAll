@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:shears", "consume": { "mode": "durability" } },
+  "target": {
+    "kind": "block",
+    "match": "minecraft:wheat",
+    "state": { "blacklist": { "age": "7" } }
+  },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:wheat_seeds", "count": 1 }
+    ]
+  }
+}

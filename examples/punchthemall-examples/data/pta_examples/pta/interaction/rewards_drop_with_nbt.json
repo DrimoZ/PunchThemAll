@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": { "hand": "main", "match": "minecraft:iron_ingot", "consume": { "mode": "shrink" } },
+  "target": { "kind": "block", "match": "minecraft:anvil" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:iron_pickaxe", "count": 1, "nbt": "{Damage:200}" }
+    ]
+  },
+  "sound": "minecraft:block.anvil.use"
+}

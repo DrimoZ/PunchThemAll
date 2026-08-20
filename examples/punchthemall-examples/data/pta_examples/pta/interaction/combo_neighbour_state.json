@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:iron_ingot",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "minecraft:blast_furnace" },
+  "conditions": {
+    "neighbours": [
+      {
+        "at": { "x": 1 },
+        "block": { "match": "minecraft:furnace", "state": { "whitelist": { "lit": "true" } } }
+      }
+    ]
+  },
+  "rewards": { "guaranteed": [ { "match": "minecraft:iron_block", "count": 1 } ] }
+}

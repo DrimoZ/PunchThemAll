@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "type": "left_click",
+  "target": { "kind": "any", "match": "#minecraft:logs" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:stick", "weight": 20, "count": { "min": 1, "max": 2 } },
+      { "match": "minecraft:air", "weight": 80 }
+    ]
+  }
+}

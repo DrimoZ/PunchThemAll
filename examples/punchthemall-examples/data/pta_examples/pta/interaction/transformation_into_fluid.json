@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:ice", "consume": { "mode": "shrink" } },
+  "target": { "kind": "block", "match": "minecraft:dirt" },
+  "transformation": {
+    "chance": 1.0,
+    "into": { "kind": "fluid", "id": "minecraft:water" },
+    "sound": "minecraft:item.bucket.empty"
+  }
+}

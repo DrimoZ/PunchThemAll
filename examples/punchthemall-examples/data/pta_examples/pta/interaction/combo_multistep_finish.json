@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:wheat",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "minecraft:mud" },
+  "conditions": {
+    "neighbours": [ { "at": { "y": -1 }, "block": { "match": "minecraft:hay_block" } } ]
+  },
+  "transformation": {
+    "chance": 1.0,
+    "into": { "kind": "block", "id": "minecraft:packed_mud" }
+  },
+  "rewards": { "guaranteed": [ { "match": "minecraft:brick", "count": 2 } ] }
+}

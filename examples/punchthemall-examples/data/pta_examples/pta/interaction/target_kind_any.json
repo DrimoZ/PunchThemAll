@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": { "hand": "main", "match": "minecraft:bucket" },
+  "target": { "kind": "any", "match": "#minecraft:base_stone_nether" },
+  "rewards": {
+    "guaranteed": [
+      { "match": "minecraft:blaze_powder", "count": 1 }
+    ]
+  },
+  "costs": { "damage": { "chance": 0.5, "amount": 2 } },
+  "conditions": { "light": { "min": 8 } }
+}

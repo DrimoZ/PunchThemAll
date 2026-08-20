@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:glow_berries", "consume": { "mode": "shrink" } },
+  "target": { "kind": "air" },
+  "effects": [
+    { "id": "minecraft:night_vision", "duration": 600, "amplifier": 0, "chance": 1.0 },
+    { "id": "minecraft:glowing", "duration": 200, "amplifier": 0, "chance": 0.5 },
+    { "id": "minecraft:nausea", "duration": 100, "amplifier": 1, "chance": 0.1 }
+  ],
+  "costs": { "hunger": { "chance": 1.0, "amount": { "min": 1, "max": 3 } } },
+  "sound": "minecraft:entity.generic.drink"
+}

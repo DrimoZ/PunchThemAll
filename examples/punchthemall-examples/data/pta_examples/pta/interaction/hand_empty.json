@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": [] },
+  "target": { "kind": "block", "match": "minecraft:hay_block" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:wheat", "weight": 30, "count": 1 },
+      { "match": "minecraft:air", "weight": 70 }
+    ]
+  },
+  "sound": "minecraft:block.grass.break"
+}

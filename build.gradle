@@ -277,6 +277,10 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     testLogging { events "passed", "failed", "skipped" }
+
+    // ExamplePackTest parses the shipped example pack, so editing an example has to invalidate the
+    // task. Without this Gradle only watches the sources, and a broken example ships as up-to-date.
+    inputs.dir(layout.projectDirectory.dir("examples")).withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.register('verify') {

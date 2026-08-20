@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "type": "left_click",
+  "target": { "kind": "block", "match": "minecraft:moss_block" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:moss_carpet", "weight": 10, "count": 2 },
+      { "match": "minecraft:azalea", "weight": 5, "count": { "count": 3 } },
+      { "match": "minecraft:stick", "weight": 5, "count": { "min": 1, "max": 6 } },
+      { "match": "minecraft:air", "weight": 30 }
+    ]
+  }
+}

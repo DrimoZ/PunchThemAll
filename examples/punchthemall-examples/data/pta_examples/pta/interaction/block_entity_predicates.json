@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "target": {
+    "kind": "block",
+    "match": "minecraft:chest",
+    "nbt_predicates": [
+      { "path": "Items[].Count", "int_range": [1, 64] }
+    ]
+  },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:oak_planks", "weight": 100, "count": { "min": 1, "max": 2 } }
+    ]
+  }
+}
