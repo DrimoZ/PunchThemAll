@@ -1,5 +1,7 @@
 package com.drimoz.punchthemall.jei;
 
+import com.drimoz.punchthemall.PTAConfig;
+import com.drimoz.punchthemall.client.TooltipDetail;
 import com.drimoz.punchthemall.core.model.classes.PtaBlock;
 import com.drimoz.punchthemall.core.model.classes.PtaConditions;
 import com.drimoz.punchthemall.core.model.classes.PtaEffect;
@@ -13,17 +15,21 @@ import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
+import com.drimoz.punchthemall.core.util.DropSlotLayout;
+import com.drimoz.punchthemall.core.util.TransformationDescriber;
 import com.drimoz.punchthemall.core.util.TranslationKeys;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
+import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.nbt.CompoundTag;
@@ -75,7 +81,7 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         this.ICON = guiHelper.drawableBuilder(JEI_ICON_TEXTURE, 0, 0, 17, 17)
                 .setTextureSize(17,17)
                 .build();
-        this.BACKGROUND = guiHelper.createBlankDrawable(JeiConstants.WIDTH, JeiConstants.HEIGHT_START + 18 * InteractionRegistry.getInstance().getJEIRowCount());
+        this.BACKGROUND = guiHelper.createBlankDrawable(JeiConstants.WIDTH, categoryHeight());
 
         this.SLOT = guiHelper.getSlotDrawable();
         this.SLOT_ROW = guiHelper.createDrawable(JeiConstants.JEI_TEXTURE, 0, 0, 162, 18);
@@ -97,6 +103,27 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
 
         this.PLAYER_DAMAGE = guiHelper.createDrawable(JeiConstants.JEI_TEXTURE, 0, 54, 11, 11);
         this.PLAYER_HUNGER = guiHelper.createDrawable(JeiConstants.JEI_TEXTURE, 18, 54, 11, 11);
+    }
+
+    /**
+     * How many rows of drops every recipe in the category reserves room for.
+     *
+     * <p>JEI sizes a category, not a recipe, so the tall recipe decides the height of every other.
+     * One interaction with thirty drops used to make sixty one-drop interactions three rows tall,
+     * and a list of mostly empty boxes is the result. Capping it means the box stays small and the
+     * rare wide recipe shares slots inside its own grid instead of taxing its neighbours.</p>
+     *
+     * <p>It is a cap rather than a constant, so a pack whose interactions all fit in one row still
+     * gets a one-row box, exactly as before.</p>
+     */
+    private static int visibleDropRows() {
+        int needed = InteractionRegistry.getInstance().getJEIRowCount();
+        int cap = PTAConfig.clientValueOrDefault(PTAConfig.CLIENT.maxDropRows);
+        return Math.max(1, Math.min(needed, cap));
+    }
+
+    private static int categoryHeight() {
+        return JeiConstants.HEIGHT_START + 18 * visibleDropRows();
     }
 
     // Interface
@@ -220,38 +247,133 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
+    private record DropEntry(PtaDropRecord record, Integer weight, int totalWeight) {
+        boolean guaranteed() {
+            return weight == null;
+        }
+
+        List<ItemStack> stacks() {
+            return record.items().stream().map(ItemStack::new).toList();
+        }
+
+        boolean shows(ItemStack stack) {
+            return record.items().contains(stack.getItem());
+        }
+    }
+
+    /**
+     * Lay the drops out, sharing slots when there are more of them than the box has room for.
+     *
+     * <p>JEI sizes a category rather than a recipe, so the widest interaction in a pack decides how
+     * tall every other one is drawn. {@code max_drop_rows} caps that, which leaves the question of
+     * where the drops past the cap go.</p>
+     *
+     * <p>They share a slot. JEI cycles the stacks in a slot on its own — it is how a tag ingredient
+     * is drawn — so an overflowing recipe animates through its drops with no control to find and no
+     * input to make. A scrollbar was the first answer on the 1.21 line, and a poor one: JEI
+     * overloads the mouse wheel over a recipe for page navigation, so the bar was reachable only by
+     * dragging it, and only once you knew it was there.</p>
+     */
     private void setupDropSlots(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
-        int slotNumber = 0;
+        List<DropEntry> entries = collectDrops(interaction);
+        if (entries.isEmpty()) return;
+
+        List<DropEntry> weighted = entries.stream().filter(entry -> !entry.guaranteed()).toList();
+        List<DropEntry> guaranteed = entries.stream().filter(DropEntry::guaranteed).toList();
+
+        int capacity = visibleDropRows() * 9;
+        int guaranteedSlots = DropSlotLayout.guaranteedSlots(guaranteed.size(), weighted.size(), capacity);
+        int weightedSlots = Math.min(weighted.size(), capacity - guaranteedSlots);
+
+        // Guaranteed first: what you always get is the part of the answer a player is sure of, and
+        // it reads oddly after a column of maybes.
+        List<List<DropEntry>> perSlot = new ArrayList<>();
+        perSlot.addAll(DropSlotLayout.distribute(guaranteed, guaranteedSlots));
+        perSlot.addAll(DropSlotLayout.distribute(weighted, weightedSlots));
+
+        for (int i = 0; i < perSlot.size(); i++) {
+            List<DropEntry> shared = List.copyOf(perSlot.get(i));
+            List<ItemStack> stacks = shared.stream().flatMap(entry -> entry.stacks().stream()).toList();
+
+            IRecipeSlotBuilder slot = setupOutputSlot(builder, stacks,
+                    1 + (i % 9) * 18, 1 + HEIGHT_START + 18 * (i / 9));
+            slot.addRichTooltipCallback((slotView, tooltip) -> describeDrop(slotView, shared, tooltip));
+        }
+    }
+
+    private List<DropEntry> collectDrops(PtaInteraction interaction) {
+        List<DropEntry> entries = new ArrayList<>();
         int totalWeight = interaction.getPool().getTotalPoolWeight();
 
         for (Map.Entry<PtaDropRecord, Integer> result : interaction.getPool().getDropPool().entrySet()) {
             if (!result.getKey().isEmpty()) {
-                setupDropSlot(builder, result, slotNumber, totalWeight);
-                slotNumber++;
+                entries.add(new DropEntry(result.getKey(), result.getValue(), totalWeight));
             }
         }
-
-        // Guaranteed drops render as extra output slots after the weighted pool.
         for (PtaDropRecord record : interaction.getRewards().getGuaranteed()) {
             if (!record.isEmpty()) {
-                setupGuaranteedSlot(builder, record, slotNumber);
-                slotNumber++;
+                entries.add(new DropEntry(record, null, totalWeight));
             }
+        }
+        return entries;
+    }
+
+    /**
+     * Describe whichever drop the slot is showing right now.
+     *
+     * <p>A shared slot cycles between drops with different odds and different counts, so the tooltip
+     * has to follow what is on screen rather than describe the first one and be wrong most of the
+     * time.</p>
+     */
+    private void describeDrop(IRecipeSlotView slotView, List<DropEntry> shared, ITooltipBuilder tooltip) {
+        List<DropEntry> showing = ownersOf(slotView, shared);
+
+        for (int i = 0; i < showing.size(); i++) {
+            if (i > 0) tooltip.add(Component.empty());
+            describeOneDrop(showing.get(i), tooltip);
+        }
+
+        // Without this line a cycling slot looks like a slot that changed its mind.
+        if (shared.size() > 1) {
+            tooltip.add(Component.translatable(TranslationKeys.INTERACTION_OUTPUT_SHARED, shared.size())
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
     }
 
-    private void setupGuaranteedSlot(IRecipeLayoutBuilder builder, PtaDropRecord record, int slotNumber) {
-        IRecipeSlotBuilder slot = setupOutputSlot(builder, record.items().stream().map(ItemStack::new).toList(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
-
-        slot.addRichTooltipCallback((slotView, tooltip) -> {
+    private void describeOneDrop(DropEntry entry, ITooltipBuilder tooltip) {
+        if (entry.guaranteed()) {
             tooltip.add(Component.literal("§2" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_GUARANTEED).getString()));
-            if (record.min() == record.max()) {
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() + " : §5" + record.min()));
-            } else {
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min()));
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max()));
-            }
-        });
+        } else {
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString()
+                    + " : §5" + getTruncatedChance(entry.weight(), 0, entry.totalWeight()) + "%"));
+        }
+
+        PtaDropRecord record = entry.record();
+        if (record.min() == record.max()) {
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() + " : §5" + record.min()));
+        } else {
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min()));
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max()));
+        }
+    }
+
+    /**
+     * Which entries the displayed item could have come from.
+     *
+     * <p>Usually one. But nothing stops a pack listing the same item twice — cobblestone in the
+     * weighted pool and cobblestone again with a different count — and JEI hands back the stack on
+     * screen, not which of the slot's entries produced it. Picking the first was a guess, and a
+     * guess about odds is a tooltip that lies half the time. When the item is ambiguous, every entry
+     * that could have produced it is described instead.</p>
+     */
+    private List<DropEntry> ownersOf(IRecipeSlotView slotView, List<DropEntry> shared) {
+        if (shared.size() == 1) return shared;
+
+        List<DropEntry> showing = slotView.getDisplayedItemStack()
+                .map(stack -> shared.stream().filter(entry -> entry.shows(stack)).toList())
+                .orElse(List.of());
+
+        return showing.isEmpty() ? List.of(shared.get(0)) : showing;
     }
 
     private void setupTransformationSlot(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
@@ -261,38 +383,11 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             double chance = interaction.getTransformation().getChance();
             tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_CHANCE).getString() +
                     " : §l§5" + getTruncatedChance(chance, 0, 1) + "%"));
-        });
-    }
-
-    private void setupDropSlot(IRecipeLayoutBuilder builder, Map.Entry<PtaDropRecord, Integer> result, int slotNumber, int totalPoolWeight) {
-        PtaDropRecord record = result.getKey();
-        IRecipeSlotBuilder slot = setupOutputSlot(builder, record.items().stream().map(ItemStack::new).toList(), 1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
-
-        slot.addRichTooltipCallback((slotView, tooltip) -> {
-            tooltip.add(
-                    Component.literal(
-                            "§7" +
-                                    Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString() +
-                                    " : §5" + getTruncatedChance(result.getValue(), 0, totalPoolWeight) + "%"
-                    )
-            );
-
-            if (record.min() == record.max()) {
-                tooltip.add(
-                        Component.literal(
-                                "§7" +
-                                        Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() +
-                                        " : §5" + record.min()
-                        )
-                );
-            }
-            else {
-                tooltip.add(
-                        Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min())
-                );
-                tooltip.add(
-                        Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max())
-                );
+            boolean expanded = TooltipDetail.isExpanded();
+            TransformationDescriber.describe(interaction, expanded).forEach(tooltip::add);
+            if (TransformationDescriber.hasMoreToShow(interaction)) {
+                Component hint = TooltipDetail.hint();
+                if (hint != null) tooltip.add(hint);
             }
         });
     }
@@ -320,10 +415,27 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
+    /** A stack carrying a display name, which on 1.20.1 is a hover name on the stack NBT. */
+    private static ItemStack named(net.minecraft.world.item.Item item, Component name) {
+        return new ItemStack(item).setHoverName(name);
+    }
+
     private ItemStack getTransformationItemStack(PtaTransformation transformation) {
         if (transformation.isAir()) {
-            return new ItemStack(Items.BARRIER).setHoverName(Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_BREAK).getString()));
-        } else if (transformation.isBlock()) {
+            // Both write nothing, so both land here — but "Air" is wrong for a break, which leaves
+            // the block own drops behind rather than making it vanish.
+            String key = transformation.isBreak()
+                    ? TranslationKeys.INTERACTION_TRANSFORMATION_BROKEN
+                    : TranslationKeys.INTERACTION_TRANSFORMATION_BREAK;
+            return named(Items.BARRIER, Component.literal("§d" + Component.translatable(key).getString()));
+        }
+        if (transformation.isCopy()) {
+            // Neither air nor a named block: a copy writes whatever stands at its source, which is
+            // not known until the click happens. Falling through to the fluid branch here
+            // dereferenced a null fluid and took the whole category down with it.
+            return named(Items.BARRIER, Component.literal("§d" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_COPIED).getString()));
+        }
+        if (transformation.isBlock()) {
             return new ItemStack(transformation.getBlock());
         } else {
             return new ItemStack(transformation.getFluid().getBucket());
@@ -540,9 +652,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
         if (conditions.lightMin() != null || conditions.lightMax() != null) {
             lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_LIGHT, valueOrStar(conditions.lightMin()) + " - " + valueOrStar(conditions.lightMax())));
-        }
-        if (conditions.requiresSneaking() != null) {
-            lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_SNEAK, String.valueOf(conditions.requiresSneaking())));
         }
         if (conditions.minFood() > 0) {
             lines.add(condLine(TranslationKeys.INTERACTION_CONDITIONS_FOOD, String.valueOf(conditions.minFood())));
