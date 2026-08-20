@@ -33,6 +33,7 @@ public class PunchThemAll
         modEventBus.addListener(this::onClientSetup);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, PTAConfig.COMMON_CONFIG,  FILE_DESTINATION + "/" + MOD_ID + "-common.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, PTAConfig.CLIENT_CONFIG, FILE_DESTINATION + "/" + MOD_ID + "-client.toml");
 
         MinecraftForge.EVENT_BUS.register(PlayerInteractionHandler.class);
         MinecraftForge.EVENT_BUS.register(new PtaSyncEvents());

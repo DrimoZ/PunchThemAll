@@ -6,6 +6,9 @@ public class PTAConfig {
 
     public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
     public static final ForgeConfigSpec COMMON_CONFIG;
+    public static final ForgeConfigSpec CLIENT_CONFIG;
+
+    public static final ClientConfig CLIENT;
 
     public static final InteractionConfig INTERACTIONS;
     public static final PlayerConfig PLAYERS;
@@ -14,6 +17,15 @@ public class PTAConfig {
     public static final DebugConfig DEBUG;
 
     static {
+        // The recipe viewers are a client concern, so their settings live in a client file. A
+        // server has no business deciding which key a player holds to read a tooltip.
+        ForgeConfigSpec.Builder clientBuilder = new ForgeConfigSpec.Builder();
+        clientBuilder.comment("PunchThemAll client-side settings. These affect what you see, never what the mod does.");
+        clientBuilder.push("PunchThemAll");
+        CLIENT = new ClientConfig(clientBuilder);
+        clientBuilder.pop();
+        CLIENT_CONFIG = clientBuilder.build();
+
         BUILDER.comment(
                 "PunchThemAll common configuration.",
                 "The config is split by responsibility so pack makers can tune gameplay, automation, drops and JSON loading separately.",
@@ -42,6 +54,48 @@ public class PTAConfig {
      */
     public static <T> T valueOrDefault(ForgeConfigSpec.ConfigValue<T> value) {
         return COMMON_CONFIG.isLoaded() ? value.get() : value.getDefault();
+    }
+
+    /** The client counterpart of {@link #valueOrDefault}, for the client spec. */
+    public static <T> T clientValueOrDefault(ForgeConfigSpec.ConfigValue<T> value) {
+        return CLIENT_CONFIG.isLoaded() ? value.get() : value.getDefault();
+    }
+
+    public static class ClientConfig {
+        /** Which key expands a recipe tooltip from its summary to the full breakdown. */
+        public final ForgeConfigSpec.ConfigValue<String> tooltipDetailKey;
+
+        /** How many rows of drops a recipe box shows before the rest are shared between slots. */
+        public final ForgeConfigSpec.IntValue maxDropRows;
+
+        private ClientConfig(ForgeConfigSpec.Builder builder) {
+            builder.push("Tooltips");
+            tooltipDetailKey = builder
+                    .comment(
+                            "Which key to hold to expand an interaction tooltip in JEI.",
+                            "A tooltip that shows everything at once is unreadable on a busy interaction, and one",
+                            "that shows a summary only is useless when you need the detail — so the detail is behind",
+                            "a key, and this is that key.",
+                            "shift, control, alt: hold it to expand.",
+                            "always: never summarise, always show everything.",
+                            "never: never expand, summary only."
+                    )
+                    // Arrays.asList, not List.of: the config spec is validated by testing a null
+                    // value against the allowed list, and an immutable list throws on contains(null)
+                    // rather than answering false. That crashes config loading before the game starts.
+                    .defineInList("detail_key", "shift", java.util.Arrays.asList("shift", "control", "alt", "always", "never"));
+            maxDropRows = builder
+                    .comment(
+                            "How many rows of drops an interaction shows in JEI before the rest share slots.",
+                            "JEI sizes a category rather than a recipe, so the widest interaction in the pack decides",
+                            "how tall every other one is drawn. This caps that: one interaction dropping thirty things",
+                            "no longer makes the other sixty three rows tall.",
+                            "Drops past the cap share a slot, which JEI cycles through on its own.",
+                            "A pack whose interactions all fit in fewer rows is unaffected either way."
+                    )
+                    .defineInRange("max_drop_rows", 3, 1, 6);
+            builder.pop();
+        }
     }
 
     public static class InteractionConfig {
