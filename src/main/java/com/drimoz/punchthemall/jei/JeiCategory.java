@@ -1,5 +1,6 @@
 package com.drimoz.punchthemall.jei;
 
+import com.drimoz.punchthemall.PTAConfig;
 import com.drimoz.punchthemall.client.TooltipDetail;
 import com.drimoz.punchthemall.core.model.classes.PtaBlock;
 import com.drimoz.punchthemall.core.model.classes.PtaConditions;
@@ -99,6 +100,9 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         this.PLAYER_HUNGER = guiHelper.createDrawable(JEI_TEXTURE, 18, 54, 11, 11);
     }
 
+    /** Names the transformation slot so it is not swept into the drop grid. */
+    private static final String TRANSFORMATION_SLOT = "pta:transformation";
+
     /**
      * How many rows of drops every recipe in the category reserves room for.
      *
@@ -111,14 +115,10 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
      * <p>It is a cap rather than a constant so a pack whose interactions all fit in one row
      * still gets a one-row box, exactly as before.</p>
      */
-    /** Names the transformation slot so it is not swept into the drop grid. */
-    private static final String TRANSFORMATION_SLOT = "pta:transformation";
-
-    private static final int MAX_VISIBLE_DROP_ROWS = 2;
-
     private static int visibleDropRows() {
         int needed = InteractionRegistry.getInstance().getJEIRowCount();
-        return Math.clamp(needed, 1, MAX_VISIBLE_DROP_ROWS);
+        int cap = PTAConfig.clientValueOrDefault(PTAConfig.CLIENT.maxDropRows);
+        return Math.clamp(needed, 1, cap);
     }
 
     /**

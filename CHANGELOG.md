@@ -22,8 +22,8 @@ block rather than replace it.
   numbered and in order, each with its destination, its condition and what it drops. A region
   says how many blocks it covers, and a set-level chance is stated before the entries it gates.
 - **`pta-client.toml`**, a client-side config file. `detail_key` picks which key expands a
-  tooltip: `shift` (default), `control`, `alt`, `always` or `never`. It is a separate file
-  because a server has no business deciding which key a player holds to read a tooltip.
+  tooltip and `max_drop_rows` how tall a recipe box gets before its drops scroll. A separate
+  file because a server has no business deciding which key a player holds to read a tooltip.
 - **A troubleshooting guide**, [troubleshooting.md](docs/troubleshooting.md): why a file did not
   load, why a click did nothing, why the drops or the block are not what you wrote, and a table
   of every message the mod logs with what it means.
@@ -94,10 +94,10 @@ block rather than replace it.
 ### Changed
 - **A recipe no longer inherits the height of the widest one in the category.** JEI sizes a
   category rather than a recipe, so a single interaction with thirty drops made every other one
-  three rows tall and the list became a column of mostly empty boxes. The box is now capped at
-  two rows of drops, and only a recipe with more than that gets a scrolling grid — so a
-  scrollbar appears where it does something and nowhere else. A pack whose interactions all fit
-  in one row still gets a one-row box, exactly as before.
+  three rows tall and the list became a column of mostly empty boxes. The box is now capped by
+  `max_drop_rows` (three by default), and only a recipe with more than that gets a scrolling
+  grid — so a scrollbar appears where it does something and nowhere else. A pack whose
+  interactions all fit in fewer rows is untouched: the cap is a maximum, not a constant.
 - **`max_transformations_per_interaction` now defaults to 64**, up from 8, and counts every block a
   region covers. Eight was chosen when a transformation meant one block.
 

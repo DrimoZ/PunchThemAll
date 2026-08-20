@@ -78,6 +78,7 @@ no say in them.
 | Key | Default | What it does |
 | --- | --- | --- |
 | `detail_key` | `shift` | Which key expands an interaction tooltip in JEI/EMI from its summary to the full breakdown. `shift`, `control`, `alt`, `always` (never summarise) or `never` (never expand). |
+| `max_drop_rows` | `3` | How many rows of drops a recipe shows before the rest scroll. JEI sizes a category rather than a recipe, so the widest interaction decides how tall every other one is drawn; this caps that. Only a recipe with more rows gets a scrollbar — set it above your widest interaction to never see one. |
 
 An interaction can carry a dozen facts — several transformations, each with an operation, a
 destination, a condition on that destination and what it drops. Showing all of it at once gives a

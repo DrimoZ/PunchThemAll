@@ -63,6 +63,9 @@ public class PTAConfig {
         /** Which key expands a recipe tooltip from its summary to the full breakdown. */
         public final ModConfigSpec.ConfigValue<String> tooltipDetailKey;
 
+        /** How many rows of drops a recipe box shows before the rest have to scroll. */
+        public final ModConfigSpec.IntValue maxDropRows;
+
         private ClientConfig(ModConfigSpec.Builder builder) {
             builder.push("Tooltips");
             tooltipDetailKey = builder
@@ -79,6 +82,17 @@ public class PTAConfig {
                     // value against the allowed list, and an immutable list throws on contains(null)
                     // rather than answering false. That crashes config loading before the game starts.
                     .defineInList("detail_key", "shift", java.util.Arrays.asList("shift", "control", "alt", "always", "never"));
+            maxDropRows = builder
+                    .comment(
+                            "How many rows of drops an interaction shows in JEI before the rest have to scroll.",
+                            "JEI sizes a category rather than a recipe, so the widest interaction in the pack decides",
+                            "how tall every other one is drawn. This caps that: one interaction dropping thirty things",
+                            "no longer makes the other sixty three rows tall.",
+                            "Only a recipe with more rows than this gets a scrollbar, so raising it trades a taller",
+                            "list for fewer scrollbars. Set it above your widest interaction to never see one.",
+                            "A pack whose interactions all fit in fewer rows is unaffected either way."
+                    )
+                    .defineInRange("max_drop_rows", 3, 1, 6);
             builder.pop();
         }
     }
