@@ -1,7 +1,12 @@
 # PunchThemAll — example datapack
 
-Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 69 interactions, each kept small so it demonstrates one thing you can copy.
+This folder is a ready-to-use datapack: 69 interactions, each kept small so it demonstrates one
+thing you can copy.
+
+> **On this branch (Forge 1.20.1), datapack loading is opt-in.** Set `load_from_datapacks = true`
+> under `[PunchThemAll.Loader]` in `config/punchthemall/pta-common.toml` before installing this,
+> or nothing here will load. The config folder at `config/punchthemall/interactions/` is the
+> default source on 1.20.1; the NeoForge 1.21.1 line dropped it and uses datapacks only.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -23,7 +28,8 @@ Copy the whole `punchthemall-examples` folder (the one containing `pack.mcmeta`)
 - **New world:** on the creation screen, open **Data Packs**, drag the folder in, enable it.
 - **Server:** put it in `<server>/world/datapacks/` and `/reload`.
 
-The server syncs its interactions to clients, so JEI/EMI show the server's set with no extra setup.
+The server syncs its interactions to clients, so JEI shows the server set with no extra setup.
+(This branch has no EMI plugin; that arrived on the NeoForge 1.21.1 line.)
 
 **Two things that catch everyone out while testing:**
 
@@ -152,7 +158,7 @@ click reaches the interaction, `requires_sneaking` is an extra gate on top.
 | File | What it shows | Try it |
 | --- | --- | --- |
 | `enabled_false.json` | `"enabled": false` — parsed, then skipped. Useful to disable an inherited file without deleting it. | Nothing happens (that is the point). |
-| `hidden_from_viewers.json` | `"hidden": true` — loads and fires normally, but JEI and EMI never list it. For secrets, and for the intermediate steps of a multi-stage recipe. | Sneak-right-click mossy cobblestone with bone meal → an emerald. You will not find it by searching JEI. |
+| `hidden_from_viewers.json` | `"hidden": true` — loads and fires normally, but JEI never lists it. For secrets, and for the intermediate steps of a multi-stage recipe. | Sneak-right-click mossy cobblestone with bone meal → an emerald. You will not find it by searching JEI. |
 | `conditional_load_mod_present.json` | `neoforge:conditions` — the file only loads when another mod is present. | Right-click a bookshelf with a book (JEI installed). |
 | `hoe_in_the_air.json` | A demanding real-world filter: tag match + enchantment ranges + costs. | Needs a specifically enchanted hoe — read the file first. |
 | `sand.json` | A plain, shippable interaction with no tricks. | Sneak-left-click gravel with a shovel. |
