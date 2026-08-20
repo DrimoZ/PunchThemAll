@@ -97,10 +97,12 @@ block rather than replace it.
   three rows tall and the list became a column of mostly empty boxes. The box is now capped by
   `max_drop_rows` (three by default), and the drops past the cap **share a slot**: JEI cycles
   the stacks in a slot on its own, which is how a tag ingredient is drawn, so an overflowing
-  recipe animates through its drops with nothing to find and nothing to click. The tooltip
-  follows whichever drop is on screen and says how many share the slot. A pack whose
-  interactions all fit in fewer rows is untouched: the cap is a maximum, not a constant.
-  region covers. Eight was chosen when a transformation meant one block.
+  recipe animates through its drops with nothing to find and nothing to click. Guaranteed and
+  weighted drops are laid out separately, so a square never alternates between *you always get
+  this* and *one time in four*. The tooltip follows whichever drop is on screen, and when the
+  item is ambiguous — the same id listed twice — it describes every entry that could have
+  produced it rather than guessing at the odds. A pack whose interactions all fit in fewer rows
+  is untouched: the cap is a maximum, not a constant.
 
   > **Upgrading:** config files keep the values already written in them. An existing
   > `pta-common.toml` still says `8`, and regions will quietly stop at the eighth block — with a line

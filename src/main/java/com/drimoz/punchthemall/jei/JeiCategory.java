@@ -15,6 +15,7 @@ import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
 import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
+import com.drimoz.punchthemall.core.util.DropSlotLayout;
 import com.drimoz.punchthemall.core.util.ItemConstraintDescriber;
 import com.drimoz.punchthemall.core.util.TransformationDescriber;
 import com.drimoz.punchthemall.core.util.TranslationKeys;
@@ -265,15 +266,18 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         List<DropEntry> entries = collectDrops(interaction);
         if (entries.isEmpty()) return;
 
-        int slots = Math.min(entries.size(), visibleDropRows() * 9);
+        List<DropEntry> weighted = entries.stream().filter(entry -> !entry.guaranteed()).toList();
+        List<DropEntry> guaranteed = entries.stream().filter(DropEntry::guaranteed).toList();
 
-        List<List<DropEntry>> perSlot = new ArrayList<>(slots);
-        for (int i = 0; i < slots; i++) perSlot.add(new ArrayList<>());
-        // Round-robin rather than in blocks, so the first drops stay in the first row and the
-        // reading order of a pack that fits is the order it was written in.
-        for (int i = 0; i < entries.size(); i++) perSlot.get(i % slots).add(entries.get(i));
+        int capacity = visibleDropRows() * 9;
+        int guaranteedSlots = DropSlotLayout.guaranteedSlots(guaranteed.size(), weighted.size(), capacity);
+        int weightedSlots = Math.min(weighted.size(), capacity - guaranteedSlots);
 
-        for (int i = 0; i < slots; i++) {
+        List<List<DropEntry>> perSlot = new ArrayList<>();
+        perSlot.addAll(DropSlotLayout.distribute(weighted, weightedSlots));
+        perSlot.addAll(DropSlotLayout.distribute(guaranteed, guaranteedSlots));
+
+        for (int i = 0; i < perSlot.size(); i++) {
             List<DropEntry> shared = List.copyOf(perSlot.get(i));
             List<ItemStack> stacks = shared.stream().flatMap(entry -> entry.stacks().stream()).toList();
 
@@ -308,8 +312,21 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
      * time.</p>
      */
     private void describeDrop(IRecipeSlotView slotView, List<DropEntry> shared, ITooltipBuilder tooltip) {
-        DropEntry entry = ownerOf(slotView, shared);
+        List<DropEntry> showing = ownersOf(slotView, shared);
 
+        for (int i = 0; i < showing.size(); i++) {
+            if (i > 0) tooltip.add(Component.empty());
+            describeOneDrop(showing.get(i), tooltip);
+        }
+
+        // Without this line a cycling slot looks like a slot that changed its mind.
+        if (shared.size() > 1) {
+            tooltip.add(Component.translatable(TranslationKeys.INTERACTION_OUTPUT_SHARED, shared.size())
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
+        }
+    }
+
+    private void describeOneDrop(DropEntry entry, ITooltipBuilder tooltip) {
         if (entry.guaranteed()) {
             tooltip.add(Component.literal("§2" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_GUARANTEED).getString()));
         } else {
@@ -324,20 +341,25 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min()));
             tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max()));
         }
-
-        // Without this line a cycling slot looks like a slot that changed its mind.
-        if (shared.size() > 1) {
-            tooltip.add(Component.translatable(TranslationKeys.INTERACTION_OUTPUT_SHARED, shared.size())
-                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
-        }
     }
 
-    private DropEntry ownerOf(IRecipeSlotView slotView, List<DropEntry> shared) {
-        if (shared.size() == 1) return shared.get(0);
+    /**
+     * Which entries the displayed item could have come from.
+     *
+     * <p>Usually one. But nothing stops a pack listing the same item twice — cobblestone in the
+     * weighted pool and cobblestone again with a different count — and JEI hands back the stack on
+     * screen, not which of the slot's entries produced it. Picking the first was a guess, and a
+     * guess about odds is a tooltip that lies half the time. When the item is ambiguous, every entry
+     * that could have produced it is described instead.</p>
+     */
+    private List<DropEntry> ownersOf(IRecipeSlotView slotView, List<DropEntry> shared) {
+        if (shared.size() == 1) return shared;
 
-        return slotView.getDisplayedItemStack()
-                .flatMap(stack -> shared.stream().filter(entry -> entry.shows(stack)).findFirst())
-                .orElse(shared.get(0));
+        List<DropEntry> showing = slotView.getDisplayedItemStack()
+                .map(stack -> shared.stream().filter(entry -> entry.shows(stack)).toList())
+                .orElse(List.of());
+
+        return showing.isEmpty() ? List.of(shared.get(0)) : showing;
     }
 
     private void setupTransformationSlot(IRecipeLayoutBuilder builder, PtaInteraction interaction) {

@@ -1,7 +1,7 @@
 # PunchThemAll — example datapack
 
 Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 68 interactions, each kept small so it demonstrates one thing you can copy.
+ready-to-use one: 69 interactions, each kept small so it demonstrates one thing you can copy.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -216,6 +216,7 @@ without something to look at.
 | `rewards_grid_12.json` | 12 | 2 | Two rows, the second part-filled. Still no scrollbar. |
 | `rewards_grid_18.json` | 18 | 2 | Exactly two full rows — the most a box shows. |
 | `rewards_grid_27.json` | 27 | 3 | More than a two-row box shows, so some of its slots cycle. |
+| `rewards_grid_mixed.json` | 23 | 3 | 20 weighted **and** 3 guaranteed, past the cap. The two kinds are laid out separately, so no square ever alternates between *always* and *sometimes*. |
 
 The category is as tall as the widest recipe, capped by `max_drop_rows` in `pta-client.toml`:
 JEI sizes a category rather than a recipe, so without the cap the last file alone would make
