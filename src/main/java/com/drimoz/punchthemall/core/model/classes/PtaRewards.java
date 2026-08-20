@@ -1,6 +1,7 @@
 package com.drimoz.punchthemall.core.model.classes;
 
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
+import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -10,13 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The full reward description for an interaction (schema_version 2, §5.5): a weighted
- * {@link PtaPool} plus optional {@code guaranteed} drops, multiple {@code rolls}, and a
- * Fortune/Looting-style bonus.
- *
- * <p>The default {@link #of(PtaPool)} form (1 roll, no guaranteed, no fortune) reproduces the legacy
- * single-pick behaviour exactly, and {@link #getPool()} still exposes the weighted pool so JEI and
- * existing code keep working unchanged.</p>
+ * The full reward description for an interaction (§5.5): a weighted {@link PtaPool} plus optional
+ * {@code guaranteed} drops, multiple {@code rolls}, and a Fortune/Looting-style bonus. In 1.21 the
+ * fortune enchantment is resolved from the Forge enchantment registry.
  */
 public class PtaRewards {
 
@@ -26,16 +23,42 @@ public class PtaRewards {
     private final Enchantment fortuneEnchant; // null = no fortune bonus
     private final double fortuneFactor;
 
+    /**
+     * Where the drops appear, relative to the interacted block. {@link PtaOffset#NONE} — the
+     * block itself — is where they have always landed, and stays the default even when the
+     * interaction changes blocks somewhere else entirely.
+     */
+    private final PtaOffset dropAt;
+
     private PtaRewards(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Enchantment fortuneEnchant, double fortuneFactor) {
         this.pool = pool == null ? PtaPool.create(null) : pool;
         this.guaranteed = guaranteed == null ? List.of() : guaranteed;
         this.rolls = Math.max(0, rolls);
         this.fortuneEnchant = fortuneEnchant;
         this.fortuneFactor = Math.max(0, fortuneFactor);
+        this.dropAt = PtaOffset.NONE;
+    }
+
+    private PtaRewards(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Enchantment fortuneEnchant, double fortuneFactor, PtaOffset dropAt) {
+        this.pool = pool == null ? PtaPool.create(null) : pool;
+        this.guaranteed = guaranteed == null ? List.of() : List.copyOf(guaranteed);
+        this.rolls = Math.max(0, rolls);
+        this.fortuneEnchant = fortuneEnchant;
+        this.fortuneFactor = Math.max(0, fortuneFactor);
+        this.dropAt = dropAt == null ? PtaOffset.NONE : dropAt;
     }
 
     public static PtaRewards of(PtaPool pool) {
         return new PtaRewards(pool, List.of(), 1, null, 0);
+    }
+
+    public PtaOffset getDropAt() {
+        return dropAt;
+    }
+
+    /** A copy of these rewards, dropping at a different place. */
+    public PtaRewards droppingAt(PtaOffset dropAt) {
+        return new PtaRewards(pool, guaranteed, rolls, fortuneEnchant, fortuneFactor, dropAt);
     }
 
     public static PtaRewards create(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Enchantment fortuneEnchant, double fortuneFactor) {
@@ -70,7 +93,6 @@ public class PtaRewards {
         return fortuneFactor;
     }
 
-    // Number of non-empty drops shown as slots in JEI (weighted pool + guaranteed).
     public int getJeiDropCount() {
         int guaranteedCount = (int) guaranteed.stream().filter(record -> !record.isEmpty()).count();
         return pool.getTotalPoolSize() + guaranteedCount;
@@ -89,14 +111,14 @@ public class PtaRewards {
         List<ItemStack> results = new ArrayList<>();
 
         for (PtaDropRecord entry : guaranteed) {
-            ItemStack stack = entry.getItemStack();
+            ItemStack stack = entry.getItemStack(random);
             if (!stack.isEmpty()) results.add(stack);
         }
 
         int totalWeight = pool.getTotalPoolWeight();
         int bonus = fortuneBonus(handItem);
         for (int i = 0; i < rolls && totalWeight > 0; i++) {
-            ItemStack stack = pool.getItemStackForChance(random.nextInt(totalWeight));
+            ItemStack stack = pool.getItemStackForChance(random.nextInt(totalWeight), random);
             if (!stack.isEmpty()) {
                 // Fortune must not push the stack past what the item can hold: an over-sized stack
                 // survives in an ItemEntity but is clamped the moment it enters an inventory, so the
@@ -119,7 +141,6 @@ public class PtaRewards {
 
     @Override
     public String toString() {
-        return "PtaRewards{pool=" + pool + ", guaranteed=" + guaranteed + ", rolls=" + rolls
-                + ", fortuneEnchant=" + fortuneEnchant + ", fortuneFactor=" + fortuneFactor + '}';
+        return "PtaRewards{pool=" + pool + ", guaranteed=" + guaranteed + ", rolls=" + rolls + ", fortuneFactor=" + fortuneFactor + '}';
     }
 }

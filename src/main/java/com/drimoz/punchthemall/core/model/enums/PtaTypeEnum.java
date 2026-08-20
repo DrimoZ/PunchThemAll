@@ -29,6 +29,23 @@ public enum PtaTypeEnum {
         return this == LEFT_CLICK || this == SHIFT_LEFT_CLICK;
     }
 
+    /**
+     * The same click, with sneaking required or not.
+     *
+     * <p>Sneaking is part of the type, which is why {@code conditions.requires_sneaking} is folded
+     * into it when a file uses both: two places saying whether to sneak is two places to
+     * disagree, and the disagreement produced an interaction that could never fire.</p>
+     */
+    public PtaTypeEnum withSneaking(boolean sneaking) {
+        if (sneaking == isShiftClick()) return this;
+        return switch (this) {
+            case LEFT_CLICK -> SHIFT_LEFT_CLICK;
+            case SHIFT_LEFT_CLICK -> LEFT_CLICK;
+            case RIGHT_CLICK -> SHIFT_RIGHT_CLICK;
+            case SHIFT_RIGHT_CLICK -> RIGHT_CLICK;
+        };
+    }
+
     public boolean isShiftClick() {
         return this == SHIFT_RIGHT_CLICK || this == SHIFT_LEFT_CLICK;
     }

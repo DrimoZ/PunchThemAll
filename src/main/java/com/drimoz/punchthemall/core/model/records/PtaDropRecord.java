@@ -1,6 +1,7 @@
 package com.drimoz.punchthemall.core.model.records;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -14,9 +15,9 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
 
     /**
      * Whether this entry can never yield anything. That is decided by {@code max}, not {@code min}:
-     * {@code {"min": 0, "max": 3}} is a legitimate "nothing to three" roll, and treating it as empty
-     * silently deleted the entry from both the drop roll and the JEI display, while it still took up
-     * its weight in the pool.
+     * a zero-to-three range is a legitimate roll, and treating it as empty silently deleted the
+     * entry from both the drop roll and the JEI display, while it still took up its weight in the
+     * pool.
      */
     public boolean isEmpty() {
         return items.isEmpty() || max == 0 || items.stream().allMatch(item -> item.equals(Items.AIR));
@@ -34,39 +35,32 @@ public record PtaDropRecord(Set<Item> items, int min, int max, CompoundTag nbt) 
 
     // Interface
 
-    public ItemStack getItemStack() {
+    /**
+     * The random source is the level one, passed in rather than taken from Math.random, so a roll
+     * is reproducible under a seeded test and so the drop shares the world randomness.
+     */
+    public ItemStack getItemStack(RandomSource random) {
         if (isEmpty()) return ItemStack.EMPTY;
 
-        // A [0, n] range legitimately rolls a zero; ItemStack would otherwise be constructed with a
-        // count of 0, which is empty-but-not-EMPTY and not what callers expect.
-        int count = calculateCount();
+        // A zero-to-n range legitimately rolls a zero; ItemStack would otherwise be constructed
+        // with a count of 0, which is empty-but-not-EMPTY and not what callers expect.
+        int count = calculateCount(random);
         if (count <= 0) return ItemStack.EMPTY;
 
-        return new ItemStack(pickRandomItem(), count, nbt);
+        return new ItemStack(pickRandomItem(random), count, nbt);
     }
 
-    public int calculateCount() {
-        if (min == max) {
-            return min;
-        } else {
-            return min + (int) (Math.random() * (max - min + 1));
-        }
+    public int calculateCount(RandomSource random) {
+        return min >= max ? min : min + random.nextInt(max - min + 1);
     }
 
-    public Item pickRandomItem() {
+    public Item pickRandomItem(RandomSource random) {
         if (items.isEmpty()) return Items.AIR;
-        return items.stream().skip((int) (Math.random() * items.size())).findFirst().orElse(Items.AIR);
+        return items.stream().skip(random.nextInt(items.size())).findFirst().orElse(Items.AIR);
     }
-
-    // Interface ( Util )
 
     @Override
     public String toString() {
-        return "PtaDropRecord{" +
-                "items=" + items +
-                ", min=" + min +
-                ", max=" + max +
-                ", nbt=" + nbt +
-                '}';
+        return "PtaDropRecord{items=" + items + ", min=" + min + ", max=" + max + ", nbt=" + nbt + '}';
     }
 }
