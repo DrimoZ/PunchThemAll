@@ -5,19 +5,17 @@ import com.drimoz.punchthemall.core.model.classes.PtaEffect;
 import com.drimoz.punchthemall.core.model.classes.PtaExtras;
 import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
-import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
 import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
-import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.registry.InteractionRegistry;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
@@ -27,9 +25,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
@@ -43,10 +38,11 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE;
 
@@ -105,8 +101,12 @@ public class PlayerInteractionHandler {
         if (isCooldownEnabledFor(player) && isPlayerOnCooldown(player.getUUID(), level.getGameTime())) return;
 
         boolean interactionProcessed = false;
-        boolean blockTransformed = false;
         boolean fluidInteraction = false;
+
+        // Blocks already changed by this click. Two interactions matching the same click must not
+        // both act on one block — the second would be reading a world the author never described.
+        // Anywhere else is fair game, which is what makes offset transformations composable.
+        Set<BlockPos> transformed = new HashSet<>();
 
         if (hitResult.getType() == HitResult.Type.BLOCK) {
             BlockPos pos = hitResult.getBlockPos();
@@ -120,10 +120,10 @@ public class PlayerInteractionHandler {
         List<PtaInteraction> interactions;
 
         if (fluidInteraction) {
-            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, hitResult.getBlockPos(), level);
+            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, hitResult.getBlockPos(), level, direction);
         }
         else {
-            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level);
+            interactions = InteractionRegistry.getInstance().getFilteredInteractions(type, clickOnBlock, player, blockPos, level, direction);
         }
 
         int processedInteractions = 0;
@@ -139,23 +139,30 @@ public class PlayerInteractionHandler {
             }
 
             if (interaction.getBlock().isAir()) {
-                if (processInteraction(player, level, player.blockPosition(), Direction.UP, interaction)) {
+                BlockPos playerPos = player.blockPosition();
+                if (processInteraction(player, level, playerPos, Direction.UP, interaction)) {
                     if (shouldProcessPlayerEffects(player)) processPlayer(player, interaction);
-                    playInteractionFeedback(level, player.blockPosition(), interaction);
+                    playInteractionFeedback(level, playerPos, interaction);
                     interactionProcessed = true;
                     processedInteractions++;
+                    // An air interaction has no block under the cursor, so its transformations are
+                    // measured from the player — only offset ones survive resolution.
+                    if (rollsTransformationGroup(interaction, player.getRandom())) {
+                        transformed.addAll(TransformationApplier.apply(level, player, playerPos, direction,
+                                                            interaction.getTransformations(), player.getRandom(), transformed));
+                    }
                 }
             }
             else {
                 BlockPos targetPos = fluidInteraction ? hitResult.getBlockPos() : blockPos;
-                if (!blockTransformed && processInteraction(player, level, targetPos, direction, interaction)) {
+                if (!transformed.contains(targetPos) && processInteraction(player, level, targetPos, direction, interaction)) {
                     interactionProcessed = true;
                     if (shouldProcessPlayerEffects(player)) processPlayer(player, interaction);
                     playInteractionFeedback(level, targetPos, interaction);
                     processedInteractions++;
-                    if (PTAConfig.INTERACTIONS.allowTransformations.get() && shouldBlockTransform(interaction.getTransformation())) {
-                        transformBlock(level, targetPos, interaction.getTransformation());
-                        blockTransformed = true;
+                    if (rollsTransformationGroup(interaction, player.getRandom())) {
+                        transformed.addAll(TransformationApplier.apply(level, player, targetPos, direction,
+                                                            interaction.getTransformations(), player.getRandom(), transformed));
                     }
                 }
             }
@@ -270,9 +277,26 @@ public class PlayerInteractionHandler {
         return false;
     }
 
+    /**
+     * One roll for the whole transformation set, on top of each entry own chance.
+     *
+     * <p>A set with no group chance always passes here, which is every file that did not ask
+     * for one.</p>
+     */
+    private static boolean rollsTransformationGroup(PtaInteraction interaction, RandomSource random) {
+        if (!PTAConfig.INTERACTIONS.allowTransformations.get()) return false;
+        double chance = interaction.getTransformationChance();
+        return chance >= 1.0D || (chance > 0 && random.nextDouble() <= chance);
+    }
+
     private static void dropRewards(Player player, Level level, BlockPos pos, Direction face, PtaInteraction interaction, ItemStack handItem) {
+        // Drops land on the interacted block unless the file moved them — useful when the
+        // interaction is really acting somewhere else.
+        BlockPos dropPos = interaction.getRewards().getDropAt()
+                .resolve(pos, face, player.getDirection());
+
         for (ItemStack stack : interaction.getRewards().roll(player.getRandom(), handItem)) {
-            dropItem(player, level, pos, face, stack);
+            dropItem(player, level, dropPos, face, stack);
         }
     }
 
@@ -322,112 +346,6 @@ public class PlayerInteractionHandler {
     private static boolean insertItemIntoInventory(Inventory inventory, ItemStack itemStack) {
         boolean addedToInventory = inventory.add(itemStack);
         return addedToInventory && itemStack.isEmpty();
-    }
-
-    private static boolean shouldBlockTransform(PtaTransformation transformation) {
-        if (transformation.getChance() > 0) {
-            double randomValue = ThreadLocalRandom.current().nextDouble();
-            return randomValue <= transformation.getChance();
-        }
-        return false;
-    }
-
-    private static void transformBlock(Level level, BlockPos pos, PtaTransformation ptaTransformation) {
-
-        if (ptaTransformation.hasParticles()) {
-            ((ServerLevel) level).sendParticles(
-                    ptaTransformation.getParticles(),
-                    pos.getX() + 0.5,
-                    pos.getY() + 0.5,
-                    pos.getZ() + 0.5,
-                    25,
-                    0.5, 0.5, 0.5,
-                    1
-            );
-        }
-
-        if (ptaTransformation.isAir()) {
-            level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState());
-        }
-        else if (ptaTransformation.isBlock()) {
-            BlockState currentState = level.getBlockState(pos);
-            BlockState newState = ptaTransformation.getBlock().defaultBlockState();
-
-
-            for (PtaStateRecord<?> entry : ptaTransformation.getStateList()) {
-                newState = applyStateEntry(newState, entry, currentState);
-            }
-
-            level.setBlockAndUpdate(pos, newState);
-
-            if (ptaTransformation.hasNbtList()) {
-                applyNBTs(level, pos, ptaTransformation.getNbtList());
-            }
-        }
-        else {
-            FluidState state = ptaTransformation.getFluid().defaultFluidState();
-
-            for (PtaStateRecord<?> entry : ptaTransformation.getStateList()) {
-                state = applyStateEntry(state, entry);
-            }
-
-            level.setBlockAndUpdate(pos, state.createLegacyBlock());
-
-            if (ptaTransformation.hasNbtList()) {
-                applyNBTs(level, pos, ptaTransformation.getNbtList());
-            }
-        }
-
-        if (ptaTransformation.hasSound()) {
-            level.playSound(null, pos, ptaTransformation.getSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
-        }
-
-
-    }
-
-    private static <T extends Comparable<T>> BlockState applyStateEntry(BlockState state, PtaStateRecord<T> entry, BlockState currentState) {
-        Property<T> property = entry.property();
-        String valueString = entry.value();
-        T value;
-
-        if (SAME_STATE.equalsIgnoreCase(valueString)) {
-            if (currentState.hasProperty(property)) {
-                value = currentState.getValue(property);
-            } else {
-                return state;
-            }
-        }
-        else {
-            value = parsePropertyValue(property, valueString);
-        }
-
-        if (value == null) return state;
-        return state.setValue(property, value);
-    }
-
-    private static <T extends Comparable<T>> FluidState applyStateEntry(FluidState state, PtaStateRecord<T> entry) {
-        Property<T> property = entry.property();
-        String valueString = entry.value();
-        T value = parsePropertyValue(property, valueString);
-        if (value == null) return state;
-        return state.setValue(property, value);
-    }
-
-    private static <T extends Comparable<T>> T parsePropertyValue(Property<T> property, String value) {
-        for (T possibleValue : property.getPossibleValues()) {
-            if (possibleValue.toString().equalsIgnoreCase(value)) {
-                return possibleValue;
-            }
-        }
-        return null;
-    }
-
-    private static void applyNBTs(Level level, BlockPos pos, CompoundTag customNBT) {
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        if (blockEntity != null) {
-            blockEntity.load(customNBT);
-            blockEntity.setChanged();
-        }
     }
 
     // Raytracing

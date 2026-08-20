@@ -9,6 +9,7 @@ import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
@@ -92,6 +93,11 @@ public class InteractionRegistry {
      * won varied between runs, and between machines.</p>
      */
     public List<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level) {
+        return getFilteredInteractions(interactionType, clickOnBlock, player, pos, level, null);
+    }
+
+    /** @param face the clicked face, so neighbour conditions written in the face frame resolve. */
+    public List<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level, Direction face) {
         List<PtaInteraction> filteredInteractions = new ArrayList<>();
 
         PtaTypeEnum eventType = PtaTypeEnum.getTypeFromEvent(interactionType, player.isShiftKeyDown());
@@ -99,7 +105,7 @@ public class InteractionRegistry {
         // Prefilter to the small bucket of candidates matching this click type and concrete target.
         // The full per-interaction filters still run below, so semantics are unchanged.
         for (PtaInteraction interaction : getCandidates(eventType, clickOnBlock, pos, level)) {
-            if (!passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level)) {
+            if (!passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level, face)) {
                 continue;
             }
             filteredInteractions.add(interaction);
@@ -178,7 +184,7 @@ public class InteractionRegistry {
 
     private boolean passesInteractionFilters(
             PtaInteraction interaction, PtaTypeEnum eventType, boolean clickOnBlock,
-            Player player, BlockPos pos, Level level
+            Player player, BlockPos pos, Level level, Direction face
     ) {
 
         // PTALoggers.info("=================================");
@@ -192,7 +198,7 @@ public class InteractionRegistry {
 
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&
-                interaction.getConditions().matches(level, player, pos) &&
+                interaction.getConditions().matches(level, player, pos, face) &&
                 passesAirOrBlockFilter(interaction, clickOnBlock) &&
                 passesBlockStateFilter(interaction, clickOnBlock, pos, level) &&
                 passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level) &&

@@ -32,6 +32,18 @@ public class PTAConfig {
         COMMON_CONFIG = BUILDER.build();
     }
 
+    /**
+     * Read a config value, falling back to its declared default when no config file is attached yet.
+     *
+     * <p>{@code ForgeConfigSpec.ConfigValue.get()} throws while the spec is unloaded. That is the
+     * right behaviour for gameplay switches, which are only ever read mid-game, but interaction
+     * loading also consults the debug flags, and a logging toggle must not be able to abort a
+     * datapack reload. It is also what makes the config-reading code reachable from unit tests.</p>
+     */
+    public static <T> T valueOrDefault(ForgeConfigSpec.ConfigValue<T> value) {
+        return COMMON_CONFIG.isLoaded() ? value.get() : value.getDefault();
+    }
+
     public static class InteractionConfig {
         public final ForgeConfigSpec.BooleanValue enabled;
         public final ForgeConfigSpec.IntValue cooldownTicks;
@@ -43,6 +55,10 @@ public class PTAConfig {
         public final ForgeConfigSpec.BooleanValue allowAirInteractions;
         public final ForgeConfigSpec.BooleanValue allowFluidInteractions;
         public final ForgeConfigSpec.BooleanValue allowTransformations;
+        public final ForgeConfigSpec.BooleanValue allowOffsetTransformations;
+        public final ForgeConfigSpec.IntValue maxTransformationOffset;
+        public final ForgeConfigSpec.IntValue maxTransformationsPerInteraction;
+        public final ForgeConfigSpec.BooleanValue fireProtectionEvents;
 
         private InteractionConfig(ForgeConfigSpec.Builder builder) {
             builder.push("Interactions");
@@ -76,6 +92,30 @@ public class PTAConfig {
             allowTransformations = builder
                     .comment("Allow interactions to transform blocks or fluids after a successful drop roll.")
                     .define("allow_transformations", true);
+            allowOffsetTransformations = builder
+                    .comment(
+                            "Allow transformations to act on a block other than the one that was interacted with.",
+                            "Disabling this keeps every transformation on the clicked block, whatever the datapack asks for."
+                    )
+                    .define("allow_offset_transformations", true);
+            maxTransformationOffset = builder
+                    .comment(
+                            "How far a transformation may reach from the interacted block, in blocks along the longest axis.",
+                            "A transformation asking for more is skipped. This bounds what a datapack can touch from a single click."
+                    )
+                    .defineInRange("max_transformation_offset", 8, 0, 64);
+            maxTransformationsPerInteraction = builder
+                    .comment(
+                            "Maximum number of blocks one interaction may transform per click.",
+                            "Each one is a block update, so this bounds the cost of a single click on the server. A region counts every block it covers."
+                    )
+                    .defineInRange("max_transformations_per_interaction", 64, 1, 4096);
+            fireProtectionEvents = builder
+                    .comment(
+                            "Post block break/place events for transformations, so claim and protection mods can veto them.",
+                            "Leave enabled on any server that is not single player: without it, an offset transformation can reach inside a protected area."
+                    )
+                    .define("fire_protection_events", true);
             builder.pop();
         }
     }
