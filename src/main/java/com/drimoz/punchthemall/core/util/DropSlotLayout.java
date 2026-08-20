@@ -32,7 +32,9 @@ public final class DropSlotLayout {
     public static int guaranteedSlots(int guaranteed, int weighted, int capacity) {
         if (guaranteed <= 0 || capacity <= 0) return 0;
         if (weighted <= 0) return Math.min(guaranteed, capacity);
-        if (capacity == 1) return 0; // Nowhere to put both; the weighted pool is the larger story.
+        // Nowhere to put both. What a player always gets is the part they can count on, so it wins
+        // the last square — the same reason the guaranteed drops are drawn first.
+        if (capacity == 1) return 1;
 
         int fairShare = Math.round((float) capacity * guaranteed / (guaranteed + weighted));
         return Math.clamp(fairShare, 1, Math.min(guaranteed, capacity - 1));

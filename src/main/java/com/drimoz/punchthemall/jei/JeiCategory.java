@@ -273,9 +273,11 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         int guaranteedSlots = DropSlotLayout.guaranteedSlots(guaranteed.size(), weighted.size(), capacity);
         int weightedSlots = Math.min(weighted.size(), capacity - guaranteedSlots);
 
+        // Guaranteed first: what you always get is the part of the answer a player is sure of, and
+        // it reads oddly after a column of maybes.
         List<List<DropEntry>> perSlot = new ArrayList<>();
-        perSlot.addAll(DropSlotLayout.distribute(weighted, weightedSlots));
         perSlot.addAll(DropSlotLayout.distribute(guaranteed, guaranteedSlots));
+        perSlot.addAll(DropSlotLayout.distribute(weighted, weightedSlots));
 
         for (int i = 0; i < perSlot.size(); i++) {
             List<DropEntry> shared = List.copyOf(perSlot.get(i));

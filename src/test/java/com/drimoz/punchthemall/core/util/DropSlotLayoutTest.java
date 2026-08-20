@@ -65,9 +65,9 @@ class DropSlotLayoutTest {
         }
 
         @Test
-        @DisplayName("a single square goes to the weighted pool, which is the larger story")
+        @DisplayName("a single square goes to the guaranteed drops, the part a player can count on")
         void oneSquare() {
-            assertEquals(0, DropSlotLayout.guaranteedSlots(3, 3, 1));
+            assertEquals(1, DropSlotLayout.guaranteedSlots(3, 3, 1));
         }
 
         @Test

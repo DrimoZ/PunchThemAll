@@ -98,8 +98,9 @@ block rather than replace it.
   `max_drop_rows` (three by default), and the drops past the cap **share a slot**: JEI cycles
   the stacks in a slot on its own, which is how a tag ingredient is drawn, so an overflowing
   recipe animates through its drops with nothing to find and nothing to click. Guaranteed and
-  weighted drops are laid out separately, so a square never alternates between *you always get
-  this* and *one time in four*. The tooltip follows whichever drop is on screen, and when the
+  weighted drops are laid out separately, guaranteed first, so a square never alternates
+  between *you always get this* and *one time in four*, and what a player can count on is not
+  read after a column of maybes. The tooltip follows whichever drop is on screen, and when the
   item is ambiguous — the same id listed twice — it describes every entry that could have
   produced it rather than guessing at the odds. A pack whose interactions all fit in fewer rows
   is untouched: the cap is a maximum, not a constant.
