@@ -15,13 +15,17 @@ import java.util.stream.Collectors;
 public class FluidChecker {
 
     public static boolean doesFluidExist(String fluidName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(fluidName);
-        return ForgeRegistries.FLUIDS.containsKey(blockResourceLocation);
+        ResourceLocation id = ItemChecker.tryParse(fluidName);
+        return id != null && ForgeRegistries.FLUIDS.containsKey(id);
     }
 
+    /**
+     * @return the fluid, or {@code null} when the id is malformed or unregistered. Deliberately not
+     *         the registry default, which would answer an unknown id with empty fluid.
+     */
     public static Fluid getExistingFluid(String fluidName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(fluidName);
-        return ForgeRegistries.FLUIDS.getValue(blockResourceLocation);
+        ResourceLocation id = ItemChecker.tryParse(fluidName);
+        return id == null || !ForgeRegistries.FLUIDS.containsKey(id) ? null : ForgeRegistries.FLUIDS.getValue(id);
     }
 
     public static Fluid getFirstFluidForTag(String fluidTag) {
@@ -29,7 +33,9 @@ public class FluidChecker {
     }
 
     public static Set<Fluid> getFluidsForTag(String fluidTag) {
-        ResourceLocation tagId = new ResourceLocation(fluidTag);
+        ResourceLocation tagId = ItemChecker.tryParse(fluidTag);
+        if (tagId == null) return new HashSet<>();
+
         TagKey<Fluid> tagKey = TagKey.create(ForgeRegistries.FLUIDS.getRegistryKey(), tagId);
         ITagManager<Fluid> fluidTagManager = ForgeRegistries.FLUIDS.tags();
 
@@ -41,7 +47,9 @@ public class FluidChecker {
     }
 
     public static boolean isFluidTagExisting(String fluidTag) {
-        ResourceLocation tagId = new ResourceLocation(fluidTag);
+        ResourceLocation tagId = ItemChecker.tryParse(fluidTag);
+        if (tagId == null) return false;
+
         TagKey<Fluid> tagKey = TagKey.create(ForgeRegistries.FLUIDS.getRegistryKey(), tagId);
         ITagManager<Fluid> fluidTagManager = ForgeRegistries.FLUIDS.tags();
 

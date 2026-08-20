@@ -1,0 +1,767 @@
+package com.drimoz.punchthemall.core.codec;
+
+import com.drimoz.punchthemall.core.model.classes.PtaConditions;
+import com.drimoz.punchthemall.core.model.classes.PtaHand;
+import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
+import com.drimoz.punchthemall.core.model.classes.PtaTransformation;
+import com.drimoz.punchthemall.core.model.enums.PtaDropMode;
+import com.drimoz.punchthemall.core.model.enums.PtaHandEnum;
+import com.drimoz.punchthemall.core.model.enums.PtaTransformOp;
+import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
+import com.drimoz.punchthemall.core.model.records.PtaOffset;
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.Fluids;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Turning a parsed spec into the runtime model.
+ *
+ * <p>Tags are not available outside a running server, so everything here matches by id. That is not
+ * a gap in coverage so much as the reason production resolves on {@code TagsUpdatedEvent}: a tag
+ * resolved any earlier would be empty, which is exactly what happens in these tests.</p>
+ *
+ * <p>Enchantments come from the Forge registry on this branch rather than a dynamic one, so unlike
+ * the 1.21 line the resolver needs nothing handed to it to look one up.</p>
+ */
+class InteractionSpecResolverTest {
+
+    private static final ResourceLocation ID = new ResourceLocation("pta_test", "example");
+
+    private static PtaInteraction resolve(String json) {
+        InteractionSpec spec = InteractionSpec.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json))
+                // The 1.20.1 DFU takes a partial flag and an error consumer, rather than a mapper.
+                .getOrThrow(false, message -> { throw new AssertionError(message); });
+        return InteractionSpecResolver.resolve(ID, spec);
+    }
+
+    @Test
+    @DisplayName("a minimal file resolves to an air interaction with an empty hand")
+    void minimal() {
+        PtaInteraction interaction = resolve("{\"type\": \"right_click\"}");
+
+        assertNotNull(interaction);
+        assertEquals(ID, interaction.getId());
+        assertEquals(PtaTypeEnum.RIGHT_CLICK, interaction.getType());
+        assertTrue(interaction.getBlock().isAir());
+        assertTrue(interaction.getHand().isEmpty());
+        assertFalse(interaction.isHidden());
+        assertFalse(interaction.hasHurtPlayer());
+        assertFalse(interaction.hasConsumeFood());
+    }
+
+    @Test
+    @DisplayName("an unknown click type is rejected outright")
+    void unknownType() {
+        assertNull(resolve("{\"type\": \"middle_click\"}"));
+    }
+
+    @Test
+    @DisplayName("the hidden flag reaches the runtime model")
+    void hiddenFlag() {
+        assertTrue(resolve("{\"type\": \"right_click\", \"hidden\": true}").isHidden());
+        assertFalse(resolve("{\"type\": \"right_click\", \"hidden\": false}").isHidden());
+    }
+
+    @Test
+    @DisplayName("a hand resolves its items, hand side and consume mode")
+    void hand() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "hand": {
+                   "hand": "off", "match": "minecraft:diamond_pickaxe",
+                   "consume": { "mode": "durability", "chance": 0.5 }}}
+                """);
+
+        assertEquals(PtaHandEnum.OFF_HAND, interaction.getHand().getHand());
+        assertTrue(interaction.getHand().getItemSet().contains(Items.DIAMOND_PICKAXE));
+        assertTrue(interaction.getHand().isDamageable());
+        assertFalse(interaction.getHand().isConsumable());
+        assertEquals(0.5, interaction.getHand().getChance());
+    }
+
+    @Test
+    @DisplayName("consume mode `shrink` and `consume` both mean shrink")
+    void consumeAliases() {
+        String template = "{\"type\": \"right_click\", \"hand\": {\"match\": \"minecraft:stick\", \"consume\": {\"mode\": \"%s\"}}}";
+
+        assertTrue(resolve(template.formatted("shrink")).getHand().isConsumable());
+        assertTrue(resolve(template.formatted("consume")).getHand().isConsumable());
+        assertFalse(resolve(template.formatted("none")).getHand().isConsumable());
+    }
+
+    @Test
+    @DisplayName("consume count reaches the model, defaults to one and floors at one")
+    void consumeCount() {
+        PtaHand ranged = resolve("""
+                {"type": "right_click", "hand": {"match": "minecraft:stick",
+                   "consume": { "mode": "shrink", "chance": 0.33, "count": {"min": 3, "max": 5} }}}
+                """).getHand();
+
+        assertEquals(3, ranged.getConsumeMin());
+        assertEquals(5, ranged.getConsumeMax());
+        assertTrue(ranged.hasConsumeRange());
+
+        PtaHand implicit = resolve("{\"type\": \"right_click\", \"hand\": {\"match\": \"minecraft:stick\", \"consume\": {\"mode\": \"shrink\"}}}").getHand();
+        assertEquals(1, implicit.getConsumeMin());
+        assertEquals(1, implicit.getConsumeMax());
+        assertFalse(implicit.hasConsumeRange(), "an amount of one is not worth a viewer line");
+
+        // Spending nothing is what chance and mode: none are for, so zero is lifted to one.
+        PtaHand zero = resolve("{\"type\": \"right_click\", \"hand\": {\"match\": \"minecraft:stick\", \"consume\": {\"mode\": \"shrink\", \"count\": 0}}}").getHand();
+        assertEquals(1, zero.getConsumeMin());
+        assertEquals(1, zero.getConsumeMax());
+    }
+
+    @Test
+    @DisplayName("an unknown hand falls back to any hand rather than dropping the interaction")
+    void unknownHand() {
+        PtaInteraction interaction = resolve("{\"type\": \"right_click\", \"hand\": {\"hand\": \"third\"}}");
+
+        assertNotNull(interaction);
+        assertTrue(interaction.getHand().isEmpty());
+    }
+
+    @Test
+    @DisplayName("a block target resolves by id")
+    void blockTarget() {
+        PtaInteraction interaction = resolve(
+                "{\"type\": \"left_click\", \"target\": {\"kind\": \"block\", \"match\": \"minecraft:stone\"}}");
+
+        assertTrue(interaction.getBlock().isBlock());
+        assertTrue(interaction.getBlock().isBlockFromSet(Blocks.STONE));
+    }
+
+    @Test
+    @DisplayName("a fluid target resolves by id")
+    void fluidTarget() {
+        PtaInteraction interaction = resolve(
+                "{\"type\": \"left_click\", \"target\": {\"kind\": \"fluid\", \"match\": \"minecraft:water\"}}");
+
+        assertTrue(interaction.getBlock().isFluid());
+        assertEquals(Fluids.WATER, interaction.getBlock().getFluid());
+    }
+
+    @Test
+    @DisplayName("kind `any` finds a block or a fluid without reporting the side that missed")
+    void anyKind() {
+        assertTrue(resolve("{\"type\": \"left_click\", \"target\": {\"kind\": \"any\", \"match\": \"minecraft:stone\"}}")
+                .getBlock().isBlock());
+        // Only registered as a fluid, so `any` has one place to find it.
+        assertTrue(resolve("{\"type\": \"left_click\", \"target\": {\"kind\": \"any\", \"match\": \"minecraft:flowing_water\"}}")
+                .getBlock().isFluid());
+    }
+
+    @Test
+    @DisplayName("kind `any` on water or lava resolves to the block, since the id exists in both registries")
+    void anyKindPrefersBlockForSharedIds() {
+        // `minecraft:water` names both a block and a fluid, so `any` finds both and the mixed-target
+        // rule keeps the blocks. Harmless in practice — a water source *is* Blocks.WATER at that
+        // position, so the block index matches the click — but it means `kind: "fluid"` is the only
+        // way to get a genuine fluid target, and the docs say so.
+        assertTrue(resolve("{\"type\": \"left_click\", \"target\": {\"kind\": \"any\", \"match\": \"minecraft:water\"}}")
+                .getBlock().isBlock());
+        assertTrue(resolve("{\"type\": \"left_click\", \"target\": {\"kind\": \"fluid\", \"match\": \"minecraft:water\"}}")
+                .getBlock().isFluid());
+    }
+
+    @Test
+    @DisplayName("a target that resolves to nothing falls back to air")
+    void unresolvableTargetBecomesAir() {
+        assertTrue(resolve("{\"type\": \"left_click\", \"target\": {\"match\": \"minecraft:not_a_block\"}}")
+                .getBlock().isAir());
+    }
+
+    @Test
+    @DisplayName("a target mixing blocks and fluids keeps the blocks")
+    void mixedTargetPrefersBlocks() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"kind": "any", "match": ["minecraft:stone", "minecraft:water"]}}
+                """);
+
+        assertTrue(interaction.getBlock().isBlock());
+        assertTrue(interaction.getBlock().isBlockFromSet(Blocks.STONE));
+    }
+
+    @Test
+    @DisplayName("block states resolve against the target's properties")
+    void blockState() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {
+                   "match": "minecraft:oak_log", "state": { "whitelist": { "axis": "y" } }}}
+                """);
+
+        assertTrue(interaction.getBlock().hasStateWhiteList());
+        assertEquals(1, interaction.getBlock().getStateWhiteList().size());
+    }
+
+    @Test
+    @DisplayName("an unknown state property is dropped, not fatal")
+    void unknownStateIgnored() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {
+                   "match": "minecraft:stone", "state": { "whitelist": { "nonsense": "1" } }}}
+                """);
+
+        assertNotNull(interaction);
+        assertFalse(interaction.getBlock().hasStateWhiteList());
+    }
+
+    @Test
+    @DisplayName("rewards resolve, and a non-positive weight is dropped with the entry")
+    void rewards() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "rewards": {
+                   "weighted": [
+                     { "match": "minecraft:clay_ball", "weight": 4 },
+                     { "match": "minecraft:diamond",  "weight": 0 }
+                   ],
+                   "guaranteed": [{ "match": "minecraft:stick", "count": 2 }],
+                   "rolls": 3 }}
+                """);
+
+        assertEquals(4, interaction.getPool().getTotalPoolWeight());
+        assertEquals(1, interaction.getPool().getTotalPoolSize());
+        assertEquals(3, interaction.getRewards().getRolls());
+        assertTrue(interaction.getRewards().hasGuaranteed());
+    }
+
+    @Test
+    @DisplayName("a [0, n] drop survives resolution")
+    void zeroMinDropSurvives() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "rewards": {
+                   "weighted": [{ "match": "minecraft:clay_ball", "count": { "min": 0, "max": 3 } }]}}
+                """);
+
+        assertEquals(1, interaction.getPool().getTotalPoolSize());
+        assertEquals(0, interaction.getPool().getDropPool().keySet().iterator().next().min());
+        assertEquals(3, interaction.getPool().getDropPool().keySet().iterator().next().max());
+    }
+
+    @Test
+    @DisplayName("fortune resolves against the static enchantment registry")
+    void fortune() {
+        // The 1.21 line reads enchantments from a dynamic registry, which a test cannot reach, so
+        // there the same file degrades to no bonus. Here the registry is always up.
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "rewards": { "fortune": { "enchant": "minecraft:fortune", "factor": 2 }}}
+                """);
+
+        assertNotNull(interaction);
+        assertTrue(interaction.getRewards().hasFortune());
+    }
+
+    @Test
+    @DisplayName("an unknown enchantment is reported and leaves no bonus behind")
+    void fortuneUnknownEnchant() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "rewards": { "fortune": { "enchant": "minecraft:not_an_enchant", "factor": 2 }}}
+                """);
+
+        assertNotNull(interaction);
+        assertFalse(interaction.getRewards().hasFortune());
+    }
+
+    @Test
+    @DisplayName("costs resolve with a floor of one point")
+    void costs() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "costs": {
+                   "damage": { "chance": 0.5, "amount": 2 },
+                   "hunger": { "amount": { "min": 0, "max": 4 } }}}
+                """);
+
+        assertTrue(interaction.hasHurtPlayer());
+        assertEquals(0.5, interaction.getHurtPlayer().chance());
+        assertEquals(2, interaction.getHurtPlayer().min());
+
+        assertTrue(interaction.hasConsumeFood());
+        assertEquals(1, interaction.getConsumeFood().min(), "a cost floors at one point");
+        assertEquals(4, interaction.getConsumeFood().max());
+    }
+
+    @Test
+    @DisplayName("biome whitelist and blacklist land on the interaction")
+    void biomes() {
+        PtaInteraction whitelisted = resolve("""
+                {"type": "left_click", "conditions": { "biomes": { "whitelist": ["minecraft:the_nether"] }}}
+                """);
+        assertTrue(whitelisted.hasBiomeWhiteList());
+        assertFalse(whitelisted.hasBiomeBlackList());
+
+        PtaInteraction blacklisted = resolve("""
+                {"type": "left_click", "conditions": { "biomes": { "blacklist": ["minecraft:the_end"] }}}
+                """);
+        assertTrue(blacklisted.hasBiomeBlackList());
+        assertFalse(blacklisted.hasBiomeWhiteList());
+    }
+
+    @Test
+    @DisplayName("conditions resolve into the extras bundle")
+    void conditions() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "conditions": {
+                   "time": "night", "weather": ["rain"], "y_range": [0, 60],
+                   "light": { "max": 7 }, "player_state": { "min_food": 6 }}}
+                """);
+
+        PtaConditions conditions = interaction.getConditions();
+        assertEquals(PtaConditions.Time.NIGHT, conditions.time());
+        assertTrue(conditions.weather().contains(PtaConditions.Weather.RAIN));
+        assertEquals(0, conditions.yMin());
+        assertEquals(60, conditions.yMax());
+        assertEquals(7, conditions.lightMax());
+        assertEquals(6, conditions.minFood());
+    }
+
+    @Test
+    @DisplayName("unknown time and weather tokens fall back to 'any' rather than failing")
+    void unknownConditionTokens() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "conditions": { "time": "dusk", "weather": ["hail"] }}
+                """);
+
+        assertEquals(PtaConditions.Time.ANY, interaction.getConditions().time());
+        assertTrue(interaction.getConditions().weather().isEmpty());
+    }
+
+    @Test
+    @DisplayName("effects resolve from the built-in registry")
+    void effects() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "effects": [{ "id": "minecraft:haste", "duration": 100, "amplifier": 1 }]}
+                """);
+
+        assertTrue(interaction.getExtras().hasEffects());
+        assertEquals(100, interaction.getExtras().effects().get(0).duration());
+        assertEquals(1, interaction.getExtras().effects().get(0).amplifier());
+    }
+
+    @Test
+    @DisplayName("an unknown effect is skipped, keeping the rest of the interaction")
+    void unknownEffectSkipped() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "effects": [
+                   { "id": "minecraft:not_an_effect" }, { "id": "minecraft:haste" }]}
+                """);
+
+        assertEquals(1, interaction.getExtras().effects().size());
+    }
+
+    @Test
+    @DisplayName("a transformation with chance 0 is no transformation")
+    void inertTransformation() {
+        assertFalse(resolve("{\"type\": \"left_click\", \"target\": {\"match\": \"minecraft:stone\"}, "
+                + "\"transformation\": {\"chance\": 0}}").getTransformation().hasTransformation());
+    }
+
+    @Test
+    @DisplayName("a transformation into a block resolves, and an unknown one degrades to breaking")
+    void transformationInto() {
+        PtaInteraction into = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "into": {"kind": "block", "id": "minecraft:cobblestone"}}}
+                """);
+        assertTrue(into.getTransformation().isBlock());
+        assertEquals(Blocks.COBBLESTONE, into.getTransformation().getBlock());
+
+        PtaInteraction unknown = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "into": {"kind": "block", "id": "minecraft:not_a_block"}}}
+                """);
+        assertTrue(unknown.getTransformation().isAir());
+    }
+
+    @Test
+    @DisplayName("an air target cannot transform the block it is standing on")
+    void airTargetDropsTransformation() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "transformation": {"chance": 1, "into": {"id": "minecraft:stone"}}}
+                """);
+
+        assertTrue(interaction.getBlock().isAir());
+        assertFalse(interaction.hasTransformations());
+    }
+
+    @Test
+    @DisplayName("an air target keeps an offset transformation, since that one is measured from the player")
+    void airTargetKeepsOffsetTransformation() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "transformation":
+                  {"chance": 1, "op": "place", "at": {"y": 2}, "into": {"id": "minecraft:stone"}}}
+                """);
+
+        assertTrue(interaction.getBlock().isAir());
+        assertTrue(interaction.hasTransformations());
+        assertEquals(2, interaction.getTransformation().getOffset().y());
+    }
+
+    @Test
+    @DisplayName("op, offset, require and drops all resolve")
+    void transformationPlacement() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "place", "drops": false,
+                   "at": {"x": 1, "y": 0, "z": -2, "relative_to": "face"},
+                   "require": {"match": "minecraft:air"},
+                   "into": {"id": "minecraft:torch"}}}
+                """);
+
+        PtaTransformation transformation = interaction.getTransformation();
+        assertEquals(PtaTransformOp.PLACE, transformation.getOp());
+        assertEquals(new PtaOffset(1, 0, -2, PtaOffset.Frame.FACE), transformation.getOffset());
+        assertTrue(transformation.hasRequirement());
+        assertTrue(transformation.getRequire().isBlockFromSet(Blocks.AIR));
+        assertFalse(transformation.shouldDropItems());
+    }
+
+    @Test
+    @DisplayName("break needs no into, and place without one is dropped")
+    void opValidation() {
+        PtaInteraction breaking = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "break", "at": {"y": 1}}}
+                """);
+        assertTrue(breaking.getTransformation().isBreak());
+        assertTrue(breaking.getTransformation().shouldDropItems());
+
+        PtaInteraction placingNothing = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "place", "at": {"y": 1}}}
+                """);
+        assertFalse(placingNothing.hasTransformations());
+    }
+
+    @Test
+    @DisplayName("an unknown op is dropped rather than guessed at")
+    void unknownOp() {
+        assertFalse(resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "sideways"}}
+                """).hasTransformations());
+    }
+
+    @Test
+    @DisplayName("an unknown offset frame falls back to world instead of losing the transformation")
+    void unknownFrame() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1, "relative_to": "sideways"}}}
+                """);
+
+        assertEquals(PtaOffset.Frame.WORLD, interaction.getTransformation().getOffset().frame());
+    }
+
+    @Test
+    @DisplayName("a require naming nothing is ignored rather than silently matching nothing")
+    void emptyRequirement() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "require": {"match": "minecraft:not_a_block"}}}
+                """);
+
+        assertTrue(interaction.hasTransformations());
+        assertFalse(interaction.getTransformation().hasRequirement());
+    }
+
+    @Test
+    @DisplayName("a list of transformations resolves in order, dropping only the broken entries")
+    void transformationList() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "target": {"match": "minecraft:stone"},
+                 "transformation": [
+                   {"chance": 1, "op": "break", "at": {"y": 1}},
+                   {"chance": 1, "op": "place"},
+                   {"chance": 1, "at": {"y": -1}, "into": {"id": "minecraft:cobblestone"}}
+                 ]}
+                """);
+
+        assertEquals(2, interaction.getTransformations().size());
+        assertTrue(interaction.getTransformations().get(0).isBreak());
+        assertEquals(Blocks.COBBLESTONE, interaction.getTransformations().get(1).getBlock());
+    }
+
+    @Test
+    @DisplayName("sound and particles resolve, and unknown ones simply do not appear")
+    void feedback() {
+        PtaInteraction known = resolve("""
+                {"type": "left_click", "sound": "minecraft:entity.player.levelup", "particles": "minecraft:dirt"}
+                """);
+        assertTrue(known.getExtras().hasSound());
+        assertTrue(known.getExtras().hasParticles());
+
+        PtaInteraction unknown = resolve("""
+                {"type": "left_click", "sound": "minecraft:no.such.sound", "particles": "minecraft:not_a_block"}
+                """);
+        assertFalse(unknown.getExtras().hasSound());
+        assertFalse(unknown.getExtras().hasParticles());
+    }
+
+    @Test
+    @DisplayName("a malformed id is reported, never thrown")
+    void malformedIdsDoNotThrow() {
+        // Every id in a file is authored text. ResourceLocation.parse throws, and this runs inside
+        // the datapack reload — one typo used to abort the load of every interaction in the pack.
+        assertDoesNotThrow(() -> resolve("{\"type\": \"left_click\", \"sound\": \"NOT AN ID\"}"));
+        assertDoesNotThrow(() -> resolve("{\"type\": \"left_click\", \"particles\": \"Bad Id!\"}"));
+        assertDoesNotThrow(() -> resolve("{\"type\": \"left_click\", \"effects\": [{\"id\": \"UPPER CASE\"}]}"));
+        assertDoesNotThrow(() -> resolve("{\"type\": \"left_click\", \"target\": {\"match\": \"a b c\"}}"));
+        assertDoesNotThrow(() -> resolve("{\"type\": \"left_click\", \"hand\": {\"match\": \"???\"}}"));
+        assertDoesNotThrow(() -> resolve(
+                "{\"type\": \"left_click\", \"rewards\": {\"weighted\": [{\"match\": \"! !\"}]}}"));
+        assertDoesNotThrow(() -> resolve(
+                "{\"type\": \"left_click\", \"rewards\": {\"fortune\": {\"enchant\": \"nope!\"}}}"));
+    }
+
+    @Test
+    @DisplayName("a malformed id yields the same inert result as an unknown one")
+    void malformedIdsDegradeGracefully() {
+        PtaInteraction interaction = resolve("""
+                {"type": "left_click", "sound": "NOT AN ID", "target": {"match": "a b c"}}
+                """);
+
+        assertNotNull(interaction);
+        assertFalse(interaction.getExtras().hasSound());
+        assertTrue(interaction.getBlock().isAir());
+    }
+
+    @Test
+    @DisplayName("two resolutions of the same file compare equal")
+    void resolutionIsStable() {
+        String json = "{\"type\": \"left_click\", \"rewards\": {\"rolls\": 2}}";
+
+        assertEquals(resolve(json), resolve(json));
+        assertEquals(resolve(json).hashCode(), resolve(json).hashCode());
+    }
+
+    @Test
+    @DisplayName("requires_sneaking is folded into the type rather than fighting it")
+    void sneakingIsFoldedIntoTheType() {
+        // Sneaking is part of the click type. Setting it twice used to give an interaction whose type
+        // filtered for one thing and whose condition filtered for the other, so it could never fire —
+        // while still being listed in JEI as a working recipe.
+        PtaInteraction folded = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": true}}
+                """);
+
+        assertEquals(PtaTypeEnum.SHIFT_RIGHT_CLICK, folded.getType());
+        assertNull(folded.getConditions().requiresSneaking(), "the type carries it now, so the condition is gone");
+
+        PtaInteraction unfolded = resolve("""
+                {"type": "shift_left_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": false}}
+                """);
+
+        assertEquals(PtaTypeEnum.LEFT_CLICK, unfolded.getType());
+        assertNull(unfolded.getConditions().requiresSneaking());
+    }
+
+    @Test
+    @DisplayName("a requires_sneaking that agrees with the type is simply dropped")
+    void redundantSneakingIsDropped() {
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": true}}
+                """);
+
+        assertEquals(PtaTypeEnum.SHIFT_RIGHT_CLICK, interaction.getType());
+        assertNull(interaction.getConditions().requiresSneaking());
+        // Nothing else in the conditions was disturbed on the way past.
+        assertTrue(interaction.getConditions().isEmpty());
+    }
+
+    @Test
+    @DisplayName("folding leaves the rest of the conditions alone")
+    void foldingKeepsOtherConditions() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"requires_sneaking": true, "time": "night", "y_range": [-64, 0]}}
+                """);
+
+        assertEquals(PtaTypeEnum.SHIFT_RIGHT_CLICK, interaction.getType());
+        assertEquals(PtaConditions.Time.NIGHT, interaction.getConditions().time());
+        assertEquals(-64, interaction.getConditions().yMin());
+        assertNull(interaction.getConditions().requiresSneaking());
+    }
+
+    @Test
+    @DisplayName("a region survives resolution, corner and all")
+    void regionSurvivesResolution() {
+        // The seam nobody was testing. The codec parsed `to`, PtaOffset did the box maths correctly,
+        // the game tests built a region by hand — and the resolver in between never read the second
+        // corner, so every region shipped as a single block while all three suites stayed green.
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "replace",
+                   "at": {"x": -1, "y": 0, "z": -1, "to": {"x": 1, "y": 0, "z": 1}},
+                   "into": {"id": "minecraft:glass"}}}
+                """);
+
+        PtaOffset at = interaction.getTransformation().getOffset();
+        assertTrue(at.isRegion(), "the far corner should have survived the resolver");
+        assertEquals(9, at.size(), "a 3x3 covers nine blocks");
+        assertEquals(1, at.to().x());
+        assertEquals(1, at.to().z());
+    }
+
+    @Test
+    @DisplayName("the far corner is read in the same frame as the near one")
+    void regionCornersShareAFrame() {
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "break",
+                   "at": {"x": -1, "y": -1, "z": 0, "to": {"x": 1, "y": 1, "z": 0},
+                          "relative_to": "player"}}}
+                """);
+
+        PtaOffset at = interaction.getTransformation().getOffset();
+        assertEquals(PtaOffset.Frame.PLAYER, at.frame());
+        assertEquals(PtaOffset.Frame.PLAYER, at.to().frame(),
+                "a box read half in one frame and half in another would be a shape nobody drew");
+        assertEquals(9, at.size());
+    }
+
+    @Test
+    @DisplayName("an offset with no far corner is a single block, not an empty region")
+    void plainOffsetIsNotARegion() {
+        PtaInteraction interaction = resolve("""
+                {"type": "shift_right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1}, "into": {"id": "minecraft:glass"}}}
+                """);
+
+        PtaOffset at = interaction.getTransformation().getOffset();
+        assertFalse(at.isRegion());
+        assertEquals(1, at.size());
+    }
+
+    // Every field added in 2.3.0 and 2.4.0, checked end to end.
+    //
+    // The region bug was not a mistake in any one layer: it was a field the resolver never carried
+    // across, with every layer around it correct and tested. These walk the same seam for each of
+    // the other fields added at the same time, since the way that bug happened is the way it would
+    // happen again.
+
+    @Test
+    @DisplayName("a copy carries the offset it reads from")
+    void copySourceSurvivesResolution() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1},
+                   "into": {"kind": "copy", "from": {"y": -1, "relative_to": "player"}}}}
+                """);
+
+        PtaTransformation transformation = interaction.getTransformation();
+        assertTrue(transformation.isCopy(), "kind: copy should resolve to a copy");
+        assertNotNull(transformation.getCopyFrom());
+        assertEquals(-1, transformation.getCopyFrom().y());
+        assertEquals(PtaOffset.Frame.PLAYER, transformation.getCopyFrom().frame(),
+                "the source has its own frame and it must not be lost");
+    }
+
+    @Test
+    @DisplayName("a copy with no `from` reads the interacted block")
+    void copyDefaultsToTheOrigin() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "at": {"y": 1}, "into": {"kind": "copy"}}}
+                """);
+
+        assertTrue(interaction.getTransformation().isCopy());
+        assertEquals(PtaOffset.NONE, interaction.getTransformation().getCopyFrom());
+    }
+
+    @Test
+    @DisplayName("rewards.at reaches the rewards, not just the spec")
+    void rewardDropPositionSurvivesResolution() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "rewards": {"at": {"y": 2, "relative_to": "face"},
+                   "guaranteed": [{"match": "minecraft:flint"}]}}
+                """);
+
+        PtaOffset dropAt = interaction.getRewards().getDropAt();
+        assertEquals(2, dropAt.y());
+        assertEquals(PtaOffset.Frame.FACE, dropAt.frame());
+    }
+
+    @Test
+    @DisplayName("rewards with no `at` still drop on the interacted block")
+    void rewardsDefaultToTheOrigin() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "rewards": {"guaranteed": [{"match": "minecraft:flint"}]}}
+                """);
+
+        assertEquals(PtaOffset.NONE, interaction.getRewards().getDropAt());
+    }
+
+    @Test
+    @DisplayName("neighbour conditions reach the conditions with their offset and their block")
+    void neighboursSurviveResolution() {
+        PtaInteraction interaction = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "conditions": {"neighbours": [
+                   {"at": {"y": -1}, "block": {"match": "minecraft:obsidian"}},
+                   {"at": {"y": 1, "relative_to": "player"}, "block": {"match": "minecraft:sand"}, "invert": true}
+                 ]}}
+                """);
+
+        var neighbours = interaction.getConditions().neighbours();
+        assertEquals(2, neighbours.size());
+
+        assertEquals(-1, neighbours.get(0).at().y());
+        assertFalse(neighbours.get(0).invert());
+        assertTrue(neighbours.get(0).block().isBlockFromSet(Blocks.OBSIDIAN));
+
+        assertEquals(PtaOffset.Frame.PLAYER, neighbours.get(1).at().frame());
+        assertTrue(neighbours.get(1).invert());
+        assertTrue(neighbours.get(1).block().isBlockFromSet(Blocks.SAND));
+    }
+
+    @Test
+    @DisplayName("a transformation group carries its chance to the interaction")
+    void groupChanceSurvivesResolution() {
+        PtaInteraction grouped = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 0.7, "all": [
+                   {"chance": 1, "op": "break"},
+                   {"chance": 1, "op": "break", "at": {"y": 1}}
+                 ]}}
+                """);
+
+        assertEquals(0.7, grouped.getTransformationChance());
+        assertEquals(2, grouped.getTransformations().size());
+
+        // A plain list is a set that always happens, not one that never does.
+        PtaInteraction plain = resolve("""
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": [{"chance": 1, "op": "break"}]}
+                """);
+        assertEquals(1.0, plain.getTransformationChance());
+    }
+
+    @Test
+    @DisplayName("the drop mode survives, in all three spellings")
+    void dropModeSurvivesResolution() {
+        String template = """
+                {"type": "right_click", "target": {"match": "minecraft:stone"},
+                 "transformation": {"chance": 1, "op": "break", "drops": %s}}
+                """;
+
+        assertEquals(PtaDropMode.VANILLA, resolve(template.formatted("true")).getTransformation().getDropMode());
+        assertEquals(PtaDropMode.NONE, resolve(template.formatted("false")).getTransformation().getDropMode());
+        assertEquals(PtaDropMode.TOOL, resolve(template.formatted("\"tool\"")).getTransformation().getDropMode());
+    }
+}

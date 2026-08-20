@@ -16,13 +16,17 @@ import java.util.stream.Collectors;
 public class BlockChecker {
 
     public static boolean doesBlockExist(String blockName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(blockName);
-        return ForgeRegistries.BLOCKS.containsKey(blockResourceLocation);
+        ResourceLocation id = ItemChecker.tryParse(blockName);
+        return id != null && ForgeRegistries.BLOCKS.containsKey(id);
     }
 
+    /**
+     * @return the block, or {@code null} when the id is malformed or unregistered. Deliberately not
+     *         the registry default, which would answer an unknown id with {@code AIR}.
+     */
     public static Block getExistingBlock(String blockName) {
-        ResourceLocation blockResourceLocation = new ResourceLocation(blockName);
-        return ForgeRegistries.BLOCKS.getValue(blockResourceLocation);
+        ResourceLocation id = ItemChecker.tryParse(blockName);
+        return id == null || !ForgeRegistries.BLOCKS.containsKey(id) ? null : ForgeRegistries.BLOCKS.getValue(id);
     }
 
     public static Block getFirstBlockForTag(String blockTag) {
@@ -30,7 +34,9 @@ public class BlockChecker {
     }
 
     public static Set<Block> getBlocksForTag(String blockTag) {
-        ResourceLocation tagId = new ResourceLocation(blockTag);
+        ResourceLocation tagId = ItemChecker.tryParse(blockTag);
+        if (tagId == null) return new HashSet<>();
+
         TagKey<Block> tagKey = TagKey.create(ForgeRegistries.BLOCKS.getRegistryKey(), tagId);
         ITagManager<Block> blockTagManager = ForgeRegistries.BLOCKS.tags();
 
@@ -42,7 +48,9 @@ public class BlockChecker {
     }
 
     public static boolean isBlockTagExisting(String blockTag) {
-        ResourceLocation tagId = new ResourceLocation(blockTag);
+        ResourceLocation tagId = ItemChecker.tryParse(blockTag);
+        if (tagId == null) return false;
+
         TagKey<Block> tagKey = TagKey.create(ForgeRegistries.BLOCKS.getRegistryKey(), tagId);
         ITagManager<Block> blockTagManager = ForgeRegistries.BLOCKS.tags();
 
