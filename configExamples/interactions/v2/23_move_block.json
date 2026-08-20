@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": { "hand": "main", "match": "minecraft:stick" },
+  "target": { "kind": "block", "match": "#minecraft:wool" },
+  "transformation": [
+    {
+      "chance": 1.0,
+      "op": "place",
+      "at": { "y": 1 },
+      "require": { "match": "minecraft:air" },
+      "into": { "kind": "copy" }
+    },
+    { "chance": 1.0, "op": "break", "drops": false }
+  ]
+}

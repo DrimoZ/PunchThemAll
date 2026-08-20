@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:feather",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "transformation": {
+    "chance": 1.0,
+    "op": "place",
+    "at": { "y": 2, "relative_to": "player" },
+    "require": { "match": "minecraft:air" },
+    "into": { "kind": "block", "id": "minecraft:scaffolding" },
+    "sound": "minecraft:block.scaffolding.place"
+  }
+}

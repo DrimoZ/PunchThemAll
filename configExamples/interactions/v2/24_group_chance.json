@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:torch",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "minecraft:cobblestone" },
+  "transformation": {
+    "chance": 0.7,
+    "all": [
+      { "chance": 1.0, "op": "break", "at": { "y": 1 }, "drops": false },
+      { "chance": 1.0, "op": "place", "at": { "y": 1 }, "into": { "kind": "block", "id": "minecraft:torch" } }
+    ]
+  }
+}

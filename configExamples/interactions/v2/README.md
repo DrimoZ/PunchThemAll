@@ -29,6 +29,15 @@ Each example focuses on one feature so it is easy to understand and remix:
 | `17_full_showcase.json` | Many features combined in one interaction. |
 | `18_hidden_from_jei.json` | `hidden: true` — loads and fires normally, but never appears in JEI. For secrets, and for the middle steps of a multi-stage recipe. Not the same as `enabled: false`, which turns it off. |
 | `19_consume_count.json` | `consume.count` — a 33% chance of spending **3 to 5** items. `chance` decides whether, `count` decides how many. |
+| `20_offset_world.json` | `at` — a transformation acting on a block **other than the one clicked**, read in world axes. Sneak-left-click a gold block with redstone in hand. |
+| `21_offset_place.json` | `op: "place"` at an offset, with `require` on the destination. Nothing is written unless the destination matches. |
+| `22_region.json` | `at.to` — a whole **box** in one entry, every block of it filtered by `require`. Bone meal on dirt turns a 3x3 to grass. |
+| `23_move_block.json` | `into: { "kind": "copy" }` plus a `break`: moves a block up one, rather than naming what to write. Two transformations, applied in order. |
+| `24_group_chance.json` | One roll for the **whole set**: either the torch and the space for it both happen, or neither does. |
+| `25_break_neighbour.json` | `op: "break"` at an offset, with `drops` deciding what the broken block leaves. |
+| `26_air_offset_place.json` | An **air** interaction that transforms: with no block under the cursor, the offset is measured from the player. |
+| `27_conditions_neighbours.json` | `conditions.neighbours` — the recipe only applies when the blocks *around* the target are right. `invert` for "and not". |
+| `28_rewards_grid_mixed.json` | 20 weighted drops and 3 guaranteed ones. Past `max_drop_rows` the extra drops share slots, and a guaranteed drop never shares with a weighted one. Set `max_drop_rows = 2` in `pta-client.toml` to see it. |
 
 ## Selector cheat-sheet
 
