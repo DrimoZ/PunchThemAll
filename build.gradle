@@ -149,6 +149,10 @@ repositories {
     }
 }
 
+// Set on the command line as -PnoCompanionMods to launch a run with PunchThemAll alone.
+def loadCompanionMods = !gradle.startParameter.taskNames.any { it.toLowerCase().contains("gametest") }
+        && !project.hasProperty("noCompanionMods")
+
 dependencies {
     // Specify the version of Minecraft to use.
     // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
@@ -163,28 +167,33 @@ dependencies {
     compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
     runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
-    runtimeOnly fg.deobf("com.simibubi.create:create-${create_minecraft_version}:${create_version}:slim") { transitive = false }
-    runtimeOnly fg.deobf("com.jozufozu.flywheel:flywheel-forge-${flywheel_minecraft_version}:${flywheel_version}")
-    runtimeOnly fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
+    // The companion mods below are there to test against by hand; the game tests do without them.
+    // AE2 mixes into MinecraftServer in a way that fails outright on a dedicated game test server,
+    // taking the run down before a single test gets to run.
+    if (loadCompanionMods) {
+        runtimeOnly fg.deobf("com.simibubi.create:create-${create_minecraft_version}:${create_version}:slim") { transitive = false }
+        runtimeOnly fg.deobf("com.jozufozu.flywheel:flywheel-forge-${flywheel_minecraft_version}:${flywheel_version}")
+        runtimeOnly fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
 
-    //implementation fg.deobf("curse.maven:the-one-probe-245211:5159287")
+        //implementation fg.deobf("curse.maven:the-one-probe-245211:5159287")
 
-    runtimeOnly fg.deobf("curse.maven:applied-energistics-2-223794:5447039")
-    runtimeOnly fg.deobf("curse.maven:jade-324717:5339264")
-    runtimeOnly fg.deobf("curse.maven:ex-deorum-901420:5421677")
+        runtimeOnly fg.deobf("curse.maven:applied-energistics-2-223794:5447039")
+        runtimeOnly fg.deobf("curse.maven:jade-324717:5339264")
+        runtimeOnly fg.deobf("curse.maven:ex-deorum-901420:5421677")
 
-    runtimeOnly fg.deobf("curse.maven:cucumber-272335:5228968")
-    runtimeOnly fg.deobf("curse.maven:placebo-283644:5414631")
-    runtimeOnly fg.deobf("curse.maven:click-machine-298275:4761099")
+        runtimeOnly fg.deobf("curse.maven:cucumber-272335:5228968")
+        runtimeOnly fg.deobf("curse.maven:placebo-283644:5414631")
+        runtimeOnly fg.deobf("curse.maven:click-machine-298275:4761099")
 
-    runtimeOnly fg.deobf("curse.maven:cofh-core-69162:5374122")
-    runtimeOnly fg.deobf("curse.maven:thermal-foundation-222880:5443583")
-    runtimeOnly fg.deobf("curse.maven:thermal-cultivation-271835:5372746")
-    runtimeOnly fg.deobf("curse.maven:thermal-dynamics-227443:5372747")
-    runtimeOnly fg.deobf("curse.maven:thermal-expansion-69163:5372749")
-    runtimeOnly fg.deobf("curse.maven:thermal-innovation-291737:5372751")
-    runtimeOnly fg.deobf("curse.maven:thermal-integration-626708:5374210")
-    runtimeOnly fg.deobf("curse.maven:thermal-locomotion-406959:5372752")
+        runtimeOnly fg.deobf("curse.maven:cofh-core-69162:5374122")
+        runtimeOnly fg.deobf("curse.maven:thermal-foundation-222880:5443583")
+        runtimeOnly fg.deobf("curse.maven:thermal-cultivation-271835:5372746")
+        runtimeOnly fg.deobf("curse.maven:thermal-dynamics-227443:5372747")
+        runtimeOnly fg.deobf("curse.maven:thermal-expansion-69163:5372749")
+        runtimeOnly fg.deobf("curse.maven:thermal-innovation-291737:5372751")
+        runtimeOnly fg.deobf("curse.maven:thermal-integration-626708:5374210")
+        runtimeOnly fg.deobf("curse.maven:thermal-locomotion-406959:5372752")
+    }
 
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
@@ -268,4 +277,10 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     testLogging { events "passed", "failed", "skipped" }
+}
+
+tasks.register('verify') {
+    group = 'verification'
+    description = 'Runs the unit suite and then the in-world game tests.'
+    dependsOn tasks.named('test'), tasks.named('runGameTestServer')
 }
