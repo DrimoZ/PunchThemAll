@@ -116,6 +116,11 @@ neoForge.addModdingDependenciesTo(sourceSets.test)
 tasks.named("jar", Jar).configure {
     from(rootProject.file("LICENSE")) { into("META-INF") }
     from(rootProject.file("LICENSE-ASSETS")) { into("META-INF") }
+
+    // The game tests load their arena from a structure template, which has to sit in the mod
+    // resources for the dev run to find it. It is scaffolding, not content, and a released jar
+    // has no business carrying a structure a player could place.
+    exclude("data/pta/structure/**")
 }
 
 tasks.named('test', Test).configure {
