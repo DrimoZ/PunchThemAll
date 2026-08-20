@@ -150,8 +150,14 @@ repositories {
 }
 
 // Set on the command line as -PnoCompanionMods to launch a run with PunchThemAll alone.
-def loadCompanionMods = !gradle.startParameter.taskNames.any { it.toLowerCase().contains("gametest") }
-        && !project.hasProperty("noCompanionMods")
+//
+// The game test server is matched by name rather than by the task graph, because dependencies are
+// not resolved yet when this block runs. "verify" is in the list because it depends on
+// runGameTestServer without saying so in its own name, which cost a green run once already.
+def gameTestTasks = ["gametest", "verify"]
+def loadCompanionMods = !gradle.startParameter.taskNames.any { name ->
+            gameTestTasks.any { name.toLowerCase().contains(it) }
+        } && !project.hasProperty("noCompanionMods")
 
 dependencies {
     // Specify the version of Minecraft to use.

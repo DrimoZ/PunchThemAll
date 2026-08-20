@@ -1,0 +1,7 @@
+{
+  "schema_version": 2,
+  "type": "left_click",
+  "target": { "kind": "block", "match": "minecraft:clay" },
+  "conditions": { "requires_sneaking": true },
+  "rewards": { "guaranteed": [{ "match": "minecraft:clay_ball" }] }
+}
