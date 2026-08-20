@@ -86,6 +86,7 @@ public class TranslationKeys {
     public static final String INTERACTION_NBT_TARGET_FORBIDS = "gui." + PunchThemAll.MOD_ID + ".category.nbt.target_forbids";
 
     // Schema v2 extensions
+    public static final String INTERACTION_OUTPUT_SHARED = "gui." + PunchThemAll.MOD_ID + ".category.output.shared";
     public static final String INTERACTION_OUTPUT_GUARANTEED = "gui." + PunchThemAll.MOD_ID + ".category.output.guaranteed";
     public static final String INTERACTION_TEXT_PREDICATES = "gui." + PunchThemAll.MOD_ID + ".category.text.predicates";
     public static final String INTERACTION_REWARDS_TITLE = "gui." + PunchThemAll.MOD_ID + ".category.rewards.title";

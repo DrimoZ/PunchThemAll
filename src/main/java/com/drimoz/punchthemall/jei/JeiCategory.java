@@ -22,14 +22,14 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
-import mezz.jei.api.gui.ingredient.IRecipeSlotDrawable;
+import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
-import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.component.DataComponents;
@@ -100,8 +100,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         this.PLAYER_HUNGER = guiHelper.createDrawable(JEI_TEXTURE, 18, 54, 11, 11);
     }
 
-    /** Names the transformation slot so it is not swept into the drop grid. */
-    private static final String TRANSFORMATION_SLOT = "pta:transformation";
 
     /**
      * How many rows of drops every recipe in the category reserves room for.
@@ -119,17 +117,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         int needed = InteractionRegistry.getInstance().getJEIRowCount();
         int cap = PTAConfig.clientValueOrDefault(PTAConfig.CLIENT.maxDropRows);
         return Math.clamp(needed, 1, cap);
-    }
-
-    /**
-     * Whether this recipe has more drops than the box shows, and so needs a scrollbar.
-     *
-     * <p>Asked per recipe rather than per category: a scrollbar drawn beside a single row of
-     * drops is a control that does nothing, on every recipe in the list, because one recipe
-     * somewhere else is wide.</p>
-     */
-    private static boolean scrolls(PtaInteraction interaction) {
-        return interaction.getRewards().getJeiRowCount() > visibleDropRows();
     }
 
     private static int categoryHeight() {
@@ -182,24 +169,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         drawIcons(interaction, graphics);
         drawSlots(interaction, graphics);
         drawTooltips(interaction, mouseX, mouseY, graphics);
-    }
-
-    /**
-     * Put the drops in a scrolling grid.
-     *
-     * <p>This is what makes the cap above honest. Reserving room for two rows and drawing more
-     * would hide drops; reserving room for the widest recipe made every other one mostly empty.
-     * A grid holds all of them and shows as many as the box has room for.</p>
-     */
-    @Override
-    public void createRecipeExtras(IRecipeExtrasBuilder extras, PtaInteraction interaction, IFocusGroup focuses) {
-        List<IRecipeSlotDrawable> drops = extras.getRecipeSlots().getSlots(RecipeIngredientRole.OUTPUT).stream()
-                .filter(slot -> !slot.getSlotName().map(TRANSFORMATION_SLOT::equals).orElse(false))
-                .toList();
-
-        if (drops.isEmpty() || !scrolls(interaction)) return;
-
-        extras.addScrollGridWidget(drops, 9, visibleDropRows()).setPosition(0, HEIGHT_START);
     }
 
     // Inner Work ( Slot )
@@ -264,45 +233,115 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         }
     }
 
+    /** One drop, and everything its tooltip has to say. {@code weight} is null for a guaranteed drop. */
+    private record DropEntry(PtaDropRecord record, Integer weight, int totalWeight) {
+        boolean guaranteed() {
+            return weight == null;
+        }
+
+        List<ItemStack> stacks() {
+            return record.items().stream().map(ItemStack::new).toList();
+        }
+
+        boolean shows(ItemStack stack) {
+            return record.items().contains(stack.getItem());
+        }
+    }
+
+    /**
+     * Lay the drops out, sharing slots when there are more of them than the box has room for.
+     *
+     * <p>JEI sizes a category rather than a recipe, so the widest interaction in a pack decides how
+     * tall every other one is drawn. {@code max_drop_rows} caps that, which leaves the question of
+     * where the drops past the cap go.</p>
+     *
+     * <p>They share a slot. JEI cycles the stacks in a slot on its own — it is how a tag ingredient
+     * is drawn — so an overflowing recipe animates through its drops with no control to find and no
+     * input to make. A scrollbar was the first answer here, and it was a poor one: JEI overloads the
+     * mouse wheel over a recipe for page navigation, so the bar was reachable only by dragging it,
+     * and only once you knew it was there.</p>
+     */
     private void setupDropSlots(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
-        boolean scroll = scrolls(interaction);
-        int slotNumber = 0;
+        List<DropEntry> entries = collectDrops(interaction);
+        if (entries.isEmpty()) return;
+
+        int slots = Math.min(entries.size(), visibleDropRows() * 9);
+
+        List<List<DropEntry>> perSlot = new ArrayList<>(slots);
+        for (int i = 0; i < slots; i++) perSlot.add(new ArrayList<>());
+        // Round-robin rather than in blocks, so the first drops stay in the first row and the
+        // reading order of a pack that fits is the order it was written in.
+        for (int i = 0; i < entries.size(); i++) perSlot.get(i % slots).add(entries.get(i));
+
+        for (int i = 0; i < slots; i++) {
+            List<DropEntry> shared = List.copyOf(perSlot.get(i));
+            List<ItemStack> stacks = shared.stream().flatMap(entry -> entry.stacks().stream()).toList();
+
+            IRecipeSlotBuilder slot = setupOutputSlot(builder, stacks,
+                    1 + (i % 9) * 18, 1 + HEIGHT_START + 18 * (i / 9));
+            slot.addRichTooltipCallback((slotView, tooltip) -> describeDrop(slotView, shared, tooltip));
+        }
+    }
+
+    private List<DropEntry> collectDrops(PtaInteraction interaction) {
+        List<DropEntry> entries = new ArrayList<>();
         int totalWeight = interaction.getPool().getTotalPoolWeight();
 
         for (Map.Entry<PtaDropRecord, Integer> result : interaction.getPool().getDropPool().entrySet()) {
             if (!result.getKey().isEmpty()) {
-                setupDropSlot(builder, result, totalWeight, slotNumber, scroll);
-                slotNumber++;
+                entries.add(new DropEntry(result.getKey(), result.getValue(), totalWeight));
             }
         }
-
         for (PtaDropRecord record : interaction.getRewards().getGuaranteed()) {
             if (!record.isEmpty()) {
-                setupGuaranteedSlot(builder, record, slotNumber, scroll);
-                slotNumber++;
+                entries.add(new DropEntry(record, null, totalWeight));
             }
+        }
+        return entries;
+    }
+
+    /**
+     * Describe whichever drop the slot is showing right now.
+     *
+     * <p>A shared slot cycles between drops with different odds and different counts, so the tooltip
+     * has to follow what is on screen rather than describe the first one and be wrong most of the
+     * time.</p>
+     */
+    private void describeDrop(IRecipeSlotView slotView, List<DropEntry> shared, ITooltipBuilder tooltip) {
+        DropEntry entry = ownerOf(slotView, shared);
+
+        if (entry.guaranteed()) {
+            tooltip.add(Component.literal("§2" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_GUARANTEED).getString()));
+        } else {
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString()
+                    + " : §5" + getTruncatedChance(entry.weight(), 0, entry.totalWeight()) + "%"));
+        }
+
+        PtaDropRecord record = entry.record();
+        if (record.min() == record.max()) {
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() + " : §5" + record.min()));
+        } else {
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min()));
+            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max()));
+        }
+
+        // Without this line a cycling slot looks like a slot that changed its mind.
+        if (shared.size() > 1) {
+            tooltip.add(Component.translatable(TranslationKeys.INTERACTION_OUTPUT_SHARED, shared.size())
+                    .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
     }
 
-    private void setupGuaranteedSlot(IRecipeLayoutBuilder builder, PtaDropRecord record, int slotNumber, boolean scroll) {
-        IRecipeSlotBuilder slot = dropSlot(builder, record.items().stream().map(ItemStack::new).toList(), slotNumber, scroll);
-        slot.addRichTooltipCallback((slotView, tooltip) -> {
-            tooltip.add(Component.literal("§2" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_GUARANTEED).getString()));
-            if (record.min() == record.max()) {
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() + " : §5" + record.min()));
-            } else {
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min()));
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max()));
-            }
-        });
+    private DropEntry ownerOf(IRecipeSlotView slotView, List<DropEntry> shared) {
+        if (shared.size() == 1) return shared.get(0);
+
+        return slotView.getDisplayedItemStack()
+                .flatMap(stack -> shared.stream().filter(entry -> entry.shows(stack)).findFirst())
+                .orElse(shared.get(0));
     }
 
     private void setupTransformationSlot(IRecipeLayoutBuilder builder, PtaInteraction interaction) {
-        // Named so the scroll grid below can tell it apart from the drops: both are OUTPUT
-        // slots, but this one is placed by hand next to the target and must not be swept into
-        // the grid.
-        var transformationSlot = setupOutputSlot(builder, List.of(getTransformationItemStack(interaction.getTransformation())), 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION)
-                .setSlotName(TRANSFORMATION_SLOT);
+        var transformationSlot = setupOutputSlot(builder, List.of(getTransformationItemStack(interaction.getTransformation())), 1 + X_TRANSFORMATION, 1 + Y_TRANSFORMATION);
         transformationSlot.addRichTooltipCallback((slotView, tooltip) -> {
             double chance = interaction.getTransformation().getChance();
             tooltip.add(Component.literal("§o§8" + Component.translatable(TranslationKeys.INTERACTION_TRANSFORMATION_CHANCE).getString() + " : §l§5" + getTruncatedChance(chance, 0, 1) + "%"));
@@ -311,22 +350,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             if (TransformationDescriber.hasMoreToShow(interaction)) {
                 Component hint = TooltipDetail.hint();
                 if (hint != null) tooltip.add(hint);
-            }
-        });
-    }
-
-    private void setupDropSlot(IRecipeLayoutBuilder builder, Map.Entry<PtaDropRecord, Integer> result, int totalPoolWeight, int slotNumber, boolean scroll) {
-        PtaDropRecord record = result.getKey();
-        IRecipeSlotBuilder slot = dropSlot(builder, record.items().stream().map(ItemStack::new).toList(), slotNumber, scroll);
-
-        slot.addRichTooltipCallback((slotView, tooltip) -> {
-            tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_CHANCE).getString() + " : §5" + getTruncatedChance(result.getValue(), 0, totalPoolWeight) + "%"));
-
-            if (record.min() == record.max()) {
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_COUNT).getString() + " : §5" + record.min()));
-            } else {
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MIN).getString() + " : §5" + record.min()));
-                tooltip.add(Component.literal("§7" + Component.translatable(TranslationKeys.INTERACTION_OUTPUT_MAX).getString() + " : §5" + record.max()));
             }
         });
     }
@@ -346,14 +369,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
      * as it scrolls. A recipe that fits does not use a grid at all, so it keeps the plain
      * left-to-right layout and no scrollbar appears next to it.</p>
      */
-    private IRecipeSlotBuilder dropSlot(IRecipeLayoutBuilder builder, List<ItemStack> itemStacks, int slotNumber, boolean scroll) {
-        if (scroll) {
-            return builder.addSlot(RecipeIngredientRole.OUTPUT).addItemStacks(itemStacks);
-        }
-        return setupOutputSlot(builder, itemStacks,
-                1 + (slotNumber % 9) * 18, 1 + HEIGHT_START + 18 * (slotNumber / 9));
-    }
-
     private IRecipeSlotBuilder setupOutputSlot(IRecipeLayoutBuilder builder, List<ItemStack> itemStacks, int x, int y) {
         return builder.addSlot(RecipeIngredientRole.OUTPUT, x, y).addItemStacks(itemStacks);
     }
@@ -438,13 +453,11 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             SLOT.draw(graphics, X_TRANSFORMATION, Y_TRANSFORMATION);
         }
 
-        // A scrolling recipe hands its drop area to the grid, which draws its own slots and
-        // moves them as it scrolls — painting rows underneath would show a background the grid
-        // has scrolled away from. A recipe that fits keeps the plain rows.
-        if (!scrolls(interaction)) {
-            for (int i = 0; i < interaction.getRewards().getJeiRowCount(); i++) {
-                SLOT_ROW.draw(graphics, 0, HEIGHT_START + i * 18);
-            }
+        // Only the rows the drops actually occupy: a shared slot means the grid never runs past
+        // the cap, so there is no row here that nothing sits in.
+        int rows = Math.min(interaction.getRewards().getJeiRowCount(), visibleDropRows());
+        for (int i = 0; i < rows; i++) {
+            SLOT_ROW.draw(graphics, 0, HEIGHT_START + i * 18);
         }
     }
 

@@ -30,6 +30,7 @@
   "gui.pta.category.transformation.require": "Only if the target is %s",
   "gui.pta.category.transformation.drops": "Drops what it breaks",
   "gui.pta.category.transformation.more": "+%s more transformation(s)",
+  "gui.pta.category.output.shared": "This slot cycles through %s drops",
   "gui.pta.category.transformation.broken": "Broken",
   "gui.pta.category.transformation.copied": "the block that was there",
   "gui.pta.category.transformation.op.place_named": "Places %s",

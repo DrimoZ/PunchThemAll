@@ -95,10 +95,11 @@ block rather than replace it.
 - **A recipe no longer inherits the height of the widest one in the category.** JEI sizes a
   category rather than a recipe, so a single interaction with thirty drops made every other one
   three rows tall and the list became a column of mostly empty boxes. The box is now capped by
-  `max_drop_rows` (three by default), and only a recipe with more than that gets a scrolling
-  grid — so a scrollbar appears where it does something and nowhere else. A pack whose
+  `max_drop_rows` (three by default), and the drops past the cap **share a slot**: JEI cycles
+  the stacks in a slot on its own, which is how a tag ingredient is drawn, so an overflowing
+  recipe animates through its drops with nothing to find and nothing to click. The tooltip
+  follows whichever drop is on screen and says how many share the slot. A pack whose
   interactions all fit in fewer rows is untouched: the cap is a maximum, not a constant.
-- **`max_transformations_per_interaction` now defaults to 64**, up from 8, and counts every block a
   region covers. Eight was chosen when a transformation meant one block.
 
   > **Upgrading:** config files keep the values already written in them. An existing

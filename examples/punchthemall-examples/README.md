@@ -215,8 +215,9 @@ without something to look at.
 | `rewards_grid_9.json` | 9 | 1 | Exactly one full row, no scrollbar. |
 | `rewards_grid_12.json` | 12 | 2 | Two rows, the second part-filled. Still no scrollbar. |
 | `rewards_grid_18.json` | 18 | 2 | Exactly two full rows — the most a box shows. |
-| `rewards_grid_27.json` | 27 | 3 | More than the box shows, so this one scrolls. |
+| `rewards_grid_27.json` | 27 | 3 | More than a two-row box shows, so some of its slots cycle. |
 
-The category is as tall as the widest recipe, capped at two rows: JEI sizes a category rather than a
-recipe, so without the cap this last file alone would make every other interaction in the list three
-rows tall. With it, the box stays two rows and only this recipe gets a scrollbar.
+The category is as tall as the widest recipe, capped by `max_drop_rows` in `pta-client.toml`:
+JEI sizes a category rather than a recipe, so without the cap the last file alone would make
+every other interaction in the list three rows tall. Drops past the cap share a slot and cycle
+through it — nothing is hidden, and there is nothing to scroll. Set the cap to 2 to see it.
