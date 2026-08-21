@@ -107,7 +107,11 @@ cat > "$OUT_DIR/Home.md" <<EOF
 or not) on a block, a fluid, or the air — optionally holding a particular item. Plain JSON in a
 datapack. No Java, no scripting.
 
-Currently **Minecraft $MC_VERSION**, mod version **$MOD_VERSION**.
+These pages document **Minecraft $MC_VERSION**, mod version **$MOD_VERSION**.
+
+> Also available for **Forge 1.20.1**, at the same mod version. The JSON format is identical, so
+> everything about writing an interaction applies to both — [Version Differences](Version-Differences)
+> covers the handful of places where the platform around it is not.
 
 ## Start here
 
@@ -118,6 +122,7 @@ Currently **Minecraft $MC_VERSION**, mod version **$MOD_VERSION**.
 | **Wondering if something is possible** | [Capabilities](Capabilities) — what it can do, what it cannot, and the traps in between |
 | **Looking up a field** | [Interaction Format](Interaction-Format) — every field of \`schema_version: 2\` |
 | **Something is not working** | [Troubleshooting](Troubleshooting) — in the order that finds it fastest |
+| **On 1.20.1, or moving a pack** | [Version Differences](Version-Differences) — same format, different platform |
 
 ## Reference
 
