@@ -8,11 +8,12 @@ import com.drimoz.punchthemall.core.model.classes.PtaHand;
 import com.drimoz.punchthemall.core.model.classes.PtaInteraction;
 import com.drimoz.punchthemall.core.model.classes.PtaNbtPredicate;
 import com.drimoz.punchthemall.core.model.enums.PtaTypeEnum;
-import com.drimoz.punchthemall.core.model.records.PtaStateRecord;
+import com.drimoz.punchthemall.core.util.BlockMatcher;
 import com.drimoz.punchthemall.core.util.ItemView;
 import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -25,9 +26,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.FluidState;
 import net.neoforged.neoforge.common.util.FakePlayer;
 
 import java.util.*;
@@ -187,11 +186,16 @@ public class InteractionRegistry {
      * arbitrary iteration order would make it unpredictable which of several matches wins.
      */
     public List<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level) {
+        return getFilteredInteractions(interactionType, clickOnBlock, player, pos, level, null);
+    }
+
+    /** @param face the clicked face, so neighbour conditions written in the {@code face} frame resolve. */
+    public List<PtaInteraction> getFilteredInteractions(PtaTypeEnum interactionType, boolean clickOnBlock, Player player, BlockPos pos, Level level, Direction face) {
         PtaTypeEnum eventType = PtaTypeEnum.getTypeFromEvent(interactionType, player.isShiftKeyDown());
 
         List<PtaInteraction> matches = new ArrayList<>();
         for (PtaInteraction interaction : getCandidates(eventType, clickOnBlock, pos, level)) {
-            if (passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level)) {
+            if (passesInteractionFilters(interaction, eventType, clickOnBlock, player, pos, level, face)) {
                 matches.add(interaction);
             }
         }
@@ -239,11 +243,11 @@ public class InteractionRegistry {
 
     private boolean passesInteractionFilters(
             PtaInteraction interaction, PtaTypeEnum eventType, boolean clickOnBlock,
-            Player player, BlockPos pos, Level level
+            Player player, BlockPos pos, Level level, Direction face
     ) {
         return passesInteractionTypeFilter(interaction, eventType) &&
                 passesBiomeAndDimensionFilter(interaction, level, pos) &&
-                interaction.getConditions().matches(level, player, pos) &&
+                interaction.getConditions().matches(level, player, pos, face) &&
                 passesAirOrBlockFilter(interaction, clickOnBlock) &&
                 passesBlockStateFilter(interaction, clickOnBlock, pos, level) &&
                 passesBlockEntityNBTFilter(interaction, clickOnBlock, pos, level) &&
@@ -293,31 +297,7 @@ public class InteractionRegistry {
             return true;
         }
 
-        PtaBlock ptaBlock = interaction.getBlock();
-
-        BlockState blockState = level.getBlockState(pos);
-        FluidState fluidState = level.getFluidState(pos);
-
-        Block block = blockState.getBlock();
-        Fluid fluid = fluidState.getType();
-
-        if (!ptaBlock.isBlockFromSet(block) && !ptaBlock.isFluidFromSet(fluid)) {
-            return false;
-        }
-
-        for (PtaStateRecord<?> stateRecord : ptaBlock.getStateWhiteList()) {
-            if (!matchesState(blockState, fluidState, stateRecord, ptaBlock.isBlock())) {
-                return false;
-            }
-        }
-
-        for (PtaStateRecord<?> stateRecord : ptaBlock.getStateBlackList()) {
-            if (matchesState(blockState, fluidState, stateRecord, ptaBlock.isBlock())) {
-                return false;
-            }
-        }
-
-        return true;
+        return BlockMatcher.matchesBlockAndState(interaction.getBlock(), level, pos);
     }
 
     private boolean passesBlockEntityNBTFilter(PtaInteraction interaction, boolean clickOnBlock, BlockPos pos, Level level) {
@@ -388,16 +368,6 @@ public class InteractionRegistry {
                 case MAIN_HAND -> matchesMainHand;
                 case OFF_HAND -> matchesOffHand;
             };
-        }
-    }
-
-    private boolean matchesState(BlockState blockState, FluidState fluidState, PtaStateRecord<?> stateRecord, boolean isBlock) {
-        if (isBlock) {
-            return blockState.getProperties().contains(stateRecord.property())
-                    && blockState.getValue(stateRecord.property()).equals(stateRecord.getValue());
-        } else {
-            return fluidState.getProperties().contains(stateRecord.property())
-                    && fluidState.getValue(stateRecord.property()).equals(stateRecord.getValue());
         }
     }
 

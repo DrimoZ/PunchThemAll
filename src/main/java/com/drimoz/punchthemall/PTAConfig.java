@@ -6,6 +6,9 @@ public class PTAConfig {
 
     public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec COMMON_CONFIG;
+    public static final ModConfigSpec CLIENT_CONFIG;
+
+    public static final ClientConfig CLIENT;
 
     public static final InteractionConfig INTERACTIONS;
     public static final PlayerConfig PLAYERS;
@@ -13,6 +16,15 @@ public class PTAConfig {
     public static final DebugConfig DEBUG;
 
     static {
+        // The recipe viewers are a client concern, so their settings live in a client file. A
+        // server has no business deciding which key a player holds to read a tooltip.
+        ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
+        clientBuilder.comment("PunchThemAll client-side settings. These affect what you see, never what the mod does.");
+        clientBuilder.push("PunchThemAll");
+        CLIENT = new ClientConfig(clientBuilder);
+        clientBuilder.pop();
+        CLIENT_CONFIG = clientBuilder.build();
+
         BUILDER.comment(
                 "PunchThemAll common configuration.",
                 "The config is split by responsibility so pack makers can tune gameplay, automation and drops separately.",
@@ -42,6 +54,49 @@ public class PTAConfig {
         return COMMON_CONFIG.isLoaded() ? value.get() : value.getDefault();
     }
 
+    /** The client counterpart of {@link #valueOrDefault}, for the client spec. */
+    public static <T> T clientValueOrDefault(ModConfigSpec.ConfigValue<T> value) {
+        return CLIENT_CONFIG.isLoaded() ? value.get() : value.getDefault();
+    }
+
+    public static class ClientConfig {
+        /** Which key expands a recipe tooltip from its summary to the full breakdown. */
+        public final ModConfigSpec.ConfigValue<String> tooltipDetailKey;
+
+        /** How many rows of drops a recipe box shows before the rest have to scroll. */
+        public final ModConfigSpec.IntValue maxDropRows;
+
+        private ClientConfig(ModConfigSpec.Builder builder) {
+            builder.push("Tooltips");
+            tooltipDetailKey = builder
+                    .comment(
+                            "Which key to hold to expand an interaction tooltip in JEI/EMI.",
+                            "A tooltip that shows everything at once is unreadable on a busy interaction, and one",
+                            "that shows a summary only is useless when you need the detail — so the detail is behind",
+                            "a key, and this is that key.",
+                            "shift, control, alt: hold it to expand.",
+                            "always: never summarise, always show everything.",
+                            "never: never expand, summary only."
+                    )
+                    // Arrays.asList, not List.of: NeoForge validates the spec by testing a null
+                    // value against the allowed list, and an immutable list throws on contains(null)
+                    // rather than answering false. That crashes config loading before the game starts.
+                    .defineInList("detail_key", "shift", java.util.Arrays.asList("shift", "control", "alt", "always", "never"));
+            maxDropRows = builder
+                    .comment(
+                            "How many rows of drops an interaction shows in JEI before the rest have to scroll.",
+                            "JEI sizes a category rather than a recipe, so the widest interaction in the pack decides",
+                            "how tall every other one is drawn. This caps that: one interaction dropping thirty things",
+                            "no longer makes the other sixty three rows tall.",
+                            "Only a recipe with more rows than this gets a scrollbar, so raising it trades a taller",
+                            "list for fewer scrollbars. Set it above your widest interaction to never see one.",
+                            "A pack whose interactions all fit in fewer rows is unaffected either way."
+                    )
+                    .defineInRange("max_drop_rows", 3, 1, 6);
+            builder.pop();
+        }
+    }
+
     public static class InteractionConfig {
         public final ModConfigSpec.BooleanValue enabled;
         public final ModConfigSpec.IntValue cooldownTicks;
@@ -53,6 +108,10 @@ public class PTAConfig {
         public final ModConfigSpec.BooleanValue allowAirInteractions;
         public final ModConfigSpec.BooleanValue allowFluidInteractions;
         public final ModConfigSpec.BooleanValue allowTransformations;
+        public final ModConfigSpec.BooleanValue allowOffsetTransformations;
+        public final ModConfigSpec.IntValue maxTransformationOffset;
+        public final ModConfigSpec.IntValue maxTransformationsPerInteraction;
+        public final ModConfigSpec.BooleanValue fireProtectionEvents;
 
         private InteractionConfig(ModConfigSpec.Builder builder) {
             builder.push("Interactions");
@@ -63,7 +122,7 @@ public class PTAConfig {
                     .comment("Minimum delay, in ticks, between two successful interactions for the same player.", "20 ticks = 1 second. Set to 0 to disable player cooldowns.")
                     .defineInRange("cooldown_ticks", 1, 0, 10000);
             maxMatchesPerClick = builder
-                    .comment("Maximum number of matching interactions processed per click.", "Use 1 for predictable recipes, higher values for intentional chained outputs. Transformations still happen at most once per click.")
+                    .comment("Maximum number of matching interactions processed per click.", "Use 1 for predictable recipes, higher values for intentional chained outputs. Any one block is still transformed at most once per click.")
                     .defineInRange("max_matches_per_click", 64, 1, 1024);
             cancelVanillaInteraction = builder
                     .comment("Cancel the vanilla click event after at least one PunchThemAll interaction succeeds.", "Keep enabled to prevent duplicate vanilla handling; disable only for advanced compatibility packs.")
@@ -86,6 +145,30 @@ public class PTAConfig {
             allowTransformations = builder
                     .comment("Allow interactions to transform blocks or fluids after a successful drop roll.")
                     .define("allow_transformations", true);
+            allowOffsetTransformations = builder
+                    .comment(
+                            "Allow transformations to act on a block other than the one that was interacted with.",
+                            "Disabling this keeps every transformation on the clicked block, whatever the datapack asks for."
+                    )
+                    .define("allow_offset_transformations", true);
+            maxTransformationOffset = builder
+                    .comment(
+                            "How far a transformation may reach from the interacted block, in blocks along the longest axis.",
+                            "A transformation asking for more is skipped. This bounds what a datapack can touch from a single click."
+                    )
+                    .defineInRange("max_transformation_offset", 8, 0, 64);
+            maxTransformationsPerInteraction = builder
+                    .comment(
+                            "Maximum number of blocks one interaction may transform per click.",
+                            "Each one is a block update, so this bounds the cost of a single click on the server. A region counts every block it covers."
+                    )
+                    .defineInRange("max_transformations_per_interaction", 64, 1, 4096);
+            fireProtectionEvents = builder
+                    .comment(
+                            "Post block break/place events for transformations, so claim and protection mods can veto them.",
+                            "Leave enabled on any server that is not single player: without it, an offset transformation can reach inside a protected area."
+                    )
+                    .define("fire_protection_events", true);
             builder.pop();
         }
     }
