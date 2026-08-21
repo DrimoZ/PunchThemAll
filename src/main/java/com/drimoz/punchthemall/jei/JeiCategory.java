@@ -242,7 +242,9 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
                     });
         }
 
-        if (!interaction.getBlock().isAir() && interaction.getTransformation().hasTransformation()) {
+        // Air interactions can carry transformations now, as long as those are offset from the
+        // player, so the slot is driven by whether there are any rather than by the target kind.
+        if (interaction.hasTransformations()) {
             setupTransformationSlot(builder, interaction);
         }
     }
@@ -484,7 +486,11 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
             SLOT.draw(graphics, X_TRANSFORMATION, Y_TRANSFORMATION);
         }
 
-        for (int i = 0; i < interaction.getRewards().getJeiRowCount(); i++) {
+        // Only the rows the drops actually occupy. The box height is capped by max_drop_rows and
+        // the drops past the cap share a slot, so drawing one row per row of drops the interaction
+        // declares left an empty row of slots hanging below a box that had no space for it.
+        int rows = Math.min(interaction.getRewards().getJeiRowCount(), visibleDropRows());
+        for (int i = 0; i < rows; i++) {
             SLOT_ROW.draw(graphics, 0, HEIGHT_START + i * 18);
         }
     }
