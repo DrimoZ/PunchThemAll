@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "#minecraft:pickaxes",
+    "consume": { "mode": "durability", "count": 2 }
+  },
+  "target": { "kind": "block", "match": "#minecraft:base_stone_overworld" },
+  "transformation": {
+    "chance": 1.0,
+    "op": "break",
+    "at": { "z": -1, "relative_to": "face" },
+    "drops": "tool"
+  }
+}

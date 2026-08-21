@@ -1,7 +1,7 @@
 # PunchThemAll — example datapack
 
-Since **2.1.0 (NeoForge 1.21.1)**, interactions are loaded from **datapacks**. This folder is a
-ready-to-use one: 42 interactions, each kept small so it demonstrates one thing you can copy.
+Interactions are loaded from **datapacks**. This folder is a
+ready-to-use one: 69 interactions, each kept small so it demonstrates one thing you can copy.
 
 Every id is `pta_examples:<file name>` — `hand_off_hand.json` is `pta_examples:hand_off_hand`. All
 files use `schema_version: 2`.
@@ -23,7 +23,7 @@ Copy the whole `punchthemall-examples` folder (the one containing `pack.mcmeta`)
 - **New world:** on the creation screen, open **Data Packs**, drag the folder in, enable it.
 - **Server:** put it in `<server>/world/datapacks/` and `/reload`.
 
-The server syncs its interactions to clients, so JEI/EMI show the server's set with no extra setup.
+The server syncs its interactions to clients, so JEI show the server's set with no extra setup.
 
 **Two things that catch everyone out while testing:**
 
@@ -118,6 +118,15 @@ not supported yet — see [the backlog](../../docs/backlog.md).
 | `transformation_break.json` | **No `into`** — the target simply becomes air. | Sneak-left-click a cobweb holding a bucket. |
 | `transformation_into_fluid.json` | `into.kind: "fluid"`. | Right-click dirt with ice. |
 | `transformation_block_entity_nbt.json` | `nbt` on the transformation, writing data into the new block entity. | Sneak-right-click a chest with a name tag. |
+| `transformation_offset_world.json` | `at` in world axes — the destination is a fixed direction, whoever is clicking and from where. | Sneak-left-click a gold block with redstone; the block at x+1, z-2 turns to redstone. |
+| `transformation_offset_place.json` | `op: place` with `at.relative_to: "face"` — writes on the face you clicked, only into air. | Right-click the **top** of a stone block with a torch. On a side face the torch could not stay, so the placement is refused. |
+| `transformation_air_offset_place.json` | An **air** interaction with an offset: no block under the cursor, so the origin is you. | Sneak-right-click in the air with a feather; scaffolding appears two blocks up. |
+| `transformation_break_neighbour.json` | `op: break` at an offset with `drops: "tool"`, plus `rewards.at` moving the drops. | Sneak-right-click stone with a pickaxe; the block above breaks, honouring Silk Touch. |
+| `transformation_multi.json` | A list of transformations from one click, each rolling its own chance. | Sneak-right-click netherrack with a blaze rod. |
+| `transformation_region.json` | `at.to` — one entry covering a 3x3 box instead of nine entries. | Sneak-right-click dirt with bone meal; the 3x3 around it turns to grass. |
+| `transformation_group_chance.json` | A group with its own `chance`: the whole set happens, or none of it does. | Sneak-right-click cobblestone with a torch; 70% of the time it is placed above. |
+| `transformation_move_block.json` | `into.kind: "copy"` paired with a break — moves a block rather than replacing it. | Sneak-right-click wool with a stick; it rises one block. |
+| `conditions_neighbours.json` | `conditions.neighbours` — gates the interaction on what is around it. | Right-click crying obsidian with blaze powder, obsidian underneath and nothing logged above. |
 
 `chance` is required. Transformation `sound` / `particles` are separate from the interaction's own.
 
@@ -143,7 +152,7 @@ click reaches the interaction, `requires_sneaking` is an extra gate on top.
 | File | What it shows | Try it |
 | --- | --- | --- |
 | `enabled_false.json` | `"enabled": false` — parsed, then skipped. Useful to disable an inherited file without deleting it. | Nothing happens (that is the point). |
-| `hidden_from_viewers.json` | `"hidden": true` — loads and fires normally, but JEI and EMI never list it. For secrets, and for the intermediate steps of a multi-stage recipe. | Sneak-right-click mossy cobblestone with bone meal → an emerald. You will not find it by searching JEI. |
+| `hidden_from_viewers.json` | `"hidden": true` — loads and fires normally, but JEI never lists it. For secrets, and for the intermediate steps of a multi-stage recipe. | Sneak-right-click mossy cobblestone with bone meal → an emerald. You will not find it by searching JEI. |
 | `conditional_load_mod_present.json` | `neoforge:conditions` — the file only loads when another mod is present. | Right-click a bookshelf with a book (JEI installed). |
 | `hoe_in_the_air.json` | A demanding real-world filter: tag match + enchantment ranges + costs. | Needs a specifically enchanted hoe — read the file first. |
 | `sand.json` | A plain, shippable interaction with no tricks. | Sneak-left-click gravel with a shovel. |
@@ -161,3 +170,55 @@ are fine: `data/mypack/pta/interaction/early/flint.json` becomes `mypack:early/f
 
 Edit a file, run `/reload`, and the change applies immediately — no restart, and clients are updated
 too. A malformed file is skipped with an error in the log; the rest keep working.
+
+## Combined recipes
+
+The files above each demonstrate one field. These are whole interactions that put several together —
+the shape a real pack is written in. Each one is written out and explained in the
+[cookbook](../../docs/cookbook.md).
+
+| File | What it combines | Try it |
+| --- | --- | --- |
+| `combo_sifting_gravel.json` | Durability cost + a weighted pool with an `air` filler + a transformation. | Sneak-left-click gravel with a shovel. It becomes sand, and sometimes gives flint. |
+| `combo_renewable_berries.json` | A state whitelist + a transformation that resets the state. | Right-click a **ripe** berry bush with shears. Unripe bushes do nothing. |
+| `combo_fortune_scaled.json` | An enchantment predicate on the hand + `rewards.fortune`. | Sneak-left-click deepslate with a Fortune pickaxe. Without Fortune it does not fire at all. |
+| `combo_hammer_behind.json` | `op: break` + the `face` frame + `drops: "tool"`. | Sneak-right-click stone with a pickaxe: the block **behind** it breaks, honouring Silk Touch. |
+| `combo_excavator_3x3.json` | A region + `op: break` + `require` + `drops: "tool"`. | Sneak-right-click stone with a netherite pickaxe. Nine blocks, and only the stone among them. |
+| `combo_wand_places_ahead.json` | An **air** target + `op: place` + the `player` frame + `require`. | Sneak-right-click the sky with a blaze rod. A torch appears ahead of you and one up. |
+| `combo_paving_group.json` | A region + a group `chance`, so the patch lands whole or not at all. | Sneak-right-click grass with a shovel. Four times in five, the 3x3 becomes path. |
+| `combo_dig_shaft.json` | A vertical region + `require` + `rewards.at` moving the drops out of the hole. | Sneak-right-click dirt with an iron shovel. Three blocks down, drops land above. |
+| `combo_altar.json` | Two `conditions.neighbours`, one inverted. | Right-click obsidian with an eye of ender: crying obsidian below, and something (not air) above. |
+| `combo_neighbour_state.json` | A neighbour with a **state** whitelist. | Right-click a blast furnace with an iron ingot, with a **lit** furnace to its east. |
+| `combo_multistep_hidden.json` | `hidden: true` — step one of a two-step recipe, kept out of JEI. | Sneak-right-click clay with a water bucket. It becomes mud. |
+| `combo_multistep_finish.json` | The step that checks the first one happened, via a neighbour. | Right-click that mud with wheat, with a hay block underneath. |
+| `combo_deep_dark_costly.json` | Three conditions + a hunger cost, so the recipe is expensive rather than merely rare. | Sneak-left-click deepslate below Y 0, in the dark, reasonably fed. |
+
+### Reading them together
+
+`combo_multistep_hidden.json` and `combo_multistep_finish.json` are a pair: nothing chains
+automatically in this mod, so the player clicks twice and the second file uses
+`conditions.neighbours` to check the setup is right. That is the general shape of a multi-step
+recipe here.
+
+`combo_hammer_behind.json` and `combo_excavator_3x3.json` are the same idea at two scales, and
+between them show why `require` exists: without it the excavator eats the ores you were exposing.
+
+## Drop grid sizes
+
+Four interactions that exist to make the recipe viewer layout visible. They are otherwise
+unremarkable — a pickaxe on a stone variant, giving a wide loot pool — and are worth keeping because
+the number of drops is what decides whether a scrollbar appears, and that is easy to get wrong
+without something to look at.
+
+| File | Drops | Rows | What it shows |
+| --- | ---: | ---: | --- |
+| `rewards_grid_9.json` | 9 | 1 | Exactly one full row, no scrollbar. |
+| `rewards_grid_12.json` | 12 | 2 | Two rows, the second part-filled. Still no scrollbar. |
+| `rewards_grid_18.json` | 18 | 2 | Exactly two full rows — the most a box shows. |
+| `rewards_grid_27.json` | 27 | 3 | More than a two-row box shows, so some of its slots cycle. |
+| `rewards_grid_mixed.json` | 23 | 3 | 20 weighted **and** 3 guaranteed, past the cap. The two kinds are laid out separately, so no square ever alternates between *always* and *sometimes*. |
+
+The category is as tall as the widest recipe, capped by `max_drop_rows` in `pta-client.toml`:
+JEI sizes a category rather than a recipe, so without the cap the last file alone would make
+every other interaction in the list three rows tall. Drops past the cap share a slot and cycle
+through it — nothing is hidden, and there is nothing to scroll. Set the cap to 2 to see it.

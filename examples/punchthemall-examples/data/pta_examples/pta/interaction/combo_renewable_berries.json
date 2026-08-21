@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": { "hand": "main", "match": "minecraft:shears", "consume": { "mode": "durability" } },
+  "target": {
+    "kind": "block",
+    "match": "minecraft:sweet_berry_bush",
+    "state": { "whitelist": { "age": "3" } }
+  },
+  "transformation": {
+    "chance": 1.0,
+    "into": { "kind": "block", "id": "minecraft:sweet_berry_bush", "state": { "age": "1" } },
+    "sound": "minecraft:block.sweet_berry_bush.pick_berries"
+  },
+  "rewards": {
+    "guaranteed": [ { "match": "minecraft:sweet_berries", "count": { "min": 2, "max": 4 } } ]
+  }
+}

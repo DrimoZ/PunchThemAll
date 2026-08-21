@@ -1,0 +1,92 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:golden_pickaxe",
+    "consume": {
+      "mode": "durability",
+      "count": 1
+    }
+  },
+  "target": {
+    "kind": "block",
+    "match": "minecraft:granite"
+  },
+  "rewards": {
+    "weighted": [
+      {
+        "match": "minecraft:flint",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:clay_ball",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:coal",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:raw_copper",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:raw_iron",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:raw_gold",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:lapis_lazuli",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:redstone",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:quartz",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:amethyst_shard",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:emerald",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:diamond",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:iron_nugget",
+        "weight": 3
+      },
+      {
+        "match": "minecraft:gold_nugget",
+        "weight": 4
+      },
+      {
+        "match": "minecraft:copper_ingot",
+        "weight": 5
+      },
+      {
+        "match": "minecraft:bone",
+        "weight": 1
+      },
+      {
+        "match": "minecraft:string",
+        "weight": 2
+      },
+      {
+        "match": "minecraft:gunpowder",
+        "weight": 3
+      }
+    ]
+  }
+}

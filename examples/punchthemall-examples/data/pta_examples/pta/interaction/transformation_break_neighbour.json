@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "#minecraft:pickaxes",
+    "consume": { "mode": "durability", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "minecraft:stone" },
+  "transformation": {
+    "chance": 1.0,
+    "op": "break",
+    "at": { "y": 1 },
+    "drops": "tool"
+  },
+  "rewards": {
+    "at": { "y": 1 },
+    "guaranteed": [ { "match": "minecraft:gravel", "count": 1 } ]
+  }
+}

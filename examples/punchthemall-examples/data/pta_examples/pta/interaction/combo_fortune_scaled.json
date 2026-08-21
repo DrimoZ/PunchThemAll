@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": {
+    "hand": "main",
+    "match": "#minecraft:pickaxes",
+    "consume": { "mode": "durability" },
+    "nbt_predicates": [
+      { "path": "Enchantments[].lvl", "int_range": [1, 5], "where": "{id:\"minecraft:fortune\"}" }
+    ]
+  },
+  "target": { "kind": "block", "match": "minecraft:deepslate" },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:raw_iron", "weight": 20 },
+      { "match": "minecraft:air", "weight": 80 }
+    ],
+    "fortune": { "enchant": "minecraft:fortune", "factor": 1.0 }
+  }
+}

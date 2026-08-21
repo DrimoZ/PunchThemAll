@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:torch",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "#minecraft:base_stone_overworld" },
+  "transformation": {
+    "chance": 1.0,
+    "op": "place",
+    "at": { "z": 1, "relative_to": "face" },
+    "require": { "match": "minecraft:air" },
+    "into": { "kind": "block", "id": "minecraft:torch" },
+    "sound": "minecraft:block.wood.place"
+  }
+}

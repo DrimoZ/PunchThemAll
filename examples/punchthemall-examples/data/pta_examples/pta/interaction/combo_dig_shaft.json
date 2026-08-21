@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:iron_shovel",
+    "consume": { "mode": "durability", "count": 3 }
+  },
+  "target": { "kind": "block", "match": "#minecraft:dirt" },
+  "transformation": {
+    "chance": 1.0,
+    "op": "break",
+    "at": { "x": 0, "y": 0, "z": 0, "to": { "x": 0, "y": -2, "z": 0 } },
+    "require": { "match": "#minecraft:dirt" },
+    "drops": true
+  },
+  "rewards": {
+    "at": { "y": 1 },
+    "guaranteed": [ { "match": "minecraft:dirt", "count": 1 } ]
+  }
+}

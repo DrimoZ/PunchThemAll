@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "type": "shift_left_click",
+  "hand": { "hand": "main", "match": "#minecraft:shovels", "consume": { "mode": "durability" } },
+  "target": { "kind": "block", "match": "minecraft:gravel" },
+  "transformation": {
+    "chance": 0.7,
+    "into": { "kind": "block", "id": "minecraft:sand" },
+    "particles": "minecraft:gravel",
+    "sound": "minecraft:block.gravel.break"
+  },
+  "rewards": {
+    "weighted": [
+      { "match": "minecraft:flint", "weight": 25 },
+      { "match": "minecraft:iron_nugget", "weight": 5 },
+      { "match": "minecraft:air", "weight": 70 }
+    ]
+  }
+}

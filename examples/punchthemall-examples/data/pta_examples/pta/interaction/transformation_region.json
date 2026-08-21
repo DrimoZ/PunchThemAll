@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "type": "shift_right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:bone_meal",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "minecraft:dirt" },
+  "transformation": {
+    "chance": 1.0,
+    "op": "replace",
+    "at": { "x": -1, "y": 0, "z": -1, "to": { "x": 1, "y": 0, "z": 1 } },
+    "require": { "match": "minecraft:dirt" },
+    "into": { "kind": "block", "id": "minecraft:grass_block" },
+    "sound": "minecraft:item.bone_meal.use"
+  }
+}

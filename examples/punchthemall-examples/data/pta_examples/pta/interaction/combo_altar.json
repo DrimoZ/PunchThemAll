@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "type": "right_click",
+  "hand": {
+    "hand": "main",
+    "match": "minecraft:ender_eye",
+    "consume": { "mode": "shrink", "count": 1 }
+  },
+  "target": { "kind": "block", "match": "minecraft:obsidian" },
+  "conditions": {
+    "neighbours": [
+      { "at": { "y": -1 }, "block": { "match": "minecraft:crying_obsidian" } },
+      { "at": { "y": 1 }, "block": { "match": "minecraft:air" }, "invert": true }
+    ]
+  },
+  "rewards": { "guaranteed": [ { "match": "minecraft:ender_pearl", "count": 2 } ] },
+  "sound": "minecraft:block.end_portal_frame.fill",
+  "particles": "minecraft:obsidian"
+}
