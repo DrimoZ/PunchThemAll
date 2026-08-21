@@ -111,6 +111,7 @@ search the **Interaction** category to see it.
 | [docs/interaction-format.md](docs/interaction-format.md) | **Full JSON reference** for the `schema_version: 2` format. |
 | [docs/interactions.md](docs/interactions.md) | Datapacks, loading, IDs, multiplayer, and the JEI/EMI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
+| [docs/versions.md](docs/versions.md) | **Forge 1.20.1 vs NeoForge 1.21.1** — same JSON format, different platform. Read before moving a pack between them. |
 | [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
 | [example catalogue](examples/punchthemall-examples/README.md) | **69 runnable examples**, one per feature, each with what it shows and how to trigger it. |
 | [docs/backlog.md](docs/backlog.md) | Ideas, deferred work, and what is knowingly untested. |

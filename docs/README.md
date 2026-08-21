@@ -14,6 +14,7 @@ Start here, then dig in as needed.
 | [example catalogue](../examples/punchthemall-examples/README.md) | Find a **working file for every feature** — 69 examples, each with what it shows and how to trigger it. |
 | [curseforge.md](curseforge.md) | A short **project overview** (used for the CurseForge page). |
 | [troubleshooting.md](troubleshooting.md) | Work out **why nothing happened**, in the order that finds it fastest. |
+| [versions.md](versions.md) | See **what differs between the Forge 1.20.1 and NeoForge 1.21.1 lines** — the format is the same, the platform around it is not. |
 | [backlog.md](backlog.md) | Ideas and nice-to-haves, parked for later. Add freely, pick when there is room. |
 
 Related:

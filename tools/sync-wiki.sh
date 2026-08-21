@@ -44,6 +44,7 @@ interaction-format:Interaction-Format
 configuration:Configuration
 interactions:Datapacks-and-Viewers
 troubleshooting:Troubleshooting
+versions:Version-Differences
 "
 
 # Rewrite the links a page uses so they point at wiki pages rather than at files on disk.
@@ -58,6 +59,7 @@ rewrite_links() {
         -e 's#\]\((\.\./)*(docs/)?configuration\.md#](Configuration#g' \
         -e 's#\]\((\.\./)*(docs/)?interactions\.md#](Datapacks-and-Viewers#g' \
         -e 's#\]\((\.\./)*(docs/)?troubleshooting\.md#](Troubleshooting#g' \
+        -e 's#\]\((\.\./)*(docs/)?versions\.md#](Version-Differences#g' \
         -e 's#\]\(docs/porting/([^)]*)\)#]('"$BLOB"'/docs/porting/\1)#g' \
         -e 's#\]\(\.\./examples/punchthemall-examples/README\.md\)#](Examples)#g' \
         -e 's#\]\(\.\./examples/punchthemall-examples\)#](Examples)#g' \
@@ -178,6 +180,7 @@ cat > "$OUT_DIR/_Sidebar.md" <<EOF
 * [Datapacks and Viewers](Datapacks-and-Viewers)
 * [Examples](Examples)
 * [Troubleshooting](Troubleshooting)
+* [Version Differences](Version-Differences)
 * [Changelog](Changelog)
 * [Community](Community)
 EOF
