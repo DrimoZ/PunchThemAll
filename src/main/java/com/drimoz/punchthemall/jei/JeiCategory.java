@@ -386,13 +386,6 @@ public class JeiCategory implements IRecipeCategory<PtaInteraction> {
         return builder.addSlot(RecipeIngredientRole.INPUT, x, y).addFluidStack(fluid, 1000);
     }
 
-    /**
-     * A drop slot, positioned by hand or left to the grid.
-     *
-     * <p>A grid-owned slot is added without coordinates, because the grid places it and moves it
-     * as it scrolls. A recipe that fits does not use a grid at all, so it keeps the plain
-     * left-to-right layout and no scrollbar appears next to it.</p>
-     */
     private IRecipeSlotBuilder setupOutputSlot(IRecipeLayoutBuilder builder, List<ItemStack> itemStacks, int x, int y) {
         return builder.addSlot(RecipeIngredientRole.OUTPUT, x, y).addItemStacks(itemStacks);
     }
