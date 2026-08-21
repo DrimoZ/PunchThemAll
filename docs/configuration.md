@@ -1,9 +1,10 @@
 # PunchThemAll configuration
 
-PunchThemAll uses a NeoForge common config file located at:
+PunchThemAll has two config files:
 
 ```text
-config/punchthemall/pta-common.toml
+config/punchthemall/pta-common.toml   # gameplay, server-authoritative
+config/punchthemall/pta-client.toml   # display only, and yours alone
 ```
 
 The configuration is intentionally modular. Pack makers can tune gameplay, automation, drops, and
@@ -23,6 +24,7 @@ needed. (Interactions themselves are **not** configured here; they are datapack 
 | `PunchThemAll.Players` | Real-player effects, fake-player automation, player damage, food costs. |
 | `PunchThemAll.Drops` | Inventory insertion and world drop spawn physics. |
 | `PunchThemAll.Debug` | Optional logs for loaded and skipped interactions. |
+| `pta-client.toml` | Client-only display settings. Never affects gameplay. |
 
 ## `PunchThemAll.Interactions`
 
@@ -38,6 +40,10 @@ needed. (Interactions themselves are **not** configured here; they are datapack 
 | `allow_air_interactions` | `true` | Enables interactions configured with an air target. |
 | `allow_fluid_interactions` | `true` | Enables ray-traced source-fluid interactions. |
 | `allow_transformations` | `true` | Enables block/fluid transformations after a successful interaction. Drops can still happen when this is disabled. |
+| `allow_offset_transformations` | `true` | Enables transformations that act on a block other than the one interacted with. Disabling this does not fall back to the clicked block — the transformation is skipped. |
+| `max_transformation_offset` | `8` | How far a transformation may reach, in blocks along its longest axis. Anything further is skipped. |
+| `max_transformations_per_interaction` | `64` | How many blocks one interaction may transform per click. A region counts every block it covers. An **existing config file keeps its old value** — if yours predates 2.4.0 it still says 8. |
+| `fire_protection_events` | `true` | Posts block break/place events so claim and protection mods can veto a transformation. Keep enabled on any multiplayer server. |
 
 ### Recommended presets
 
@@ -63,6 +69,21 @@ Disable world changes while keeping drops:
 [PunchThemAll.Interactions]
 allow_transformations = false
 ```
+
+## Client settings (`pta-client.toml`)
+
+A separate file, because these change what **you** see and never what the mod does. A server has
+no say in them.
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `detail_key` | `shift` | Which key expands an interaction tooltip in JEI from its summary to the full breakdown. `shift`, `control`, `alt`, `always` (never summarise) or `never` (never expand). |
+| `max_drop_rows` | `3` | How many rows of drops a recipe shows. JEI sizes a category rather than a recipe, so the widest interaction decides how tall every other one is drawn; this caps that. Drops past the cap share a slot and cycle through it, so nothing is hidden and there is nothing to scroll. |
+
+An interaction can carry a dozen facts — several transformations, each with an operation, a
+destination, a condition on that destination and what it drops. Showing all of it at once gives a
+tooltip nobody reads; showing a summary only leaves you unable to find out what the second
+transformation does. So the detail is behind a key, and this is the key.
 
 ## `PunchThemAll.Players`
 

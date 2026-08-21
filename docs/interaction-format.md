@@ -8,13 +8,17 @@ older `schema_version` are rejected with a clear error.
 New to the mod? Read [getting-started.md](getting-started.md) first, and use the
 [JSON schema](interaction.schema.json) for editor autocomplete/validation.
 
+Looking for a whole working interaction rather than a field? See the
+[cookbook](cookbook.md). Wondering whether a thing is possible at all? See
+[what it can and cannot do](capabilities.md).
+
 ## Where files live
 
 Interactions are datapack data:
 
 - `data/<namespace>/pta/interaction/**/*.json` — one interaction per file, inside any loaded
   datapack. The path is the id: `data/mypack/pta/interaction/early/flint.json` → `mypack:early/flint`.
-- The server **syncs its loaded set to clients** on join and after `/reload`, so gameplay and JEI/EMI
+- The server **syncs its loaded set to clients** on join and after `/reload`, so gameplay and JEI
   match on dedicated servers.
 - Datapacks override each other by pack order, and you can gate a file with `neoforge:conditions`.
 
@@ -32,7 +36,7 @@ it in game.
 | --- | --- | --- |
 | `type` *(required)* | `left_click`, `right_click`, `shift_left_click`, `shift_right_click` | `minimal` |
 | `enabled` | `true` (default) / `false` | `enabled_false` |
-| `hidden` | `false` (default) / `true` — loads and fires, but JEI/EMI don't list it | `hidden_from_viewers` |
+| `hidden` | `false` (default) / `true` — loads and fires, but JEI don't list it | `hidden_from_viewers` |
 | `hand.hand` | `any` (default), `main`, `off` | `hand_off_hand` |
 | `hand.match` | id, `#tag`, list, or `[]` for an empty hand | `hand_empty` |
 | `hand.consume.mode` | `none` (default), `shrink`, `durability` | `hand_item_and_consume` |
@@ -49,6 +53,16 @@ it in game.
 | `transformation.into` | omit to break, or `kind` + `id` + `state` | `transformation_break`, `transformation_into_fluid` |
 | `transformation.into.state` | property → value, or `copy_state_value` | `transformation_state_copy` |
 | `transformation.nbt` | SNBT written into the new block entity | `transformation_block_entity_nbt` |
+| `transformation.op` | `replace` (default), `break`, `place` | `transformation_break_neighbour` |
+| `transformation.at` | `x`/`y`/`z` + `relative_to` | `transformation_offset_place` |
+| `transformation.require` | same shape as `target`, asked of the destination | `transformation_offset_place` |
+| `transformation.drops` | `op: break` only: `true`/`"vanilla"`, `false`/`"none"`, `"tool"` | `transformation_break_neighbour` |
+| `transformation` as a list | several transformations from one click | `transformation_multi` |
+| `transformation.at.to` | second corner — the offset becomes a box | `transformation_region` |
+| `transformation` as a group | `chance` + `all`, one roll for the whole set | `transformation_group_chance` |
+| `transformation.into.kind: copy` | write the block found at `from` | `transformation_move_block` |
+| `rewards.at` | where the drops land, default the interacted block | `transformation_break_neighbour` |
+| `conditions.neighbours` | `at` + `block` + `invert` — gate on the surroundings | `conditions_neighbours` |
 | `rewards.weighted` | `match` + `weight` + `count` + `nbt` | `rewards_count_shapes` |
 | `rewards.guaranteed` | same shape, always dropped | `rewards_guaranteed_and_rolls` |
 | `rewards.rolls` | integer, default `1` | `rewards_multi_match` |
@@ -59,7 +73,7 @@ it in game.
 | `conditions.weather` | list of `clear`, `rain`, `thunder` | `conditions_time_weather` |
 | `conditions.y_range` | `[min, max]` | `conditions_y_light_player` |
 | `conditions.light` | `min` / `max` | `conditions_y_light_player` |
-| `conditions.requires_sneaking` | `true` / `false` — **redundant with `type`**, see below | `conditions_sneaking` |
+| `conditions.requires_sneaking` | `true` / `false` — **folded into `type`**, see below | `conditions_sneaking` |
 | `conditions.player_state` | `min_food`, `min_xp_levels` | `conditions_y_light_player` |
 | `effects` | `id` + `duration` + `amplifier` + `chance` | `effects_multiple` |
 | `sound` / `particles` | registry ids | `effects_and_feedback` |
@@ -81,7 +95,7 @@ means a tag; otherwise it is a registry id.
 {
   "schema_version": 2,
   "enabled": true,                       // default true
-  "hidden": false,                       // default false — hide from JEI/EMI without disabling it
+  "hidden": false,                       // default false — hide from JEI without disabling it
   "type": "shift_left_click",            // right_click | shift_right_click | left_click | shift_left_click
 
   "hand": {
@@ -116,8 +130,15 @@ means a tag; otherwise it is a registry id.
     ]
   },
 
+  // One object, an array of them applied in order, or { "chance": 0.7, "all": [ ... ] }
+  // to roll once for the whole set.
   "transformation": {
     "chance": 0.7,
+    "op": "replace",                     // replace (default) | break | place
+    "at": { "x": 0, "y": 0, "z": 0, "relative_to": "world",  // omit for the block itself
+             "to": { "x": 1, "y": 0, "z": 1 } },                 // optional: makes it a box
+    "require": { "match": "minecraft:air" },                   // what the destination must already be
+    "drops": true,                       // op: break only — true | false | "tool" (honours the held item)
     "into": { "kind": "block", "id": "minecraft:sand", "state": { "facing": "copy_state_value" } },
     "nbt": "{}",                         // SNBT string
     "sound": "minecraft:block.gravel.break",
@@ -129,6 +150,7 @@ means a tag; otherwise it is a registry id.
     "guaranteed": [                      // always dropped, in addition to the rolls
       { "match": "minecraft:flint", "count": 1 }
     ],
+    "at": { "y": 1 },                    // where the drops land (default: the interacted block)
     "weighted": [                        // weighted drop pool
       { "match": "minecraft:clay_ball", "weight": 10, "count": { "min": 1, "max": 3 } },
       { "match": "minecraft:air",       "weight": 90 }   // count defaults to 1
@@ -193,6 +215,136 @@ level to a specific enchantment you need `where`:
 ```
 
 Numeric widths (`5` vs `5s`) do not matter — comparisons are numeric on both sides.
+
+### Transformations: what, and where
+
+A transformation does one of three things, chosen with `op`:
+
+| `op` | what it does | needs `into` | drops |
+| --- | --- | --- | --- |
+| `replace` *(default)* | overwrites whatever is at the destination | no — omit it to write air | no |
+| `break` | destroys the block that is there, like a player would | no — it is rejected | yes, unless `"drops": false` |
+| `place` | writes a block, but only where there is room for one | **yes** | no |
+
+`replace` with no `into` and `break` look similar and are not: the first makes the block vanish, the
+second breaks it, with the particles, the sound and — by default — its loot.
+
+`at` moves the destination off the block that was clicked. The three numbers are always *right, up,
+forward*; `relative_to` decides what right and forward point at:
+
+| `relative_to` | forward (`z`) | right (`x`) |
+| --- | --- | --- |
+| `world` *(default)* | south | east |
+| `player` | the way the player is facing, flattened to four directions | the player's right |
+| `face` | out of the clicked face | the player's right |
+
+`y` is world up in every frame, so looking at your feet never tips the frame over.
+
+```json
+"transformation": {
+  "chance": 1.0,
+  "op": "place",
+  "at": { "y": 1 },
+  "require": { "match": "minecraft:air" },
+  "into": { "id": "minecraft:torch" }
+}
+```
+
+`require` is the same shape as `target`, asked of the destination instead of the clicked block. It is
+optional: without it, `replace` overwrites whatever is in the way. Note that `place` already refuses
+an occupied destination — and one where the block could not survive, so it will not leave you a torch
+that pops a tick later — so `require` is for the finer cases ("only if it is dirt").
+
+Writing a list applies several transformations from one click:
+
+```json
+"transformation": [
+  { "chance": 1.0, "op": "break", "at": { "y": 1 } },
+  { "chance": 1.0, "op": "place", "at": { "y": 1 }, "into": { "id": "minecraft:torch" } }
+]
+```
+
+Each entry rolls its own `chance` independently. Every destination is worked out and checked against
+the world *as it was when you clicked*, before any of them is written — so the order you declare them
+in does not change what `require` sees.
+
+> **On a server this reaches past what the player is pointing at.** Break and place events are posted
+> for every transformation, so claim mods can veto them, and `max_transformation_offset` caps how far
+> a datapack can reach. Both are in the config; see [configuration.md](configuration.md).
+
+### Acting on a whole region
+
+An offset can name a second corner, and then covers the box between the two:
+
+```json
+"at": { "x": -1, "y": 1, "z": -1, "to": { "x": 1, "y": 1, "z": 1 } }
+```
+
+That is a 3x3 slab one block up — nine blocks from one entry. Both corners are read in the same
+frame, and in a rotating frame the box turns as a whole, so a shape drawn one way lands that way.
+
+Every block in a region counts against `max_transformations_per_interaction` (default 64), and each
+is checked on its own: a `place` over a region fills the gaps and leaves the occupied blocks alone
+rather than failing outright.
+
+### Rolling a whole set at once
+
+Each entry rolls its own `chance`, which for a pattern means a different, half-built shape every
+time. To roll once for the set, wrap it:
+
+```json
+"transformation": {
+  "chance": 0.7,
+  "all": [
+    { "chance": 1.0, "op": "break", "at": { "y": 1 } },
+    { "chance": 1.0, "op": "place", "at": { "y": 1 }, "into": { "id": "minecraft:torch" } }
+  ]
+}
+```
+
+Seven times in ten the pair is attempted; each entry then rolls its own chance inside that.
+
+### Moving a block instead of naming one
+
+`into: { "kind": "copy" }` writes whatever block stands at `from` — the interacted block unless you
+say otherwise:
+
+```json
+"transformation": [
+  { "chance": 1.0, "at": { "y": 1 }, "into": { "kind": "copy" } },
+  { "chance": 1.0, "op": "break", "drops": false }
+]
+```
+
+That moves the clicked block one up. The copy is read when you click, before anything is written, so
+pairing it with a break of its own source works — the break cannot empty the source first.
+
+### Where the drops land
+
+Rewards appear at the interacted block. When the interaction really acts somewhere else, move them:
+
+```json
+"rewards": { "at": { "y": 1 }, "guaranteed": [ { "match": "minecraft:flint" } ] }
+```
+
+### Requiring a block nearby
+
+`require` asks about a block a transformation is going to change. To gate the **interaction itself**
+on its surroundings — which is what multi-block setups are made of — use `conditions.neighbours`:
+
+```json
+"conditions": {
+  "neighbours": [
+    { "at": { "y": -1 }, "block": { "match": "minecraft:obsidian" } },
+    { "at": { "y": 1 }, "block": { "match": "#minecraft:logs" }, "invert": true }
+  ]
+}
+```
+
+"Obsidian underneath, and no log on top." The `block` half is a `target`, so the syntax is the one
+you already know, states included. All of them must hold. `invert` flips one. A neighbour outside the
+world or in an unloaded chunk counts as not matching, so a recipe never fires on evidence nobody
+could see.
 
 ### Typed NBT predicates (`nbt_predicates`)
 
@@ -260,15 +412,15 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
 - **Only `type` is required.** Every other section is optional; omit what you don't need.
 - **`type` values:** `left_click`, `right_click`, `shift_left_click`, `shift_right_click`.
 - **`hidden` is not `enabled: false`.** A hidden interaction loads, syncs and fires exactly like any
-  other; it is only left out of JEI and EMI. Use it for secrets and for the intermediate steps of a
+  other; it is only left out of JEI. Use it for secrets and for the intermediate steps of a
   multi-stage recipe. `enabled: false` is the one that turns an interaction off.
-- **`type` already covers sneaking — `requires_sneaking` cannot add anything.** A sneaking player's
-  click always resolves to the `shift_` variant, so a `left_click` interaction never sees one and a
-  `shift_left_click` interaction never sees anything else. That leaves `requires_sneaking` either
-  redundant (it agrees with the type) or fatal (it disagrees, and the interaction can never match).
-  PTA logs a warning naming the file in the second case. **Choose the `type` and leave
-  `requires_sneaking` out.** It is kept only so existing files keep loading.
-  *(The shipped `conditions_sneaking` example got this wrong until 2.2.0 and could never fire.)*
+- **Sneaking belongs to `type`, and `requires_sneaking` is folded into it.** A sneaking click
+  always resolves to the `shift_` variant, so a `left_click` interaction never sees one. Setting
+  the condition as well used to be either redundant or fatal — when it disagreed with the type,
+  the interaction could never fire while still being listed in JEI as a working recipe. Since
+  2.4.0 the condition is taken as the intent and the type is adjusted to match, with a warning
+  naming the type to write instead. **Choose the `type` and leave `requires_sneaking` out;** it
+  is kept only so existing files keep loading.
 - **`kind: "any"` prefers blocks for `minecraft:water` and `minecraft:lava`,** because those ids exist
   in both the block and the fluid registry, and a target cannot mix the two. That is harmless — a
   water source really is `minecraft:water` as a block at that position — but if you specifically want
@@ -289,8 +441,15 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
   get exactly one weighted pick (the classic behaviour). `guaranteed` items are always given.
 - **Fortune** reads the enchantment from the **held** item, so it only helps interactions that use a
   hand item; the bonus is `round(level × factor)` extra items per weighted pick.
-- **Transformations happen at most once per click**, after a successful drop, subject to `chance`
-  and the `allow_transformations` config gate.
+- **Transformations run after a successful drop**, subject to `chance` and the `allow_transformations`
+  config gate. Any one **block** is transformed at most once per click, so two interactions matching
+  the same click cannot both act on it — but they can act on different blocks.
+- **A transformation that cannot act does nothing, quietly.** Out of the world height, in an unloaded
+  chunk, past `max_transformation_offset`, blocked by `require`, vetoed by a claim mod: all of these
+  skip. Turn on `Debug.log_skipped_interactions` and the log names the block and the reason.
+- **Placing fluids at an offset flows.** `into.kind: "fluid"` at a distance behaves like a bucket
+  poured there — it will spread, and on a server that is somebody's problem. `require` and a small
+  offset keep it predictable.
 - **`particles`** takes a **block id** (block-break particles), not a particle-type id.
 - **Biomes/dimensions** in `conditions.biomes` match by exact id (e.g. `minecraft:desert`,
   `minecraft:overworld`) **or** by biome **`#tag`** (e.g. `#minecraft:is_forest`).
@@ -301,7 +460,7 @@ NBT is written as an explicit **SNBT string** (`"{Damage:0}"`), so files stay va
   the player on success.
 - **Global config can still block an interaction** even if the file is valid — see
   [configuration.md](configuration.md). Turn on `Debug.log_skipped_interactions` to find out why.
-- **Multiplayer:** the server is authoritative and syncs its interactions to clients, so JEI/EMI
+- **Multiplayer:** the server is authoritative and syncs its interactions to clients, so JEI
   match it. See
   [interactions.md](interactions.md).
 

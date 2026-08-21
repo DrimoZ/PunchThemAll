@@ -7,9 +7,6 @@ copy-paste-ready.
 > Prefer to read the exhaustive field list instead? See [interaction-format.md](interaction-format.md).
 > Prefer to copy finished files? See the [example datapack](../examples/punchthemall-examples).
 
-> **On Minecraft 26.1, only JEI is available** — EMI has no 26.1 release yet, so mentions of it below
-> do not apply. Note also that `pack.mcmeta` changed shape in 1.21.9; §1 has the current header.
-
 **Contents**
 
 1. [Setup](#1-setup)
@@ -32,8 +29,8 @@ copy-paste-ready.
 
 Interactions are **datapack** data. So you author them in a datapack, not a config folder.
 
-1. Install NeoForge 26.1, a recipe viewer ([JEI](https://www.curseforge.com/minecraft/mc-mods/jei)),
-   and PunchThemAll.
+1. Install NeoForge 26.1, [JEI](https://www.curseforge.com/minecraft/mc-mods/jei), and
+   PunchThemAll. (EMI has no 26.1 build yet, so it is not supported on this line.)
 2. Make a datapack. In a world's `datapacks/` folder, create:
 
    ```text
@@ -44,18 +41,18 @@ Interactions are **datapack** data. So you author them in a datapack, not a conf
 
    `pack.mcmeta`:
    ```json
-   { "pack": { "min_format": 101, "max_format": 101, "description": "My interactions" } }
+   { "pack": { "pack_format": 48, "description": "My interactions" } }
    ```
 
 3. Put `.json` files in `data/mypack/pta/interaction/` (subfolders are fine). Each file is one
    interaction; its id is `mypack:<path>` (e.g. `flint.json` → `mypack:flint`).
 4. After editing files, run **`/reload`** in-game to apply changes. No restart needed.
-5. Open **JEI/EMI** and look at the **Interaction** category to see what loaded.
+5. Open **JEI** and look at the **Interaction** category to see what loaded.
 
 > Not sure how a datapack is laid out? Copy the ready-made
 > [example datapack](../examples/punchthemall-examples) and edit it.
 >
-> On a server the interactions are synced to clients automatically, so JEI/EMI just work — no extra step.
+> On a server the interactions are synced to clients automatically, so JEI just work — no extra step.
 
 > **Always start a file with `"schema_version": 2`.** It gives strict JSON validation and the clearest
 > error messages. (This version of the mod only accepts `schema_version: 2`.)
@@ -249,11 +246,38 @@ Turn the clicked block/fluid into another one after a successful interaction:
 ```
 
 - `chance` — probability of the transformation happening.
-- `into.kind` — `block`, `fluid`, or `air` (air = break the block).
+- `into.kind` — `block`, `fluid`, or `air` (air = the block simply vanishes).
 - `into.state` — set specific state values, or `"copy_state_value"` to keep the original block's value.
 - `particles` — a **block id** (block-break particles).
 
-Transformations obey the `allow_transformations` config gate and happen at most once per click.
+### Acting somewhere else, or breaking instead of replacing
+
+`op` picks what happens, and `at` picks where:
+
+```json
+"transformation": {
+  "chance": 1.0,
+  "op": "place",
+  "at": { "y": 1 },
+  "require": { "match": "minecraft:air" },
+  "into": { "id": "minecraft:torch" }
+}
+```
+
+- `op` — `replace` (default, overwrite anything), `break` (destroy it, with its loot), or `place`
+  (write only where there is room, and only where the block can actually stay).
+- `at` — `x` is right, `y` is up, `z` is forward. `relative_to` reads them in the world axes
+  (`world`, default), against the player's facing (`player`), or out of the clicked face (`face`).
+- `require` — same shape as `target`, asked of the destination instead of the clicked block.
+
+Note that `op: "break"` and `into.kind: "air"` are not the same thing: the first breaks the block
+properly — particles, sound, and its loot — while the second makes it disappear.
+
+Writing `transformation` as an array applies several of them from one click. Full details, including
+the server-side limits, are in [interaction-format.md](interaction-format.md).
+
+Transformations obey the `allow_transformations` config gate. Any one block is transformed at most
+once per click.
 
 ---
 
@@ -316,11 +340,10 @@ you need.
 - `weather` — any of `clear`, `rain`, `thunder`. Omit for "any weather".
 - `y_range` — `[minY, maxY]`.
 - `light` — block light `min`/`max` (0–15).
-- `requires_sneaking` — **don't use it.** `type` already encodes sneaking: `shift_right_click` *is*
-  "right-click while sneaking", and a sneaking player's click never reaches a plain `right_click`
-  interaction. So `requires_sneaking` is either redundant or contradictory, and in the second case
-  the interaction can never fire. PTA logs a warning naming the file when it spots that. The field
-  survives only so older files keep loading.
+- `requires_sneaking` — **you do not need it.** Sneaking is part of the type:
+  `shift_right_click` *is* right-click-while-sneaking. If you set both, the condition wins and
+  the type is adjusted to match, with a line in the log telling you which type to write instead.
+  Kept only so older files keep working.
 - `player_state` — minimum food and XP levels the player must have.
 
 ---
@@ -372,22 +395,26 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
   Ship them in your modpack's datapack, or as a standalone datapack players drop into `datapacks/`.
 - **Folders become ids.** `data/mypack/pta/interaction/create/crushing/gravel.json` →
   `mypack:create/crushing/gravel`. Keep filenames lowercase with underscores.
-- **One interaction per file.** It keeps ids meaningful and the JEI/EMI list readable.
+- **One interaction per file.** It keeps ids meaningful and the JEI list readable.
 - **Toggle without deleting.** Add `"enabled": false` to a file to skip it.
 - **Hide without disabling.** Add `"hidden": true` and the interaction still loads, syncs and fires —
-  it just never appears in JEI or EMI. That is what you want for a secret, or for the middle steps of
+  it just never appears in JEI. That is what you want for a secret, or for the middle steps of
   a recipe chain where only the ends should be discoverable. Reach for `enabled: false` when you
   actually want it *off*.
 - **Override & gate.** Datapacks override each other by pack order (later packs win for the same id),
   and you can add `neoforge:conditions` to a file to load it only when, say, another mod is present.
 - **Dedicated servers just work.** The server syncs its interactions to every client on join
-  and after each `/reload`, so JEI/EMI show the server as-is with no extra setup.
+  and after each `/reload`, so JEI show the server as-is with no extra setup.
 - **Global tuning** (cooldowns, click/target gates, fake players, drop physics) lives in
   `config/punchthemall/pta-common.toml` — see [configuration.md](configuration.md).
 
 ---
 
 ## 12. Cookbook
+
+A few starters below. The full set — sifting, excavators that reach, altars with neighbour
+conditions, two-step recipes, all-or-nothing patterns — is in [cookbook.md](cookbook.md),
+where each one is a whole interaction rather than a fragment.
 
 **Hammer crushing (cobble → gravel → sand → dust), consuming durability:**
 
@@ -467,7 +494,7 @@ comma, a missing quote), an unknown item/block id, or an unknown tag. Make sure 
 The tag is probably absent (e.g. `Damage` on a fresh tool). Loosen the predicate or match a tag that
 actually exists on the item.
 
-**JEI/EMI shows nothing on a dedicated server.**
+**JEI shows nothing on a dedicated server.**
 The server syncs its interactions on join and after `/reload`. Reconnect, or run `/reload` on the
 server. In single-player this is automatic.
 
@@ -478,7 +505,9 @@ This version only accepts `schema_version: 2`. Set `"schema_version": 2` at the 
 
 ## Where to go next
 
+- **Whole recipes by goal:** [cookbook.md](cookbook.md)
+- **What can and cannot be done:** [capabilities.md](capabilities.md)
 - **Full field reference:** [interaction-format.md](interaction-format.md)
 - **Config keys & presets:** [configuration.md](configuration.md)
-- **Datapacks, IDs, JEI/EMI, multiplayer:** [interactions.md](interactions.md)
+- **Datapacks, IDs, JEI, multiplayer:** [interactions.md](interactions.md)
 - **Copy-paste example datapack:** [../examples/punchthemall-examples](../examples/punchthemall-examples)

@@ -14,7 +14,7 @@ was considered and rejected is useful.
 
 - **Entity targets.** `target: { kind: "entity" }` — punch a mob for drops. The most-requested shape
   the format cannot express today. Needs a new event path (`AttackEntityEvent` /
-  `PlayerInteractEvent.EntityInteract`) and a JEI/EMI display that shows an entity rather than a
+  `PlayerInteractEvent.EntityInteract`) and a JEI display that shows an entity rather than a
   block.
 - **Multi-target interactions.** One file matching a block *and* a fluid, instead of duplicating it.
 - **Command / function outputs.** Run a function on success, for pack-level scripting.
@@ -129,7 +129,7 @@ two example-datapack bugs fixed in 2.2.0.
 
 ## Done
 
-- **`hidden` on an interaction** — keep it out of JEI/EMI without disabling it. *(1.21.1-2.2.0)*
+- **`hidden` on an interaction** — keep it out of JEI without disabling it. *(1.21.1-2.2.0)*
 - **A unit test suite** — 241 tests, booting the game's registries in process. Listed under *Dropped*
   for a while; the reasoning there was half right and half wrong, see that entry. *(1.21.1-2.2.0)*
 - **Payload protocol discipline** — `PROTOCOL_VERSION` is now bumped with the payload shape, and the
