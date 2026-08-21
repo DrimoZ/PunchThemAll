@@ -32,6 +32,32 @@ public class TranslationKeys {
     public static final String INTERACTION_TRANSFORMATION_CHANCE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.chance";
     public static final String INTERACTION_TRANSFORMATION_BREAK = "gui." + PunchThemAll.MOD_ID + ".category.transformation.break";
 
+    // What a transformation does, and where (see TransformationDescriber)
+    public static final String INTERACTION_TRANSFORMATION_OP_REPLACE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.replace";
+    public static final String INTERACTION_TRANSFORMATION_OP_BREAK = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.break";
+    public static final String INTERACTION_TRANSFORMATION_OP_PLACE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.place";
+    public static final String INTERACTION_TRANSFORMATION_AT = "gui." + PunchThemAll.MOD_ID + ".category.transformation.at";
+    public static final String INTERACTION_TRANSFORMATION_FRAME_WORLD = "gui." + PunchThemAll.MOD_ID + ".category.transformation.frame.world";
+    public static final String INTERACTION_TRANSFORMATION_FRAME_PLAYER = "gui." + PunchThemAll.MOD_ID + ".category.transformation.frame.player";
+    public static final String INTERACTION_TRANSFORMATION_FRAME_FACE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.frame.face";
+    public static final String INTERACTION_TRANSFORMATION_REQUIRE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.require";
+    public static final String INTERACTION_TRANSFORMATION_DROPS = "gui." + PunchThemAll.MOD_ID + ".category.transformation.drops";
+    public static final String INTERACTION_TRANSFORMATION_MORE = "gui." + PunchThemAll.MOD_ID + ".category.transformation.more";
+    public static final String INTERACTION_TRANSFORMATION_COPIED = "gui." + PunchThemAll.MOD_ID + ".category.transformation.copied";
+    public static final String INTERACTION_TRANSFORMATION_BROKEN = "gui." + PunchThemAll.MOD_ID + ".category.transformation.broken";
+    public static final String INTERACTION_TRANSFORMATION_OP_PLACE_NAMED = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.place_named";
+    public static final String INTERACTION_TRANSFORMATION_OP_REPLACE_NAMED = "gui." + PunchThemAll.MOD_ID + ".category.transformation.op.replace_named";
+    public static final String INTERACTION_TRANSFORMATION_COUNT = "gui." + PunchThemAll.MOD_ID + ".category.transformation.count";
+    public static final String INTERACTION_TRANSFORMATION_GROUP = "gui." + PunchThemAll.MOD_ID + ".category.transformation.group";
+    public static final String INTERACTION_TRANSFORMATION_REGION = "gui." + PunchThemAll.MOD_ID + ".category.transformation.region";
+    public static final String INTERACTION_TRANSFORMATION_DROPS_TOOL = "gui." + PunchThemAll.MOD_ID + ".category.transformation.drops_tool";
+
+    // Progressive disclosure (see TooltipDetail)
+    public static final String INTERACTION_TOOLTIP_HINT = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.hint";
+    public static final String INTERACTION_TOOLTIP_KEY_SHIFT = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.key.shift";
+    public static final String INTERACTION_TOOLTIP_KEY_CONTROL = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.key.control";
+    public static final String INTERACTION_TOOLTIP_KEY_ALT = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.key.alt";
+
     public static final String INTERACTION_BIOME_WHITELIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.whitelist";
     public static final String INTERACTION_BIOME_BLACKLIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.blacklist";
 
@@ -60,6 +86,7 @@ public class TranslationKeys {
     public static final String INTERACTION_NBT_TARGET_FORBIDS = "gui." + PunchThemAll.MOD_ID + ".category.nbt.target_forbids";
 
     // Schema v2 extensions
+    public static final String INTERACTION_OUTPUT_SHARED = "gui." + PunchThemAll.MOD_ID + ".category.output.shared";
     public static final String INTERACTION_OUTPUT_GUARANTEED = "gui." + PunchThemAll.MOD_ID + ".category.output.guaranteed";
     public static final String INTERACTION_TEXT_PREDICATES = "gui." + PunchThemAll.MOD_ID + ".category.text.predicates";
     public static final String INTERACTION_REWARDS_TITLE = "gui." + PunchThemAll.MOD_ID + ".category.rewards.title";
