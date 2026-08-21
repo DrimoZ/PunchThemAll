@@ -5,6 +5,50 @@ The full, maintained changelog is CHANGELOG.md in the repository. This file is t
 pasted onto the CurseForge/Modrinth release page.
 
 
+1.21.1-2.4.0
+------------
+
+New
+
+* Tooltips you can actually read, in two lengths. An interaction can carry a dozen facts, so the
+  transformation slot now shows a summary and keeps the full breakdown behind a key you hold.
+  Which key is yours: detail_key in the new pta-client.toml is shift, control, alt, always or never.
+* conditions.neighbours gates an interaction on the blocks around the target. "require" asks about a
+  block a transformation will change; this asks whether the recipe applies at all. "invert" for
+  "and not".
+* Regions. An offset can name a second corner with "to" and covers the whole box between the two,
+  corners included. A 3x3 excavator is one entry rather than nine.
+* A chance for a whole set: "transformation": { "chance": 0.7, "all": [ ... ] }. Either the pattern
+  appears or it does not, instead of appearing half-built.
+* "into": { "kind": "copy" } writes whatever block is already somewhere, rather than naming one,
+  with "from" to say where to read it. A copy plus a break is a block that moves.
+* rewards.at moves where the drops land, for an interaction that acts somewhere other than the
+  block you clicked.
+* "drops": "tool" on a break gives the block's loot as broken by the held item, Fortune and Silk
+  Touch included.
+* max_drop_rows in pta-client.toml caps how tall a recipe box gets.
+* Thirteen more worked examples, and two new documents: what the mod can and cannot do, and whole
+  recipes by goal.
+
+Changed
+
+* A recipe no longer inherits the height of the widest one in the category. One interaction with
+  thirty drops used to make every other one three rows tall. The box is capped, and the drops past
+  the cap share a slot that cycles through them — nothing hidden, nothing to scroll. Guaranteed and
+  weighted drops are laid out separately, guaranteed first, so a square never alternates between
+  what you always get and a one-in-four chance.
+
+Fixed
+
+* Regions never worked. "at.to" parsed and the box maths was right, but the two were never
+  connected, so every region collapsed to a single block.
+* JEI and EMI crashed on a "copy" transformation, taking the whole recipe down with them.
+* The sneak requirement was shown in two places that could disagree: a recipe could demand shift
+  with no shift in its tooltip, next to one showing the wrong figure. It belongs to the type.
+* An interaction whose requires_sneaking disagreed with its type could never fire, silently.
+* An unresolvable sound, particle or biome entry is now reported instead of dropped in silence.
+
+
 1.21.1-2.3.0
 ------------
 
