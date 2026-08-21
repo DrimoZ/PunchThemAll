@@ -4,9 +4,10 @@
 left/right-clicks (with or without sneaking) on a block, a fluid or the air — optionally with a
 specific item in hand. No Java, no KubeJS: just JSON files you drop in `config/punchthemall/interactions`.
 
-Every interaction can produce weighted or guaranteed drops, transform the clicked block/fluid, cost
-the player health or hunger, grant potion effects, play sounds and particles, and be gated by biome,
-dimension, time, weather, altitude, light or player state. Everything shows up in **JEI**.
+Every interaction can produce weighted or guaranteed drops, transform blocks and fluids — the one you
+clicked, or one next to it — cost the player health or hunger, grant potion effects, play sounds and
+particles, and be gated by biome, dimension, time, weather, altitude, light, player state or the
+blocks around the target. Everything shows up in **JEI**.
 
 ---
 
@@ -19,8 +20,12 @@ dimension, time, weather, altitude, light or player state. Everything shows up i
   and a Fortune/Looting-style bonus.
 - 🔄 **Transformations** — swap the clicked block/fluid for another, copying block-state values,
   with sounds and particles.
-- 🌦️ **Conditions** — gate by biome/dimension tags, time of day, weather, Y range, light level,
-  sneaking, food and XP.
+- 📐 **Reach past the block you clicked** — `break`, `place` or `replace` at a relative offset, read
+  in world axes, against the player facing, or out of the clicked face. A whole region in one entry.
+  Several per click, each with its own chance and its own condition on the destination. Server admins
+  get a distance cap, and claim mods can veto every one of them.
+- 🌦️ **Conditions** — gate by biome/dimension tags, the blocks **around** the target, time of day,
+  weather, Y range, light level, sneaking, food and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, and interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
 - 📖 **Full JEI integration** — players can browse every interaction, its inputs, drops and conditions.
@@ -90,10 +95,13 @@ cobblestone, a chance at iron nuggets (doubled per Fortune level), a Haste buff 
 - **Loading, reloading & JEI:** [interactions.md](interactions.md)
 - **Config options:** [configuration.md](configuration.md)
 - **Changelog:** [CHANGELOG.md](../CHANGELOG.md)
-- **Copy-paste examples:** [`configExamples/interactions`](../configExamples/interactions)
+- **Copy-paste examples:** [`configExamples/interactions`](../configExamples/interactions) for the
+  config folder, or the [example datapack](../examples/punchthemall-examples) — 69 interactions
+  covering every field, [catalogued here](../examples/punchthemall-examples/README.md)
+- **What differs from the NeoForge 1.21.1 build:** [versions.md](versions.md)
 
 ## Compatibility
 
 - Minecraft **1.20.1**, Forge **47.x**.
-- **JEI** required for the recipe browser.
+- **JEI** for the recipe browser (optional). There is no EMI plugin on this build; the NeoForge 1.21.1 one has it.
 - Optional integrations tested against Create, AE2, Ex Deorum, Thermal and Click Machine.

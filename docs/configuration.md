@@ -24,6 +24,9 @@ world load or `/reload`.
 | `PunchThemAll.Loader` | JSON file discovery, generated IDs, development fail-fast mode. |
 | `PunchThemAll.Debug` | Optional logs for loaded and skipped interactions. |
 
+There is a second file, `pta-client.toml`, holding the two settings that change what you see rather
+than what the mod does. See [Client settings](#client-settings-pta-clienttoml).
+
 ## `PunchThemAll.Interactions`
 
 | Key | Default | Description |
@@ -38,6 +41,10 @@ world load or `/reload`.
 | `allow_air_interactions` | `true` | Enables interactions configured with an air target. |
 | `allow_fluid_interactions` | `true` | Enables ray-traced source-fluid interactions. |
 | `allow_transformations` | `true` | Enables block/fluid transformations after a successful interaction. Drops can still happen when this is disabled. |
+| `allow_offset_transformations` | `true` | Enables transformations that act on a block other than the one interacted with. Disabling this does not fall back to the clicked block — the transformation is skipped. |
+| `max_transformation_offset` | `8` | How far a transformation may reach, in blocks along its longest axis. Anything further is skipped. |
+| `max_transformations_per_interaction` | `64` | How many blocks one interaction may transform per click. A region counts every block it covers. |
+| `fire_protection_events` | `true` | Posts block break/place events so claim and protection mods can veto a transformation. Keep enabled on any multiplayer server. |
 
 ### Recommended presets
 
@@ -63,6 +70,21 @@ Disable world changes while keeping drops:
 [PunchThemAll.Interactions]
 allow_transformations = false
 ```
+
+## Client settings (`pta-client.toml`)
+
+A separate file, because these change what **you** see and never what the mod does. A server has
+no say in them.
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `detail_key` | `shift` | Which key expands an interaction tooltip in JEI from its summary to the full breakdown. `shift`, `control`, `alt`, `always` (never summarise) or `never` (never expand). |
+| `max_drop_rows` | `3` | How many rows of drops a recipe shows. JEI sizes a category rather than a recipe, so the widest interaction decides how tall every other one is drawn; this caps that. Drops past the cap share a slot and cycle through it, so nothing is hidden and there is nothing to scroll. |
+
+An interaction can carry a dozen facts — several transformations, each with an operation, a
+destination, a condition on that destination and what it drops. Showing all of it at once gives a
+tooltip nobody reads; showing a summary only leaves you unable to find out what the second
+transformation does. So the detail is behind a key, and this is the key.
 
 ## `PunchThemAll.Players`
 

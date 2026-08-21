@@ -24,8 +24,12 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
   a Fortune/Looting-style bonus.
 - 🔄 **Transformations** — swap the clicked block/fluid for another, copy block-state values, with
   sounds and particles.
-- 🌦️ **Conditions** — gate by biome/dimension, time of day, weather, Y range, light level, sneaking,
-  food, and XP.
+- 📐 **…on a block other than the one you clicked** — `break`, `place` or `replace` at a relative
+  offset, read in world axes, against your facing, or out of the clicked face. Regions in one entry,
+  several per click, each with its own chance and its own condition on the destination. Server owners
+  get a distance cap, and claim mods can veto them.
+- 🌦️ **Conditions** — gate by biome/dimension (ids **or** `#tags`), the blocks **around** the target,
+  time of day, weather, Y range, light level, sneaking, food, and XP.
 - 💥 **Player feedback** — potion effects, damage, hunger cost, plus interaction-level sound/particles.
 - 🔎 **Typed NBT predicates** — match item/block-entity data with clean `path` + range + filter rules.
 - 📖 **JEI integration** — players browse every interaction, its inputs, drops, and conditions.
@@ -92,6 +96,12 @@ including a folder of focused v2 examples in
 | [docs/interaction-format.md](docs/interaction-format.md) | **Full JSON reference** for the `schema_version: 2` format, with a legacy→v2 migration table. |
 | [docs/interactions.md](docs/interactions.md) | Loading, reloading, IDs, multiplayer, and the JEI category. |
 | [docs/configuration.md](docs/configuration.md) | Every `pta-common.toml` key, defaults, and presets. |
+| [docs/capabilities.md](docs/capabilities.md) | **What can and cannot be done**, the traps that look possible, and every hard limit. |
+| [docs/cookbook.md](docs/cookbook.md) | **Whole recipes** by goal — sifting, excavators, altars, multi-step setups. |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | **Why nothing happened**, in the order that finds it fastest. |
+| [docs/versions.md](docs/versions.md) | **This line vs NeoForge 1.21.1** — same JSON format, different platform. |
+| [docs/interaction.schema.json](docs/interaction.schema.json) | JSON Schema for editor autocomplete/validation. |
+| [example catalogue](examples/punchthemall-examples/README.md) | **69 runnable examples**, one per feature, each with what it shows and how to trigger it. |
 | [docs/curseforge.md](docs/curseforge.md) | Short project overview (used for the CurseForge page). |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version. |
 

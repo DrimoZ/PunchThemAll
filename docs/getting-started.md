@@ -5,7 +5,7 @@ adds one feature at a time, so by the end you can write almost anything. Every s
 copy-paste-ready.
 
 > Prefer to read the exhaustive field list instead? See [interaction-format.md](interaction-format.md).
-> Prefer to copy finished files? See [`configExamples/interactions/v2`](../configExamples/interactions/v2).
+> Prefer to copy finished files? See the [example datapack](../examples/punchthemall-examples).
 
 **Contents**
 
@@ -27,22 +27,41 @@ copy-paste-ready.
 
 ## 1. Setup
 
-1. Install Forge 1.20.1, [JEI](https://www.curseforge.com/minecraft/mc-mods/jei), and PunchThemAll.
-2. Launch the game once. This creates the folder:
+Interactions are **datapack** data. So you author them in a datapack, not a config folder.
+
+1. Install Forge 47.x for Minecraft 1.20.1, [JEI](https://www.curseforge.com/minecraft/mc-mods/jei),
+   and PunchThemAll.
+2. Make a datapack. Set `load_from_datapacks = true` in `config/punchthemall/pta-common.toml`
+   first — on this branch datapacks are opt-in, and the config folder
+   `config/punchthemall/interactions/` is the source that is always read. Then in a world
+   `datapacks/` folder, create:
 
    ```text
-   config/punchthemall/interactions/
+   datapacks/mypack/
+     pack.mcmeta
+     data/mypack/pta/interaction/
    ```
 
-3. Put `.json` files in that folder (subfolders are fine). Each file is one interaction.
+   `pack.mcmeta`:
+   ```json
+   { "pack": { "pack_format": 15, "description": "My interactions" } }
+   ```
+
+3. Put `.json` files in `data/mypack/pta/interaction/` (subfolders are fine). Each file is one
+   interaction; its id is `mypack:<path>` (e.g. `flint.json` → `mypack:flint`).
 4. After editing files, run **`/reload`** in-game to apply changes. No restart needed.
 5. Open **JEI** and look at the **Interaction** category to see what loaded.
 
-> **Always start a v2 file with `"schema_version": 2`.** It gives you strict JSON validation and the
-> clearest error messages, and unlocks every feature in this guide.
+> Not sure how a datapack is laid out? Copy the ready-made
+> [example datapack](../examples/punchthemall-examples) and edit it.
+>
+> On a server the interactions are synced to clients automatically, so JEI just works — no extra step.
+
+> **Always start a file with `"schema_version": 2`.** It gives strict JSON validation and the clearest
+> error messages. (This version of the mod only accepts `schema_version: 2`.)
 
 If a file fails to load, the game log shows a line beginning with
-`PunchThemAll - Incorrect Json format - <file> - <reason>`. Keep the log open while authoring.
+`PunchThemAll - Incorrect Json format - <id> - <reason>`. Keep the log open while authoring.
 
 ---
 
@@ -50,7 +69,7 @@ If a file fails to load, the game log shows a line beginning with
 
 The smallest useful interaction: **left-click dirt to get coarse dirt.**
 
-`config/punchthemall/interactions/coarse_dirt.json`
+`data/mypack/pta/interaction/coarse_dirt.json`
 
 ```json
 {
@@ -101,7 +120,7 @@ Most interactions want a specific tool. Let's require **any shovel** and damage 
 - `hand.match` — required item(s)/tag. **Leave `hand` out entirely to require an empty hand.**
 - `hand.consume.mode`:
   - `durability` — damage a damageable tool (breaks when it runs out),
-  - `shrink` — consume one from the stack (good for ingredients like buckets or seeds),
+  - `shrink` — consume from the stack (good for ingredients like buckets or seeds),
   - `none` — don't spend it.
 - `hand.consume.chance` — probability of spending it (e.g. `0.5` = half the time).
 - `hand.consume.count` — how much is spent when that roll succeeds. Default `1`; write an integer
@@ -135,6 +154,10 @@ Everything about outputs lives in `rewards`.
 ```
 
 `count` accepts three shapes: `3`, `{ "count": 3 }`, or `{ "min": 1, "max": 3 }`.
+
+`{ "min": 0, "max": 2 }` is allowed and means what it says — the entry can roll nothing. It keeps its
+slot in JEI and its weight in the pool either way. To write "and sometimes nothing at all", the
+idiomatic form is still a `minecraft:air` entry with its own weight, as above.
 
 ### Guaranteed drops
 
@@ -226,11 +249,38 @@ Turn the clicked block/fluid into another one after a successful interaction:
 ```
 
 - `chance` — probability of the transformation happening.
-- `into.kind` — `block`, `fluid`, or `air` (air = break the block).
+- `into.kind` — `block`, `fluid`, or `air` (air = the block simply vanishes).
 - `into.state` — set specific state values, or `"copy_state_value"` to keep the original block's value.
 - `particles` — a **block id** (block-break particles).
 
-Transformations obey the `allow_transformations` config gate and happen at most once per click.
+### Acting somewhere else, or breaking instead of replacing
+
+`op` picks what happens, and `at` picks where:
+
+```json
+"transformation": {
+  "chance": 1.0,
+  "op": "place",
+  "at": { "y": 1 },
+  "require": { "match": "minecraft:air" },
+  "into": { "id": "minecraft:torch" }
+}
+```
+
+- `op` — `replace` (default, overwrite anything), `break` (destroy it, with its loot), or `place`
+  (write only where there is room, and only where the block can actually stay).
+- `at` — `x` is right, `y` is up, `z` is forward. `relative_to` reads them in the world axes
+  (`world`, default), against the player's facing (`player`), or out of the clicked face (`face`).
+- `require` — same shape as `target`, asked of the destination instead of the clicked block.
+
+Note that `op: "break"` and `into.kind: "air"` are not the same thing: the first breaks the block
+properly — particles, sound, and its loot — while the second makes it disappear.
+
+Writing `transformation` as an array applies several of them from one click. Full details, including
+the server-side limits, are in [interaction-format.md](interaction-format.md).
+
+Transformations obey the `allow_transformations` config gate. Any one block is transformed at most
+once per click.
 
 ---
 
@@ -293,7 +343,10 @@ you need.
 - `weather` — any of `clear`, `rain`, `thunder`. Omit for "any weather".
 - `y_range` — `[minY, maxY]`.
 - `light` — block light `min`/`max` (0–15).
-- `requires_sneaking` — `true`/`false`.
+- `requires_sneaking` — **you do not need it.** Sneaking is part of the type:
+  `shift_right_click` *is* right-click-while-sneaking. If you set both, the condition wins and
+  the type is adjusted to match, with a line in the log telling you which type to write instead.
+  Kept only so older files keep working.
 - `player_state` — minimum food and XP levels the player must have.
 
 ---
@@ -341,24 +394,32 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 
 ## 11. Organising a pack
 
-- **Folders become ids.** `interactions/create/crushing/gravel.json` → `pta:create/crushing/gravel`.
-  Keep filenames lowercase with underscores.
-- **One interaction per file.** It keeps ids meaningful and JEI readable.
+- **Two sources.** `config/punchthemall/interactions/**/*.json` is always read; datapack files at
+  `data/<namespace>/pta/interaction/**/*.json` are read too once `load_from_datapacks = true`, and
+  are layered on top. A datapack travels with a world and carries its own namespace, so it is the
+  better choice for anything you ship.
+- **Folders become ids.** `data/mypack/pta/interaction/create/crushing/gravel.json` →
+  `mypack:create/crushing/gravel`. Keep filenames lowercase with underscores.
+- **One interaction per file.** It keeps ids meaningful and the JEI list readable.
 - **Toggle without deleting.** Add `"enabled": false` to a file to skip it.
-- **Hide without disabling.** Add `"hidden": true` and the interaction still loads and still fires —
-  it just never appears in JEI. That is what you want for a secret, or for the middle steps of a
-  recipe chain where only the ends should be discoverable. Reach for `enabled: false` when you
-  actually want it *off*. Both need `"schema_version": 2`.
-- **Ship in a datapack (optional).** Set `Loader.load_from_datapacks = true` in
-  `config/punchthemall/pta-common.toml`, then place files at
-  `data/<namespace>/pta/interaction/*.json`. Datapack files override config files with the same id
-  and are synchronised to clients automatically.
+- **Hide without disabling.** Add `"hidden": true` and the interaction still loads, syncs and fires —
+  it just never appears in JEI. That is what you want for a secret, or for the middle steps of
+  a recipe chain where only the ends should be discoverable. Reach for `enabled: false` when you
+  actually want it *off*.
+- **Override.** Datapacks override each other by pack order (later packs win for the same id).
+  Load conditions are **not** supported on this branch — see [versions.md](versions.md).
+- **Dedicated servers just work.** The server syncs its interactions to every client on join
+  and after each `/reload`, so JEI shows the server set with no extra setup.
 - **Global tuning** (cooldowns, click/target gates, fake players, drop physics) lives in
-  `pta-common.toml` — see [configuration.md](configuration.md).
+  `config/punchthemall/pta-common.toml` — see [configuration.md](configuration.md).
 
 ---
 
 ## 12. Cookbook
+
+A few starters below. The full set — sifting, excavators that reach, altars with neighbour
+conditions, two-step recipes, all-or-nothing patterns — is in [cookbook.md](cookbook.md),
+where each one is a whole interaction rather than a fragment.
 
 **Hammer crushing (cobble → gravel → sand → dust), consuming durability:**
 
@@ -366,7 +427,7 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 {
   "schema_version": 2,
   "type": "shift_left_click",
-  "hand": { "hand": "main", "match": "#forge:tools/hammers", "consume": { "mode": "durability" } },
+  "hand": { "hand": "main", "match": "#c:tools", "consume": { "mode": "durability" } },
   "target": { "kind": "block", "match": "minecraft:cobblestone" },
   "transformation": { "chance": 1.0, "into": { "kind": "block", "id": "minecraft:gravel" }, "particles": "minecraft:gravel" },
   "rewards": { "weighted": [ { "match": "minecraft:air", "weight": 1 } ] }
@@ -415,15 +476,20 @@ The `{RangeTag:[min,max]}` helper still works inside these strings.
 }
 ```
 
-More single-feature examples: [`configExamples/interactions/v2`](../configExamples/interactions/v2).
+More single-feature examples: the [example datapack](../examples/punchthemall-examples).
 
 ---
 
 ## 13. Troubleshooting
 
 **The file doesn't load.**
-Check the log for `Incorrect Json format - <file> - <reason>`. Common causes: invalid JSON (a
-trailing comma, a missing quote), an unknown item/block id, or an unknown tag. Fix and `/reload`.
+Check the log for `Incorrect Json format - <id> - <reason>`. Common causes: invalid JSON (a trailing
+comma, a missing quote) or an unknown item/block id. Make sure the file is either in
+`config/punchthemall/interactions/`, or inside an enabled **datapack** at
+`data/<namespace>/pta/interaction/` with `load_from_datapacks = true`. Then `/reload`.
+
+An *unknown tag* is worth a second look: tags are resolved on a second pass once they are bound, so
+a tag reported at load is genuinely missing rather than merely early.
 
 **It loads but never triggers.**
 - Turn on `Debug.log_skipped_interactions` in `pta-common.toml` to see why a click is skipped.
@@ -437,19 +503,20 @@ trailing comma, a missing quote), an unknown item/block id, or an unknown tag. F
 The tag is probably absent (e.g. `Damage` on a fresh tool). Loosen the predicate or match a tag that
 actually exists on the item.
 
-**JEI shows nothing / wrong recipes on a dedicated server.**
-The server syncs its interactions to clients on join and on `/reload`. Reconnect or `/reload` on the
-server. On singleplayer this is automatic.
+**JEI shows nothing on a dedicated server.**
+The server syncs its interactions on join and after `/reload`. Reconnect, or run `/reload` on the
+server. In single-player this is automatic.
 
-**I see a "legacy format" deprecation warning.**
-That file has no `schema_version` (or `1`). It still works, but consider migrating to
-`schema_version: 2` — see the migration table in [interaction-format.md](interaction-format.md).
+**My file is rejected with "schema_version … is not supported".**
+This version only accepts `schema_version: 2`. Set `"schema_version": 2` at the top of the file.
 
 ---
 
 ## Where to go next
 
+- **Whole recipes by goal:** [cookbook.md](cookbook.md)
+- **What can and cannot be done:** [capabilities.md](capabilities.md)
 - **Full field reference:** [interaction-format.md](interaction-format.md)
 - **Config keys & presets:** [configuration.md](configuration.md)
-- **Loading, IDs, JEI, multiplayer:** [interactions.md](interactions.md)
-- **Copy-paste examples:** [`configExamples/interactions/v2`](../configExamples/interactions/v2)
+- **Datapacks, IDs, JEI, multiplayer:** [interactions.md](interactions.md)
+- **Copy-paste example datapack:** [../examples/punchthemall-examples](../examples/punchthemall-examples)
