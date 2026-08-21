@@ -10,12 +10,16 @@ import com.drimoz.punchthemall.core.util.PTALoggers;
 import com.drimoz.punchthemall.core.util.TagHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -114,6 +118,17 @@ public class InteractionRegistry {
         return filteredInteractions;
     }
 
+    /**
+     * Whether any air interaction answers a left click. The client uses this to decide whether a
+     * left click on nothing is worth telling the server about, so swinging at air costs nothing for
+     * a pack without one.
+     */
+    public boolean hasLeftClickAirInteraction() {
+        rebuildIndexIfNeeded();
+        return !airIndex.getOrDefault(PtaTypeEnum.LEFT_CLICK, List.of()).isEmpty()
+                || !airIndex.getOrDefault(PtaTypeEnum.SHIFT_LEFT_CLICK, List.of()).isEmpty();
+    }
+
     private Collection<PtaInteraction> getCandidates(PtaTypeEnum eventType, boolean clickOnBlock, BlockPos pos, Level level) {
         rebuildIndexIfNeeded();
 
@@ -210,21 +225,45 @@ public class InteractionRegistry {
     }
 
     private boolean passesBiomeAndDimensionFilter(PtaInteraction interaction, Level level, BlockPos pos) {
-        String playerDimensionId = level.dimension().location().toString();
-        // Guard against unregistered biome holders (custom worldgen): treat as "no biome id".
-        String playerBiomeId = level.getBiome(pos).unwrapKey().map(key -> key.location().toString()).orElse("");
-
-        // Check whitelist: only allow when the current dimension or biome is listed.
+        // Whitelist: only allow when the current dimension or biome is listed.
         if (interaction.hasBiomeWhiteList()) {
-            return interaction.getBiomeWhitelist().contains(playerDimensionId) || interaction.getBiomeWhitelist().contains(playerBiomeId);
+            return biomeOrDimensionMatches(interaction.getBiomeWhitelist(), level, pos);
         }
 
-        // Check blacklist: forbid when the current dimension or biome is listed.
+        // Blacklist: forbid when the current dimension or biome is listed.
         if (interaction.hasBiomeBlackList()) {
-            return !(interaction.getBiomeBlackList().contains(playerDimensionId) || interaction.getBiomeBlackList().contains(playerBiomeId));
+            return !biomeOrDimensionMatches(interaction.getBiomeBlackList(), level, pos);
         }
 
         return true;
+    }
+
+    /**
+     * Matches an entry set against the current dimension and biome. An entry starting with a hash is
+     * a biome tag.
+     *
+     * <p>Entries used to be compared as plain strings, so a tag entry matched nothing and the
+     * interaction silently never fired — while the resolver validated it as a well-formed tag and
+     * said nothing.</p>
+     */
+    private boolean biomeOrDimensionMatches(Set<String> entries, Level level, BlockPos pos) {
+        String dimensionId = level.dimension().location().toString();
+        Holder<Biome> biomeHolder = level.getBiome(pos);
+        // Guard against unregistered biome holders (custom worldgen): treat as "no biome id".
+        String biomeId = biomeHolder.unwrapKey().map(key -> key.location().toString()).orElse("");
+
+        for (String entry : entries) {
+            if (!entry.isEmpty() && entry.charAt(0) == 0x23) {
+                // tryParse, not the constructor: this runs on every click, and a malformed tag in
+                // one file would otherwise throw for as long as the pack is installed.
+                ResourceLocation tagId = ResourceLocation.tryParse(entry.substring(1));
+                if (tagId == null) continue;
+                if (biomeHolder.is(TagKey.create(Registries.BIOME, tagId))) return true;
+            } else if (entry.equals(dimensionId) || entry.equals(biomeId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean passesAirOrBlockFilter(PtaInteraction interaction, boolean clickOnBlock) {

@@ -48,6 +48,8 @@ import static com.drimoz.punchthemall.core.registry.RegistryConstants.SAME_STATE
 
 public class PlayerInteractionHandler {
     private static final Map<UUID, Long> PLAYER_COOLDOWNS = new HashMap<>();
+    // Guards against handling the same click twice in one tick; see alreadyHandledThisTick.
+    private static final Map<UUID, Long> LAST_CLICK_TICK = new HashMap<>();
 
     @SubscribeEvent(priority = EventPriority.HIGH, receiveCanceled = true)
     public static void onPlayerInteract(PlayerInteractEvent event) {
@@ -69,11 +71,6 @@ public class PlayerInteractionHandler {
                 handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, true, leftClickBlockEvent);
             }
         }
-        else if (event instanceof PlayerInteractEvent.LeftClickEmpty leftClickEmptyEvent) {
-            if (isClickTypeEnabled(PtaTypeEnum.LEFT_CLICK)) {
-                handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, leftClickEmptyEvent);
-            }
-        }
         else if (event instanceof PlayerInteractEvent.RightClickBlock rightClickBlockEvent) {
             // Right-click events fire once per hand (main then off); only process the main-hand
             // event to avoid double handling. The main/off/any selection is still applied by PtaHand.
@@ -90,10 +87,39 @@ public class PlayerInteractionHandler {
         }
     }
 
+    /**
+     * Server-side entry point for a left click on nothing, driven by {@link LeftClickEmptyPacket}.
+     *
+     * <p>LeftClickEmpty is posted by Minecraft.startAttack and never leaves the client, so unlike
+     * every other click type this one cannot be observed server-side. Nothing from the client is
+     * trusted beyond "this player swung at nothing": the hand, the position and every gate are
+     * re-derived here.</p>
+     */
+    public static void onLeftClickEmptyFromClient(Player player) {
+        if (player == null) return;
+        if (!PTAConfig.INTERACTIONS.enabled.get()) return;
+        if (player instanceof FakePlayer && !PTAConfig.PLAYERS.allowFakePlayers.get()) return;
+        if (isCooldownEnabledFor(player) && isPlayerOnCooldown(player.getUUID(), player.level().getGameTime())) return;
+        // The packet is client-driven, so without this a client could ask for one interaction per
+        // packet rather than one per swing.
+        if (alreadyHandledThisTick(player)) return;
+        if (!isClickTypeEnabled(PtaTypeEnum.LEFT_CLICK)) return;
+
+        handlePlayerInteract(PtaTypeEnum.LEFT_CLICK, false, player, player.level(), player.blockPosition(), null);
+    }
+
+    private static boolean alreadyHandledThisTick(Player player) {
+        long now = player.level().getGameTime();
+        Long last = LAST_CLICK_TICK.put(player.getUUID(), now);
+        return last != null && last == now;
+    }
+
     private static void handlePlayerInteract(PtaTypeEnum type, boolean clickOnBlock, PlayerInteractEvent event) {
-        Player player = event.getEntity();
-        Level level = event.getLevel();
-        BlockPos blockPos = event.getPos();
+        handlePlayerInteract(type, clickOnBlock, event.getEntity(), event.getLevel(), event.getPos(), event);
+    }
+
+    private static void handlePlayerInteract(PtaTypeEnum type, boolean clickOnBlock, Player player, Level level,
+                                             BlockPos blockPos, PlayerInteractEvent event) {
         BlockHitResult hitResult = rayTrace(level, player, ClipContext.Fluid.SOURCE_ONLY);
         Direction direction = getInteractionDirection(player, level, hitResult);
 
@@ -169,7 +195,9 @@ public class PlayerInteractionHandler {
         }
 
         if (interactionProcessed) {
-            if (PTAConfig.INTERACTIONS.cancelVanillaInteraction.get()) {
+            // Null when the click came from the left-click-on-nothing packet rather than an event.
+            // Nothing to cancel there: the swing already happened on the client.
+            if (event != null && PTAConfig.INTERACTIONS.cancelVanillaInteraction.get()) {
                 event.setCanceled(true);
             }
             if (isCooldownEnabledFor(player)) setPlayerOnCooldown(player.getUUID(), level.getGameTime());
@@ -396,6 +424,7 @@ public class PlayerInteractionHandler {
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent ev) {
         PLAYER_COOLDOWNS.remove(ev.getEntity().getUUID());
+        LAST_CLICK_TICK.remove(ev.getEntity().getUUID());
     }
 
     private static boolean isPlayerOnCooldown(UUID UUID, long currentTick) {

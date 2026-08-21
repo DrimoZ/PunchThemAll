@@ -36,6 +36,18 @@ public final class PtaNetwork {
                 SyncInteractionsPacket::decode,
                 SyncInteractionsPacket::handle
         );
+        CHANNEL.registerMessage(
+                id++,
+                LeftClickEmptyPacket.class,
+                LeftClickEmptyPacket::encode,
+                LeftClickEmptyPacket::decode,
+                LeftClickEmptyPacket::handle
+        );
+    }
+
+    /** Tell the server the player swung at nothing; see {@link LeftClickEmptyPacket}. */
+    public static void sendLeftClickEmpty() {
+        CHANNEL.sendToServer(LeftClickEmptyPacket.INSTANCE);
     }
 
     /** Send the whole registry to one player (used on login). */
