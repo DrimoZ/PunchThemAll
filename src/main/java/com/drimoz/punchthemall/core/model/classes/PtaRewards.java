@@ -1,6 +1,7 @@
 package com.drimoz.punchthemall.core.model.classes;
 
 import com.drimoz.punchthemall.core.model.records.PtaDropRecord;
+import com.drimoz.punchthemall.core.model.records.PtaOffset;
 import net.minecraft.core.Holder;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
@@ -23,16 +24,42 @@ public class PtaRewards {
     private final Holder<Enchantment> fortuneEnchant; // null = no fortune bonus
     private final double fortuneFactor;
 
+    /**
+     * Where the drops appear, relative to the interacted block. {@link PtaOffset#NONE} — the
+     * block itself — is where they have always landed, and stays the default even when the
+     * interaction changes blocks somewhere else entirely.
+     */
+    private final PtaOffset dropAt;
+
     private PtaRewards(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Holder<Enchantment> fortuneEnchant, double fortuneFactor) {
         this.pool = pool == null ? PtaPool.create(null) : pool;
         this.guaranteed = guaranteed == null ? List.of() : guaranteed;
         this.rolls = Math.max(0, rolls);
         this.fortuneEnchant = fortuneEnchant;
         this.fortuneFactor = Math.max(0, fortuneFactor);
+        this.dropAt = PtaOffset.NONE;
+    }
+
+    private PtaRewards(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Holder<Enchantment> fortuneEnchant, double fortuneFactor, PtaOffset dropAt) {
+        this.pool = pool == null ? PtaPool.create(null) : pool;
+        this.guaranteed = guaranteed == null ? List.of() : List.copyOf(guaranteed);
+        this.rolls = Math.max(0, rolls);
+        this.fortuneEnchant = fortuneEnchant;
+        this.fortuneFactor = Math.max(0, fortuneFactor);
+        this.dropAt = dropAt == null ? PtaOffset.NONE : dropAt;
     }
 
     public static PtaRewards of(PtaPool pool) {
         return new PtaRewards(pool, List.of(), 1, null, 0);
+    }
+
+    public PtaOffset getDropAt() {
+        return dropAt;
+    }
+
+    /** A copy of these rewards, dropping at a different place. */
+    public PtaRewards droppingAt(PtaOffset dropAt) {
+        return new PtaRewards(pool, guaranteed, rolls, fortuneEnchant, fortuneFactor, dropAt);
     }
 
     public static PtaRewards create(PtaPool pool, List<PtaDropRecord> guaranteed, int rolls, Holder<Enchantment> fortuneEnchant, double fortuneFactor) {
