@@ -58,6 +58,15 @@ public class TranslationKeys {
     public static final String INTERACTION_TOOLTIP_KEY_ALT = "gui." + PunchThemAll.MOD_ID + ".category.tooltip.key.alt";
 
     public static final String INTERACTION_OUTPUT_SHARED = "gui." + PunchThemAll.MOD_ID + ".category.output.shared";
+    public static final String INTERACTION_NBT_REQUIRES = "gui." + PunchThemAll.MOD_ID + ".category.nbt.requires";
+    public static final String INTERACTION_NBT_FORBIDS = "gui." + PunchThemAll.MOD_ID + ".category.nbt.forbids";
+    public static final String INTERACTION_NBT_DAMAGE = "gui." + PunchThemAll.MOD_ID + ".category.nbt.damage";
+    public static final String INTERACTION_NBT_BETWEEN = "gui." + PunchThemAll.MOD_ID + ".category.nbt.between";
+    public static final String INTERACTION_NBT_PRESENT = "gui." + PunchThemAll.MOD_ID + ".category.nbt.present";
+    public static final String INTERACTION_NBT_ANY_LEVEL = "gui." + PunchThemAll.MOD_ID + ".category.nbt.any_level";
+    public static final String INTERACTION_NBT_ANY_ENCHANT = "gui." + PunchThemAll.MOD_ID + ".category.nbt.any_enchant";
+    public static final String INTERACTION_NBT_TARGET_REQUIRES = "gui." + PunchThemAll.MOD_ID + ".category.nbt.target_requires";
+    public static final String INTERACTION_NBT_TARGET_FORBIDS = "gui." + PunchThemAll.MOD_ID + ".category.nbt.target_forbids";
 
     public static final String INTERACTION_BIOME_WHITELIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.whitelist";
     public static final String INTERACTION_BIOME_BLACKLIST = "gui." + PunchThemAll.MOD_ID + ".category.biome.blacklist";
