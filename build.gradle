@@ -148,3 +148,9 @@ publishing {
         }
     }
 }
+
+tasks.register('verify') {
+    group = 'verification'
+    description = 'Runs the unit suite and then the in-world game tests.'
+    dependsOn tasks.named('test'), tasks.named('runGameTestServer')
+}

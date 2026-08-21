@@ -30,6 +30,9 @@ public class PunchThemAll {
         // there is no DeferredRegister and nothing to do in common setup.
         NeoForge.EVENT_BUS.register(PlayerInteractionHandler.class);
 
+        // The in-world tests. Registering them costs nothing when game tests are not enabled.
+        com.drimoz.punchthemall.gametest.PtaGameTests.register(modEventBus);
+
         LOGGER.info("{} initialising", MOD_NAME);
     }
 }
