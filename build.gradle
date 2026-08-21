@@ -253,8 +253,17 @@ tasks.named('jar', Jar).configure {
         ])
     }
 
+    // The game tests build their world from a structure template, which has to live in the mod
+    // resources for the dev server to find it. It is scaffolding, not content, and a released jar
+    // has no business carrying a structure a player could place with a command.
+    exclude("data/pta/structures/**")
+
+    // A jar that travels without its licence leaves the person who found it in a modpack with no
+    // way to know what they may do with it.
+    from(rootProject.file("LICENSE")) { into("META-INF") }
+
     // This is the preferred method to reobfuscate your jar file
-    finalizedBy 'reobfJar'
+    finalizedBy "reobfJar"
 }
 
 // However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing:

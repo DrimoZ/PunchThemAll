@@ -45,7 +45,7 @@ biome, dimension, time, weather, altitude, light, or player state — and it all
 ## Install
 
 1. Install Minecraft Forge for 1.20.1 and [JEI](https://www.curseforge.com/minecraft/mc-mods/jei).
-2. Drop `PunchThemAll-1.20.1-2.0.0.jar` into your `mods` folder.
+2. Drop `pta-1.20.1-2.4.0.jar` into your `mods` folder.
 3. Launch once to generate `config/punchthemall/`, then add interaction files (below).
 
 ## Quick start

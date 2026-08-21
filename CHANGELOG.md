@@ -8,6 +8,82 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [1.20.1-2.4.0]
+
+Brings this line level with the NeoForge 1.21.1 one for everything a transformation can
+do, so a pack can move between them without editing files. Interactions written for
+2.1.0 are unaffected: without `op`, `at` or `all`, a transformation does exactly what it
+did before.
+
+### Added
+- **Transformations can act on a block other than the one you clicked, and can `break` or
+  `place` rather than only overwrite.** `at` gives an offset read in world axes
+  (`relative_to: "world"`), against the player's facing (`"player"`), or out of the clicked
+  face (`"face"`). `transformation` also accepts a list, applied in declaration order, each
+  entry rolling its own chance. Server owners get a distance cap and a per-click budget, and
+  claim mods can veto every one of them.
+- **Regions.** An offset can name a second corner with `to`, covering the whole box between
+  the two, corners included — a 3×3 excavator is one entry rather than nine.
+- **`require` on a transformation.** Same shape as `target`, but asked of the destination
+  rather than of the block you clicked. Nothing is written unless it matches.
+- **`into: { "kind": "copy" }`** — write whatever block is already somewhere, instead of
+  naming one. With `from` to say where to read it. A `copy` plus a `break` is a block that
+  moves.
+- **A chance for a whole set.** `transformation: { "chance": 0.7, "all": [ ... ] }` rolls
+  once for the set, so a pattern either appears or does not, rather than appearing half-built.
+- **`conditions.neighbours`** — gate an interaction on the blocks *around* the target, with
+  `invert` for "and not".
+- **`rewards.at`** — where the drops land, when the interaction is really acting elsewhere.
+- **`drops: "tool"` on `op: "break"`** — the block's loot as broken by the held item,
+  Fortune and Silk Touch included.
+- **Air interactions can carry transformations**, measured from the player.
+- **Tooltips in two lengths.** The transformation slot says what it does and where; the full
+  breakdown sits behind a key you choose. New `pta-client.toml` holds `detail_key`
+  (shift/control/alt/always/never) and `max_drop_rows`.
+- **A test suite, where this branch had none.** 294 unit tests with the game booted in
+  process, and 28 in-world tests covering the transformation pipeline. `./gradlew verify`
+  runs both.
+- **The 69-interaction example datapack** from the 1.21.1 line, with three tests that keep it
+  honest: every example parses, every id resolves against the game registries, and every
+  feature of the format has an example. Set `load_from_datapacks = true` to use it.
+
+### Changed
+- **A click transforms any one block at most once**, rather than performing at most one
+  transformation. Two interactions matching the same click can both act, as long as they act
+  somewhere different.
+- **A recipe no longer inherits the height of the widest one in the category.** The box is
+  capped by `max_drop_rows`, and the drops past the cap share a slot, which JEI cycles through
+  on its own. Guaranteed and weighted drops are laid out separately, guaranteed first, so a
+  square never alternates between what you always get and a one-in-four chance.
+- **Item requirements read as sentences** — "The item must have: Efficiency I - V" — instead
+  of the authored tag structure printed back at you.
+- **Transformations post block break/place events**, so claim and protection mods can veto
+  them, and `op: "place"` refuses a destination the block could not survive on.
+
+### Fixed
+- **Every tag selector resolved to nothing.** Reload listeners run before tags are bound, so
+  `#minecraft:hoes` and every other tag loaded as an empty set: the interaction drew as a
+  barrier in JEI and could never fire. Interactions are now resolved again once tags exist,
+  and the first pass loads quietly instead of reporting problems that are not real.
+- **Biome tags never matched.** `conditions.biomes` compared entries as plain strings, so a
+  `#minecraft:is_forest` entry matched no biome while the resolver validated it as a
+  well-formed tag and said nothing.
+- **`left_click` on air could never fire.** The event behind it is posted on the client only,
+  and the handler returns on the client, so the type existed and did nothing. The client now
+  tells the server, which re-derives every gate itself.
+- **A malformed id took down the whole datapack load.** Every registry lookup built its
+  `ResourceLocation` with the constructor, which throws on authored text like `"a b c"`; one
+  typo in one file threw out of the reload listener and cost the pack every interaction. An
+  unknown id also answers `null` now rather than the registry default, which used to hand back
+  `AIR` and read as a real block.
+- **An empty row of slots** hung below a recipe whose drop grid was capped.
+- **The sneak requirement was shown in two places that could disagree.** It belongs to the
+  type; the icon already shows it.
+- Drop rolls take the level's random source instead of `Math.random`, and an interaction
+  carries a hash of its source file so a reload of an unchanged pack stops churning JEI.
+
+---
+
 ## [1.20.1-2.1.0]
 
 ### Added
