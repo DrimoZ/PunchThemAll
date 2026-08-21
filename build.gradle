@@ -154,3 +154,14 @@ tasks.register('verify') {
     description = 'Runs the unit suite and then the in-world game tests.'
     dependsOn tasks.named('test'), tasks.named('runGameTestServer')
 }
+
+// A jar that travels without its licence leaves the person who found it in a modpack with no way to
+// know what they may do with it.
+tasks.named("jar", Jar).configure {
+    from(rootProject.file("LICENSE")) { into("META-INF") }
+
+    // The in-world tests build their world from a structure template, which has to live in the mod
+    // resources for the dev server to find it. It is scaffolding, not content, and a released jar
+    // has no business carrying a structure a player could place with a command.
+    exclude("data/pta/structure/**")
+}

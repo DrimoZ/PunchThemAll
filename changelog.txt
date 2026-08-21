@@ -5,6 +5,62 @@ The full, maintained changelog is CHANGELOG.md in the repository. This file is t
 pasted onto the CurseForge/Modrinth release page.
 
 
+26.1.2-2.4.0
+------------
+
+Brings this build level with the NeoForge 1.21.1 one for everything a transformation can do. The
+JSON format is now identical on all three lines, so a datapack moves between them without an edit.
+
+A note on the number: 2.3.0 meant something different here than on the 1.21.1 line. There it was the
+offset transformations; here it was the port to Minecraft 26.1 plus hand.consume.count. Everything
+1.21.1 shipped as 2.3.0 arrives now, alongside its 2.4.0. From this release the numbers mean the
+same thing everywhere.
+
+New
+
+* Transformations can act on a block other than the one you clicked, and can break or place rather
+  than only overwrite. "at" moves the destination: read in world axes, against your facing, or out
+  of the clicked face. "at.to" names a second corner and covers the whole box between the two, so a
+  3x3 excavator is one entry rather than nine.
+* "require" gates a transformation on what the destination already is. "transformation" also accepts
+  a list, and "{ "chance": 0.7, "all": [ ... ] }" rolls once for the whole set, so a pattern either
+  appears or does not instead of appearing half-built.
+* "into": { "kind": "copy" } writes whatever block is already somewhere rather than naming one. A
+  copy plus a break is a block that moves.
+* conditions.neighbours gates an interaction on the blocks around the target, with "invert".
+* rewards.at moves where the drops land. "drops": "tool" on a break gives the block's loot as broken
+  by the held item, Fortune and Silk Touch included.
+* Air interactions can carry transformations when they are offset.
+* Tooltips in two lengths: a summary, with the full breakdown behind a key you hold. New
+  pta-client.toml holds detail_key and max_drop_rows.
+* Six config keys under PunchThemAll.Interactions bounding and presenting all of it.
+* The example pack goes from 42 interactions to 69, matching the other two lines.
+* Twenty-eight in-world tests. This build had none.
+
+Changed
+
+* A click transforms any one block at most once, instead of performing at most one transformation.
+* A recipe no longer inherits the height of the widest one in the category. The box is capped by
+  max_drop_rows, and the drops past the cap share a slot that cycles through them.
+* Transformations post block break/place events, so claim and protection mods can veto them, and
+  "place" refuses a destination the block could not survive on.
+* A requires_sneaking that contradicts the type is folded into the type rather than only warned
+  about. Such an interaction used to load and never fire.
+
+Fixed
+
+* The recipe viewer crashed on a "copy" transformation.
+* A break was labelled Air, which is wrong for an operation that leaves the block's loot behind.
+* The sneak requirement was shown in two places that could disagree.
+
+Known limits on this build
+
+* No EMI plugin. JEI only.
+* Thirty-one unit tests fail with "Components not bound yet", and have since before this release:
+  26.1 binds data components outside Bootstrap, so a bare test JVM cannot build an ItemStack. The
+  in-world tests are unaffected — they run on a real server.
+
+
 26.1.2-2.3.0
 ------------
 

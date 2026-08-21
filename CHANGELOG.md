@@ -8,6 +8,67 @@ Version tags use the form `MC-version - mod-version`, e.g. `1.20.1-2.0.0`.
 
 ---
 
+## [26.1.2-2.4.0] — NeoForge
+
+Brings this line level with the NeoForge 1.21.1 one for everything a transformation can do. The
+JSON format is now **identical on all three lines** — field for field — so a datapack moves between
+them without an edit.
+
+> **A note on the number.** 2.3.0 meant something different here than on the 1.21.1 line: there it
+> was the offset transformations, here it was the port to Minecraft 26.1 plus `hand.consume.count`.
+> Everything 1.21.1 shipped as 2.3.0 arrives now, alongside its 2.4.0. From this release the
+> numbers mean the same thing everywhere.
+
+### Added
+- **Transformations can act on a block other than the one you clicked, and can `break` or `place`
+  rather than only overwrite.** `at` gives an offset read in world axes, against the player's
+  facing, or out of the clicked face. `transformation` also accepts a list, applied in declaration
+  order, each entry rolling its own chance.
+- **Regions.** An offset can name a second corner with `to`, covering the whole box between the two.
+  A 3×3 excavator is one entry rather than nine.
+- **`require` on a transformation** — the same shape as `target`, asked of the destination rather
+  than the block you clicked.
+- **`into: { "kind": "copy" }`**, with `from` to say where to read the block. A copy plus a break is
+  a block that moves.
+- **A chance for a whole set**, so a pattern either appears or does not rather than appearing
+  half-built.
+- **`conditions.neighbours`** — gate on the blocks *around* the target, with `invert` for "and not".
+- **`rewards.at`** and **`drops: "tool"`** on a break.
+- **Air interactions can carry transformations**, measured from the player.
+- **Tooltips in two lengths**, with the detail behind a key you choose. New `pta-client.toml` holds
+  `detail_key` and `max_drop_rows`.
+- **Six config keys** bounding and presenting all of it.
+- **Twenty-seven more examples**, bringing the pack to 69 — the same set as the other two lines.
+- **Twenty-eight in-world tests.** This branch had none, and its unit suite cannot build an
+  `ItemStack` (see below), so nothing automated covered the transformation pipeline until now.
+
+### Changed
+- **A click transforms any one block at most once**, rather than performing at most one
+  transformation, so two matching interactions can both act as long as they act somewhere different.
+- **A recipe no longer inherits the height of the widest one in the category.** The box is capped by
+  `max_drop_rows`, and the drops past the cap share a slot that cycles through them. Guaranteed and
+  weighted drops are laid out separately, guaranteed first.
+- **Transformations post block break/place events**, so claim and protection mods can veto them, and
+  `op: "place"` refuses a destination the block could not survive on.
+- **A `requires_sneaking` that contradicts the type is folded into the type** rather than only
+  warned about. Such an interaction used to load and never fire.
+
+### Fixed
+- **The recipe viewer crashed on a `copy` transformation** — neither air nor a named block, it fell
+  through to the fluid branch and dereferenced a null fluid.
+- **A `break` was labelled Air**, which is wrong for an operation that leaves the block's loot behind.
+- **The sneak requirement was shown in two places that could disagree.** It belongs to the type; the
+  icon already shows it.
+
+### Known gaps on this line
+- **No EMI plugin.** It was dropped for 26.1 and has not come back. JEI is supported.
+- **The unit suite cannot construct an `ItemStack`** — "Components not bound yet", because 26.1 binds
+  data components in `ReloadableServerResources` rather than in `Bootstrap`. Thirty-one tests fail
+  for this reason and have since before this release. The in-world tests are unaffected: they run on
+  a real server. See `McBootstrap` for the detail and the intended fix.
+
+---
+
 ## [26.1.2-2.3.0] — NeoForge
 
 A port to Minecraft 26.1, plus one new authoring field. Apart from that field, **nothing about
