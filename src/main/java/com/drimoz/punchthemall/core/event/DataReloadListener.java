@@ -19,8 +19,14 @@ public class DataReloadListener implements ResourceManagerReloadListener {
     public void onResourceManagerReload(ResourceManager resourceManager) {
         // Config files first (they clear the registry), then optional datapack files layered on top
         // so a datapack interaction overrides a config one sharing the same id.
-        InteractionLoader.initInteractions();
-        DatapackInteractionLoader.loadFromDatapacks(resourceManager);
+        //
+        // Quietly, because tags are not bound yet: every tag selector would be reported as
+        // unresolvable here and every one of those reports would be wrong. PtaTagEvents reads the
+        // same files again once tags exist, and that pass is the one that reports.
+        PTALoggers.runQuietly(() -> {
+            InteractionLoader.initInteractions();
+            DatapackInteractionLoader.loadFromDatapacks(resourceManager);
+        });
         logInteractions();
 
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
