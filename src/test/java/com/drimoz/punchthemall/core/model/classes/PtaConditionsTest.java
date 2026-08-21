@@ -42,7 +42,7 @@ class PtaConditionsTest {
             Integer yMin, Integer yMax, Integer lightMin, Integer lightMax,
             Boolean sneaking, int minFood, int minXp
     ) {
-        return new PtaConditions(time, weather, yMin, yMax, lightMin, lightMax, sneaking, minFood, minXp);
+        return new PtaConditions(time, weather, yMin, yMax, lightMin, lightMax, sneaking, minFood, minXp, java.util.List.of());
     }
 
     private static PtaConditions time(PtaConditions.Time time) {

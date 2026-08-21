@@ -32,7 +32,7 @@ class PtaInteractionTest {
 
     private static PtaInteraction interaction(Identifier id, boolean hidden, int contentHash) {
         return new PtaInteraction(id, PtaTypeEnum.LEFT_CLICK, null, null,
-                null, null, null, PtaRewards.of(PtaPool.create(null)),
+                null, null, java.util.List.of(), 1.0D, PtaRewards.of(PtaPool.create(null)),
                 null, null, null, hidden, contentHash);
     }
 
