@@ -1,60 +1,85 @@
 PunchThemAll changelog
 ======================
 
-Unreleased
-----------
+The full, maintained changelog is CHANGELOG.md in the repository. This file is the short version
+pasted onto the CurseForge/Modrinth release page.
 
-### Configuration
 
-* Replaced the original flat common config with modular sections:
-  `Interactions`, `Players`, `Drops`, `Loader`, and `Debug`.
-* Added global runtime gates for enabling/disabling all interactions, left-click
-  interactions, right-click interactions, block targets, air targets, fluid
-  targets, and transformations.
-* Replaced the cooldown key with `cooldown_ticks` and added support for `0` to
-  disable cooldowns.
-* Added `max_matches_per_click` to cap the number of interactions processed from
-  one click.
-* Added fake-player controls for enabling automation, applying cooldowns to fake
-  players, and applying player-only side effects to fake players.
-* Added controls for player damage and food consumption effects.
-* Added separate real-player and fake-player inventory insertion controls.
-* Added configurable world-drop offset and velocity.
-* Added loader controls for recursive discovery, fail-fast mode, and generated
-  ID lowercasing.
-* Added debug logging controls for loaded interactions and skipped runtime
-  interactions.
+1.20.1-2.4.0
+------------
 
-### Interaction loading
+Brings this build level with the NeoForge 1.21.1 one for everything a transformation can do. The
+JSON format is now identical on both, so a datapack moves between them without an edit. Files
+written for 2.1.0 are unaffected: without "op", "at" or "all", a transformation does exactly what it
+did before.
 
-* Interaction JSON files are loaded deterministically by relative path.
-* Interaction JSON files can be organized recursively below
-  `config/punchthemall/interactions`.
-* Interaction IDs are generated from relative paths, for example
-  `interactions/early_game/flint.json` becomes `pta:early_game/flint`.
-* Invalid interaction files now log the source path and can optionally stop the
-  loader when `fail_fast` is enabled.
+New
 
-### Gameplay behavior
+* Transformations can act on a block other than the one you clicked, and can break or place rather
+  than only overwrite. "op" is "replace" (the old behaviour, still the default), "break" (destroys
+  the block with its particles, its sound and its loot) or "place" (writes only where there is room
+  and where the block can stay). "at" moves the destination: x is right, y is up, z is forward, read
+  in world axes, against your facing, or out of the clicked face.
+* Regions. An offset can name a second corner with "to" and covers the whole box between the two.
+  A 3x3 excavator is one entry rather than nine.
+* "require" gates a transformation on what the destination already is, using the same syntax as
+  "target". "transformation" also accepts a list, applied in order, each entry rolling its own
+  chance, and "{ "chance": 0.7, "all": [ ... ] }" rolls once for the whole set — so a pattern either
+  appears or does not, instead of appearing half-built.
+* "into": { "kind": "copy" } writes whatever block is already somewhere rather than naming one.
+  A copy plus a break is a block that moves.
+* conditions.neighbours gates an interaction on the blocks around the target, with "invert" for
+  "and not".
+* rewards.at moves where the drops land. "drops": "tool" on a break gives the block's loot as broken
+  by the held item, Fortune and Silk Touch included.
+* Air-target interactions can carry transformations when they are offset, so "place a block above
+  me" works.
+* Tooltips in two lengths: the transformation slot shows a summary and keeps the full breakdown
+  behind a key you hold. New pta-client.toml holds detail_key (shift, control, alt, always, never)
+  and max_drop_rows.
+* Four config keys under PunchThemAll.Interactions: allow_offset_transformations,
+  max_transformation_offset, max_transformations_per_interaction and fire_protection_events.
+* A 69-interaction example datapack, one file per feature, each catalogued with what it shows and
+  how to trigger it. Set load_from_datapacks = true to use it.
+* Automated tests, where this build had none: 294 unit tests and 28 in-world tests.
 
-* Runtime interaction processing now honors the new config gates.
-* Fake-player behavior is more configurable for automation-heavy packs.
-* Transformations can be disabled globally without disabling drops.
-* Drops use configurable insertion and world-spawn behavior.
-* Direction fallback was improved to avoid null direction handling in edge cases.
+Changed
 
-### JEI
+* A click transforms any one block at most once, instead of performing at most one transformation.
+  Two interactions on the same click no longer block each other when they act on different blocks.
+* Transformations post block break/place events, so claim and protection mods can veto them. This
+  matters now that a transformation can reach a block you never pointed at. Server owners also get a
+  hard distance cap.
+* Item requirements read as sentences — "The item must have: Efficiency I - V" — instead of the raw
+  tag structure printed back at you.
+* A recipe no longer inherits the height of the widest one in the category. The box is capped by
+  max_drop_rows, and the drops past the cap share a slot that cycles through them.
 
-* JEI click tooltips now show the interaction ID.
-* Block-state blacklist tooltips now display blacklist entries correctly.
-* Unknown enchantment IDs in NBT tooltips no longer crash tooltip generation.
-* Out-of-range enchantment levels fall back to numeric display instead of
-  throwing during Roman numeral formatting.
+Fixed
 
-### Documentation
+* Every tag selector resolved to nothing. #minecraft:hoes, #minecraft:pickaxes, #minecraft:logs and
+  every other tag loaded as an empty set, so the interaction showed as a barrier in JEI and could
+  never fire. Interactions are now resolved again once tags are bound.
+* Biome tags never matched. A "#minecraft:is_forest" entry in conditions.biomes matched no biome,
+  while the loader validated it as a well-formed tag and said nothing.
+* "left_click" on air could never fire. The event behind it never leaves the client, so the type
+  existed and did nothing.
+* One malformed id took down the whole load. Every registry lookup threw on authored text like
+  "a b c", so a single typo cost the pack every interaction in every file.
+* The sneak requirement was shown in two places that could disagree.
+* An empty row of slots hung below a recipe whose drop grid was capped.
+* JEI and the viewers no longer crash on a "copy" transformation.
 
-* Replaced the Forge MDK README with a PunchThemAll-focused README.
-* Added `docs/configuration.md` with all config sections, defaults, examples,
-  presets, and migration notes.
-* Added `docs/interactions.md` with loader behavior, reload notes, runtime gates,
-  JEI display details, and pack organization tips.
+Known limits on this build
+
+* No EMI plugin. JEI only. The NeoForge 1.21.1 build has both.
+* Load conditions (forge:conditions) are not supported: a conditions block is ignored and the file
+  loads anyway. Ship mod-dependent content as a separate datapack instead.
+* Tags in the "c:" convention namespace are "forge:" here — #c:seeds is #forge:seeds.
+* See docs/versions.md for the full comparison with the NeoForge 1.21.1 build.
+
+
+Older releases
+--------------
+
+See CHANGELOG.md.
